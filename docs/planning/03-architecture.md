@@ -5,7 +5,7 @@
 ```
 ┌──────────────┐         ┌──────────────────┐        ┌─────────────────┐
 │              │  HTTPS  │                  │ HTTPS  │                 │
-│  Next.js 14  │────────▶│  Spring Boot 3   │───────▶│  외부 API들     │
+│  Next.js 16  │────────▶│  Spring Boot 3.5 │───────▶│  외부 API들     │
 │  (Vercel)    │  JWT    │  (Fly.io/Oracle) │        │  Finnhub, Gemini│
 │              │◀────────│                  │◀───────│  Yahoo, ...     │
 └──────┬───────┘         └────────┬─────────┘        └─────────────────┘
@@ -31,9 +31,9 @@
 
 | 항목 | 선택 | 이유 |
 |---|---|---|
-| 프레임워크 | **Next.js 14+ (App Router)** | SSR/ISR, 블로그 경험 재사용 |
-| 언어 | TypeScript | 타입 안정성 |
-| 스타일 | Tailwind CSS | 빠른 프로토타이핑 |
+| 프레임워크 | **Next.js 16 (App Router)** + React 19 | SSR/ISR, 블로그 경험 재사용. Initializr 시점(2026-04) 최신 GA |
+| 언어 | TypeScript 5 | 타입 안정성 |
+| 스타일 | Tailwind CSS 4 (`@tailwindcss/postcss`) | v4 신규 엔진, 빠른 프로토타이핑 |
 | 상태관리 | Zustand or React Query | 서버 상태는 React Query, 클라 상태는 Zustand |
 | 차트 | TradingView Lightweight Charts | 무료, 상업적 사용 가능 |
 | 인증 | Supabase Auth JS SDK | JWT 발급받아 Spring Boot에 전달 |
@@ -44,7 +44,7 @@
 
 | 항목 | 선택 | 이유 |
 |---|---|---|
-| 프레임워크 | **Spring Boot 3.2+** | 사용자 선택, 성숙한 생태계 |
+| 프레임워크 | **Spring Boot 3.5.13** | 사용자 선택, 성숙한 생태계 (Initializr 2026-04 최소 지원선 3.5) |
 | 언어 | **Java 21** (LTS) | 가상 스레드 활용 가능 |
 | 빌드 | Gradle (Kotlin DSL) | 최신 스타일 |
 | Web | Spring Web (MVC) | 단순함 우선. WebFlux는 러닝커브↑ |

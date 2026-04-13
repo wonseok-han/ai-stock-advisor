@@ -50,7 +50,7 @@
 ┌────────────────────────────────────────────────────────────────────────┐
 │                           CLIENT (Browser)                             │
 │  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Next.js 14 App Router (apps/web)                                 │  │
+│  │ Next.js 16 App Router · React 19 · Tailwind 4 (apps/web)        │  │
 │  │  src/app/                       src/features/                    │  │
 │  │   ├─ /                          ├─ market-dashboard/             │  │
 │  │   ├─ /stock/[ticker]            ├─ stock-detail/                 │  │

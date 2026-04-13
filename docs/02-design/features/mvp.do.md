@@ -114,7 +114,7 @@
 
 | File Path | Purpose |
 |-----------|---------|
-| `build.gradle.kts` | Spring Boot 3.2+, Java 21, ta4j, resilience4j, spring-data-redis, springdoc-openapi, flyway, jackson-kotlin(X) |
+| `build.gradle.kts` | Spring Boot 3.5.13, Java 21, ta4j, resilience4j, spring-data-redis, springdoc-openapi, flyway (Initializr로 스캐폴딩 후 ta4j/resilience4j/springdoc 추가) |
 | `src/main/java/com/aistockadvisor/AiStockAdvisorApplication.java` | 메인 클래스 (`@EnableAsync`, `@EnableCaching`) |
 | `src/main/java/com/aistockadvisor/stock/web/StockController.java` | `/search`, `/profile`, `/quote`, `/candles`, `/indicators`, `/detail` |
 | `src/main/java/com/aistockadvisor/stock/service/{Search,Quote,Indicator,StockDetail}Service.java` | 도메인 로직 |
@@ -139,7 +139,7 @@
 
 | File Path | Purpose |
 |-----------|---------|
-| `package.json` | deps: `next@14`, `react@18`, `typescript@5`, `tailwindcss@3`, `@tanstack/react-query@5`, `zustand@4`, `lightweight-charts@4`, devdeps: `eslint`, `@typescript-eslint/*`, `prettier`, `@testing-library/react`, `vitest`, `@playwright/test` |
+| `package.json` | deps: `next@16`, `react@19`, `typescript@5`, `tailwindcss@4`, `@tanstack/react-query@5`, `zustand@4`, `lightweight-charts@4`, devdeps: `eslint@9`, `@typescript-eslint/*`, `prettier`, `@testing-library/react`, `vitest`, `@playwright/test` |
 | `tsconfig.json` | strict, `paths.@/*`, `moduleResolution: bundler` |
 | `tailwind.config.ts` | content globs, dark mode `class` |
 | `next.config.mjs` | `images.remotePatterns` (finnhub/clearbit), strict CSP headers |
@@ -187,13 +187,15 @@
 ```bash
 cd apps/web
 
-pnpm add next@14 react@18 react-dom@18 typescript@5 \
-  @tanstack/react-query@5 zustand@4 \
+# Base 스캐폴딩은 `pnpm create next-app@latest`로 이미 설치됨
+# (next@16, react@19, react-dom@19, typescript@5, eslint@9, tailwindcss@4, @tailwindcss/postcss@4)
+
+# 추가 런타임 의존성
+pnpm add @tanstack/react-query@5 zustand@4 \
   lightweight-charts@4 clsx tailwind-merge
 
-pnpm add -D tailwindcss@3 postcss autoprefixer \
-  eslint eslint-config-next @typescript-eslint/parser @typescript-eslint/eslint-plugin \
-  prettier eslint-config-prettier eslint-plugin-prettier \
+# 추가 개발 의존성 (typescript-eslint는 Next 16 기본 포함이라 생략)
+pnpm add -D prettier eslint-config-prettier eslint-plugin-prettier \
   vitest @testing-library/react @testing-library/jest-dom jsdom \
   @playwright/test
 ```
