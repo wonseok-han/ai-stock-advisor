@@ -1,8 +1,15 @@
 package com.aistockadvisor.stock.web;
 
+import com.aistockadvisor.common.error.BusinessException;
+import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.SearchHit;
 import com.aistockadvisor.stock.domain.StockProfile;
+import com.aistockadvisor.stock.domain.TimeFrame;
+import com.aistockadvisor.stock.service.CandleService;
+import com.aistockadvisor.stock.service.IndicatorService;
 import com.aistockadvisor.stock.service.QuoteService;
 import com.aistockadvisor.stock.service.SearchService;
 import com.aistockadvisor.stock.service.StockProfileService;
@@ -33,13 +40,19 @@ public class StockController {
     private final SearchService searchService;
     private final StockProfileService profileService;
     private final QuoteService quoteService;
+    private final CandleService candleService;
+    private final IndicatorService indicatorService;
 
     public StockController(SearchService searchService,
                            StockProfileService profileService,
-                           QuoteService quoteService) {
+                           QuoteService quoteService,
+                           CandleService candleService,
+                           IndicatorService indicatorService) {
         this.searchService = searchService;
         this.profileService = profileService;
         this.quoteService = quoteService;
+        this.candleService = candleService;
+        this.indicatorService = indicatorService;
     }
 
     @GetMapping("/search")
@@ -58,5 +71,23 @@ public class StockController {
     public Quote quote(
             @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
         return quoteService.getQuote(ticker);
+    }
+
+    @GetMapping("/{ticker}/candles")
+    public List<Candle> candles(
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker,
+            @RequestParam(value = "tf", defaultValue = "1D") String tf) {
+        TimeFrame frame = TimeFrame.fromCode(tf);
+        if (frame == null) {
+            throw new BusinessException(ErrorCode.INVALID_TICKER,
+                    "지원하지 않는 timeframe: " + tf);
+        }
+        return candleService.getCandles(ticker, frame);
+    }
+
+    @GetMapping("/{ticker}/indicators")
+    public IndicatorSnapshot indicators(
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
+        return indicatorService.compute(ticker);
     }
 }
