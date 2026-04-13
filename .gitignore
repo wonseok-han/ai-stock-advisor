@@ -1,0 +1,83 @@
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================================
+# IDE / Editor
+# ============================================================
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ============================================================
+# Env (universal)
+# ============================================================
+.env
+.env.local
+.env.*.local
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+hs_err_pid*.log
+
+# ============================================================
+# Next.js / Node  (apps/web)
+# ============================================================
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/build/
+apps/web/coverage/
+apps/web/.turbo/
+apps/web/next-env.d.ts
+apps/web/.env
+apps/web/.env.local
+apps/web/.env.*.local
+apps/web/.pnpm-store/
+
+# ============================================================
+# Spring Boot / Gradle  (apps/api)
+# ============================================================
+apps/api/build/
+apps/api/.gradle/
+apps/api/bin/
+apps/api/out/
+apps/api/target/
+apps/api/src/main/resources/application-local.yml
+apps/api/src/main/resources/application-secret.yml
+apps/api/src/main/resources/application-*-local.yml
+apps/api/src/test/resources/application-test-local.yml
+
+# ============================================================
+# bkit runtime (설정/문서는 커밋, 런타임 상태는 제외)
+# ============================================================
+.bkit/state/
+.bkit/runtime/
+.bkit/snapshots/
+.bkit-memory.json
+
+# ============================================================
+# Claude Code (로컬 권한 정책은 이미 커밋, 세션 아티팩트는 제외)
+# ============================================================
+.claude/cache/
+.claude/sessions/
+.claude/*.log

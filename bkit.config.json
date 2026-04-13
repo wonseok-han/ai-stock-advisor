@@ -1,0 +1,85 @@
+{
+  "version": "1.6.1",
+  "level": "Dynamic",
+  "pdca": {
+    "matchRateThreshold": 90,
+    "autoIterate": true,
+    "maxIterations": 5,
+    "requireDesignDoc": true,
+    "automationLevel": "semi-auto",
+    "autoStartThreshold": 100,
+    "fullAuto": {
+      "reviewCheckpoints": ["design"]
+    }
+  },
+  "triggers": {
+    "implicitEnabled": true,
+    "confidenceThreshold": 0.7,
+    "clarifyAmbiguity": true
+  },
+  "pipeline": {
+    "autoTransition": false,
+    "skipConfirmation": false
+  },
+  "multiFeature": {
+    "maxActiveFeatures": 5,
+    "autoSwitch": true
+  },
+  "featurePatterns": [
+    "features",
+    "modules",
+    "apps",
+    "services",
+    "domains"
+  ],
+  "fileDetection": {
+    "sourceExtensions": [],
+    "excludePatterns": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      ".next",
+      "out",
+      "target",
+      "bin",
+      ".gradle",
+      ".idea",
+      ".vscode",
+      "__pycache__",
+      ".cache",
+      ".turbo",
+      "coverage"
+    ]
+  },
+  "cache": {
+    "enabled": true,
+    "ttl": 5000
+  },
+  "permissions": {
+    "Write": "allow",
+    "Edit": "allow",
+    "Read": "allow",
+    "Bash": "allow",
+    "Bash(rm -rf*)": "deny",
+    "Bash(rm -r*)": "ask",
+    "Bash(git push --force*)": "deny",
+    "Bash(git reset --hard*)": "ask"
+  },
+  "team": {
+    "enabled": true,
+    "displayMode": "in-process",
+    "maxTeammates": 3,
+    "delegateMode": false,
+    "ctoAgent": "cto-lead",
+    "orchestrationPatterns": {
+      "Dynamic": {
+        "plan": "leader",
+        "design": "leader",
+        "do": "swarm",
+        "check": "council",
+        "act": "leader"
+      }
+    }
+  }
+}
