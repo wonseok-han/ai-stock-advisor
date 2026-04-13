@@ -68,25 +68,34 @@ PDCA 방법론은 자동 적용됩니다. `/pdca plan|design|do|analyze|report` 
 
 ## Development Workflow
 
-### Commands (Phase 1 착수 시 확정)
+### Commands
+
+루트의 `Makefile`을 통해 BE/FE 명령을 통합 실행합니다. (pnpm workspace / turbo / nx 도입 안 함 정책에 따라 단순 cd 래퍼.)
 
 ```bash
-# Frontend (apps/web 기준, Phase 1 이후 확정)
-# Type check
-pnpm -F web typecheck    # TBD
-# Test
-pnpm -F web test         # TBD
-# Lint
-pnpm -F web lint         # TBD
-# Build
-pnpm -F web build        # TBD
+make help            # 사용 가능한 모든 타깃
+make install         # FE pnpm install + BE 툴체인 확인
 
-# Backend (apps/api 기준, Phase 1 이후 확정)
-./gradlew :api:check     # TBD (test + lint)
-./gradlew :api:build     # TBD
+# Dev
+make dev             # FE + BE 동시 기동 (Ctrl+C로 둘 다 종료)
+make web-dev         # FE만
+make api-dev         # BE만 (./gradlew bootRun)
+
+# Build
+make build           # FE + BE
+make web-build       # pnpm build
+make api-build       # ./gradlew build -x test
+
+# Check (CI 동등)
+make check           # FE typecheck/lint + BE check
+make web-check       # tsc --noEmit + pnpm lint
+make api-check       # ./gradlew check (테스트 + 정적 분석)
+
+# Test / Lint / Clean
+make test | make lint | make clean
 ```
 
-> 현재는 코드가 없으므로 위 명령어는 모두 placeholder. Phase 1 초기화 시 실제 값으로 교체.
+> 개별 명령을 직접 실행하려면 `cd apps/web && pnpm <cmd>` 또는 `cd apps/api && ./gradlew <task>` 도 가능. CI(`.github/workflows/ci.yml`)는 Make 의존을 피해 개별 명령을 직접 호출합니다.
 
 ---
 

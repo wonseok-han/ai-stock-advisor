@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # Frontend (apps/web) — Next.js 16 + TS + ESLint
+  # ============================================================
+  web:
+    name: Web · typecheck / lint / build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+  # ============================================================
+  # Backend (apps/api) — Spring Boot 3.5 + Java 21
+  # ============================================================
+  api:
+    name: API · check / build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Check (test + static analysis)
+        run: ./gradlew check --no-daemon
+
+      - name: Build
+        run: ./gradlew build -x test --no-daemon

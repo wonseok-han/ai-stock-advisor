@@ -1,0 +1,107 @@
+# AI Stock Advisor — root task runner
+# Wraps apps/web (Next.js + pnpm) and apps/api (Spring Boot + Gradle)
+
+WEB_DIR := apps/web
+API_DIR := apps/api
+
+.DEFAULT_GOAL := help
+.PHONY: help install \
+        dev web-dev api-dev \
+        build web-build api-build \
+        check web-check api-check \
+        lint web-lint \
+        test web-test api-test \
+        clean web-clean api-clean
+
+help:
+	@echo "AI Stock Advisor — Make targets"
+	@echo ""
+	@echo "Setup:"
+	@echo "  install        Install FE deps (pnpm) + verify BE toolchain"
+	@echo ""
+	@echo "Dev:"
+	@echo "  dev            Run FE + BE concurrently (Ctrl+C stops both)"
+	@echo "  web-dev        FE dev server (Next.js)"
+	@echo "  api-dev        BE dev server (Spring Boot bootRun)"
+	@echo ""
+	@echo "Build:"
+	@echo "  build          Build FE + BE"
+	@echo "  web-build      FE production build"
+	@echo "  api-build      BE jar build (skip tests)"
+	@echo ""
+	@echo "Check:"
+	@echo "  check          FE typecheck/lint + BE check"
+	@echo "  web-check      FE typecheck + lint"
+	@echo "  api-check      BE test + static analysis"
+	@echo ""
+	@echo "Lint:"
+	@echo "  lint           Alias for web-lint"
+	@echo "  web-lint       FE lint only"
+	@echo ""
+	@echo "Test:"
+	@echo "  test           FE + BE tests"
+	@echo "  web-test       FE tests"
+	@echo "  api-test       BE tests"
+	@echo ""
+	@echo "Clean:"
+	@echo "  clean          Remove build artifacts (FE + BE)"
+
+# ---------- Setup ----------
+install:
+	cd $(WEB_DIR) && pnpm install --frozen-lockfile
+	cd $(API_DIR) && ./gradlew --version
+
+# ---------- Dev ----------
+dev:
+	@trap 'kill 0' INT TERM EXIT; \
+	( cd $(WEB_DIR) && pnpm dev ) & \
+	( cd $(API_DIR) && ./gradlew bootRun ) & \
+	wait
+
+web-dev:
+	cd $(WEB_DIR) && pnpm dev
+
+api-dev:
+	cd $(API_DIR) && ./gradlew bootRun
+
+# ---------- Build ----------
+build: web-build api-build
+
+web-build:
+	cd $(WEB_DIR) && pnpm build
+
+api-build:
+	cd $(API_DIR) && ./gradlew build -x test --no-daemon
+
+# ---------- Check ----------
+check: web-check api-check
+
+web-check:
+	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm lint
+
+api-check:
+	cd $(API_DIR) && ./gradlew check --no-daemon
+
+# ---------- Lint ----------
+lint: web-lint
+
+web-lint:
+	cd $(WEB_DIR) && pnpm lint
+
+# ---------- Test ----------
+test: web-test api-test
+
+web-test:
+	cd $(WEB_DIR) && pnpm test --if-present
+
+api-test:
+	cd $(API_DIR) && ./gradlew test --no-daemon
+
+# ---------- Clean ----------
+clean: web-clean api-clean
+
+web-clean:
+	cd $(WEB_DIR) && rm -rf .next out node_modules/.cache
+
+api-clean:
+	cd $(API_DIR) && ./gradlew clean --no-daemon
