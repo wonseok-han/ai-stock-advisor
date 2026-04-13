@@ -100,9 +100,10 @@ pnpm -F web build        # TBD
 | Functions | camelCase | `fetchQuote`, `formatTicker` |
 | Constants | UPPER_SNAKE_CASE | `DEFAULT_CACHE_TTL`, `API_BASE_URL` |
 | Types/Interfaces | PascalCase | `StockQuote`, `AiAnalysis` |
-| Files (component) | `PascalCase.tsx` | `StockChart.tsx` |
-| Files (utility) | `camelCase.ts` | `formatDate.ts` |
+| Files (all) | `kebab-case.{ts,tsx}` | `stock-chart.tsx`, `format-date.ts`, `use-stock-detail.ts` |
 | Folders | `kebab-case` | `stock-detail/`, `market-dashboard/` |
+
+> **파일명 규칙**: FE의 모든 파일명은 `kebab-case`로 통일합니다. 컴포넌트 식별자(export 이름)는 `PascalCase`, 함수/훅은 `camelCase`를 유지하되, **파일명만 케밥케이스**로 작성합니다. 예: `StockChart` 컴포넌트 → `stock-chart.tsx`, `useStockDetail` 훅 → `use-stock-detail.ts`. Next.js 예약 파일(`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `route.ts`, `sitemap.ts`, `robots.ts` 등)은 프레임워크 규칙을 따릅니다.
 
 Import order: (1) 외부 라이브러리 → (2) `@/...` 절대경로 → (3) 상대경로 → (4) `import type { ... }` → (5) 스타일.
 
