@@ -2,6 +2,7 @@ package com.aistockadvisor.stock.infra.client;
 
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.StockProfile;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -21,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -77,6 +79,36 @@ public class FinnhubClient {
                 resp.finnhubIndustry(),
                 resp.marketCapitalization()
         );
+    }
+
+    /**
+     * Candles. resolution: "1","5","15","30","60","D","W","M".
+     * Finnhub 무료 plan 에서는 403 응답 → UPSTREAM_UNAVAILABLE 로 매핑됨.
+     * 빈 결과(s != "ok") 는 빈 리스트.
+     */
+    public List<Candle> candles(String ticker, String resolution, long fromEpochSec, long toEpochSec) {
+        CandleResponse resp = call("/stock/candle", uri -> uri
+                .queryParam("symbol", ticker)
+                .queryParam("resolution", resolution)
+                .queryParam("from", fromEpochSec)
+                .queryParam("to", toEpochSec)
+                .queryParam("token", apiKey), CandleResponse.class);
+        if (resp == null || !"ok".equals(resp.s()) || resp.t() == null || resp.t().isEmpty()) {
+            return List.of();
+        }
+        int n = resp.t().size();
+        List<Candle> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            out.add(new Candle(
+                    resp.t().get(i),
+                    resp.o().get(i),
+                    resp.h().get(i),
+                    resp.l().get(i),
+                    resp.c().get(i),
+                    resp.v() == null ? 0L : resp.v().get(i)
+            ));
+        }
+        return out;
     }
 
     /** Quote. 데이터 없으면 null (timestamp 0 케이스 포함). */
@@ -150,6 +182,18 @@ public class FinnhubClient {
             BigDecimal c, BigDecimal d, BigDecimal dp,
             BigDecimal h, BigDecimal l, BigDecimal o, BigDecimal pc,
             long t
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record CandleResponse(
+            String s,
+            List<Long> t,
+            List<BigDecimal> o,
+            List<BigDecimal> h,
+            List<BigDecimal> l,
+            List<BigDecimal> c,
+            List<Long> v
     ) {
     }
 }
