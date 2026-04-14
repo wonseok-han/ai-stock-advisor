@@ -2,7 +2,10 @@ package com.aistockadvisor.ai.infra;
 
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.common.metrics.LlmMetrics;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -22,10 +25,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Gemini 1.5 Flash 기반 LlmClient 구현.
- * 참조: docs/02-design/features/phase2-rag-pipeline.design.md §5
+ * 참조: docs/02-design/features/phase2-rag-pipeline.design.md §5,
+ *      docs/02-design/features/phase2.1-metrics-fe-refactor.design.md §4.2
  *
  * <p>Endpoint: {@code POST {baseUrl}/models/{model}:generateContent?key={apiKey}}<br>
  * {@code responseMimeType=application/json} 으로 JSON 모드 강제.
+ *
+ * <p>Micrometer 지표: call.count, token.total, failure.count, call.latency.
  */
 @Component
 public class GeminiLlmClient implements LlmClient {
@@ -35,9 +41,11 @@ public class GeminiLlmClient implements LlmClient {
     private final WebClient webClient;
     private final GeminiProperties props;
     private final Duration timeout;
+    private final MeterRegistry meterRegistry;
 
-    public GeminiLlmClient(GeminiProperties props) {
+    public GeminiLlmClient(GeminiProperties props, MeterRegistry meterRegistry) {
         this.props = props;
+        this.meterRegistry = meterRegistry;
         this.timeout = Duration.ofMillis(props.timeoutMsOrDefault());
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) timeout.toMillis())
@@ -53,10 +61,21 @@ public class GeminiLlmClient implements LlmClient {
 
     @Override
     public LlmResult generate(String systemPrompt, String userPrompt) {
+        return generate(systemPrompt, userPrompt, LlmMetrics.FEATURE_UNKNOWN);
+    }
+
+    @Override
+    public LlmResult generate(String systemPrompt, String userPrompt, String feature) {
+        String model = props.modelOrDefault();
+        meterRegistry.counter(LlmMetrics.CALL_COUNT,
+                LlmMetrics.TAG_FEATURE, feature,
+                LlmMetrics.TAG_MODEL, model
+        ).increment();
+
         if (props.apiKey() == null || props.apiKey().isBlank()) {
             throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, "Gemini API key is not configured.", null);
         }
-        String path = "/models/" + props.modelOrDefault() + ":generateContent";
+        String path = "/models/" + model + ":generateContent";
         Map<String, Object> body = Map.of(
                 "systemInstruction", Map.of(
                         "role", "system",
@@ -88,19 +107,24 @@ public class GeminiLlmClient implements LlmClient {
             long elapsed = System.currentTimeMillis() - start;
 
             if (resp == null || resp.candidates() == null || resp.candidates().isEmpty()) {
+                recordFailure(feature, LlmMetrics.REASON_PARSE, start);
                 throw new BusinessException(ErrorCode.LLM_VALIDATION_FAILED, "Gemini returned no candidates.", null);
             }
             String text = extractText(resp);
             if (text == null || text.isBlank()) {
+                recordFailure(feature, LlmMetrics.REASON_PARSE, start);
                 throw new BusinessException(ErrorCode.LLM_VALIDATION_FAILED, "Gemini empty content.", null);
             }
 
             Integer tokensIn = resp.usageMetadata() == null ? null : resp.usageMetadata().promptTokenCount();
             Integer tokensOut = resp.usageMetadata() == null ? null : resp.usageMetadata().candidatesTokenCount();
-            return new LlmResult(text, props.modelOrDefault(), tokensIn, tokensOut, elapsed);
+            recordTokens(model, tokensIn, tokensOut);
+            recordLatency(feature, LlmMetrics.OUTCOME_SUCCESS, start);
+            return new LlmResult(text, model, tokensIn, tokensOut, elapsed);
         } catch (WebClientResponseException ex) {
             HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
             log.warn("gemini call failed status={} body={}", status, ex.getResponseBodyAsString());
+            recordFailure(feature, LlmMetrics.REASON_HTTP, start);
             if (status == HttpStatus.TOO_MANY_REQUESTS) {
                 throw new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex);
             }
@@ -112,8 +136,40 @@ public class GeminiLlmClient implements LlmClient {
             throw ex;
         } catch (RuntimeException ex) {
             log.warn("gemini timeout/io: {}", ex.getMessage());
+            recordFailure(feature, LlmMetrics.REASON_TIMEOUT, start);
             throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
         }
+    }
+
+    private void recordTokens(String model, Integer tokensIn, Integer tokensOut) {
+        if (tokensIn != null && tokensIn > 0) {
+            meterRegistry.counter(LlmMetrics.TOKEN_TOTAL,
+                    LlmMetrics.TAG_DIRECTION, LlmMetrics.DIRECTION_INPUT,
+                    LlmMetrics.TAG_MODEL, model
+            ).increment(tokensIn);
+        }
+        if (tokensOut != null && tokensOut > 0) {
+            meterRegistry.counter(LlmMetrics.TOKEN_TOTAL,
+                    LlmMetrics.TAG_DIRECTION, LlmMetrics.DIRECTION_OUTPUT,
+                    LlmMetrics.TAG_MODEL, model
+            ).increment(tokensOut);
+        }
+    }
+
+    private void recordFailure(String feature, String reason, long startMillis) {
+        meterRegistry.counter(LlmMetrics.FAILURE_COUNT,
+                LlmMetrics.TAG_FEATURE, feature,
+                LlmMetrics.TAG_REASON, reason
+        ).increment();
+        recordLatency(feature, LlmMetrics.OUTCOME_FAILURE, startMillis);
+    }
+
+    private void recordLatency(String feature, String outcome, long startMillis) {
+        Timer.builder(LlmMetrics.CALL_LATENCY)
+                .tag(LlmMetrics.TAG_FEATURE, feature)
+                .tag(LlmMetrics.TAG_OUTCOME, outcome)
+                .register(meterRegistry)
+                .record(Duration.ofMillis(System.currentTimeMillis() - startMillis));
     }
 
     private String extractText(GeminiResponse resp) {

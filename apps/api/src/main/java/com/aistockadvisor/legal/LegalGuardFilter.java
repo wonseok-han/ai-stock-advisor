@@ -1,9 +1,11 @@
 package com.aistockadvisor.legal;
 
+import com.aistockadvisor.common.metrics.LlmMetrics;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,10 +39,14 @@ public class LegalGuardFilter extends OncePerRequestFilter {
 
     private final ForbiddenTermsRegistry forbidden;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
-    public LegalGuardFilter(ForbiddenTermsRegistry forbidden, ObjectMapper objectMapper) {
+    public LegalGuardFilter(ForbiddenTermsRegistry forbidden,
+                            ObjectMapper objectMapper,
+                            MeterRegistry meterRegistry) {
         this.forbidden = forbidden;
         this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -85,6 +91,9 @@ public class LegalGuardFilter extends OncePerRequestFilter {
         if (hits.isEmpty()) {
             return body;
         }
+        meterRegistry.counter(LlmMetrics.FORBIDDEN_HIT,
+                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER
+        ).increment(hits.size());
         log.warn("legal-guard: forbidden terms detected in response uri={} hits={}", uri, hits);
         try {
             if (uri != null && uri.endsWith("/ai-signal")) {

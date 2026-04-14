@@ -15,6 +15,15 @@ public interface LlmClient {
      */
     LlmResult generate(String systemPrompt, String userPrompt);
 
+    /**
+     * {@link #generate(String, String)} 와 동일하되 Micrometer {@code feature} tag 를 지정.
+     * 참조: docs/02-design/features/phase2.1-metrics-fe-refactor.design.md §4.2
+     * 기본 구현은 tag 무시 — 구현체가 override 하여 관측성 향상.
+     */
+    default LlmResult generate(String systemPrompt, String userPrompt, String feature) {
+        return generate(systemPrompt, userPrompt);
+    }
+
     /** 호출 결과 + 메타데이터 (감사 로그용). */
     record LlmResult(
             String content,

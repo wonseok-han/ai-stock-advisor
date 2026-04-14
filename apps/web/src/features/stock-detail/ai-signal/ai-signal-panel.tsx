@@ -1,6 +1,6 @@
 'use client';
 
-import { useAiSignal } from '@/features/ai-signal/hooks/use-ai-signal';
+import { useAiSignal } from '@/features/stock-detail/ai-signal/hooks/use-ai-signal';
 import { cn } from '@/lib/cn';
 
 import type { AiSignal, AiSignalClass } from '@/types/ai-signal';

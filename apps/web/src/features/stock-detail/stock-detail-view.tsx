@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 
-import { AiSignalPanel } from '@/features/ai-signal/ai-signal-panel';
-import { NewsPanel } from '@/features/news/news-panel';
+import { AiSignalPanel } from '@/features/stock-detail/ai-signal/ai-signal-panel';
+import { NewsPanel } from '@/features/stock-detail/news/news-panel';
 import { ChartPanel } from '@/features/stock-detail/chart/chart-panel';
 import { IndicatorsPanel } from '@/features/stock-detail/indicators/indicators-panel';
 import { StockHeader } from '@/features/stock-detail/stock-header';

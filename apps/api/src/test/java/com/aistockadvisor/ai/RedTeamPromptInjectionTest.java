@@ -4,6 +4,7 @@ import com.aistockadvisor.ai.service.ResponseValidator;
 import com.aistockadvisor.ai.service.ResponseValidator.Result;
 import com.aistockadvisor.legal.ForbiddenTermsRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -36,7 +37,7 @@ class RedTeamPromptInjectionTest {
         Method load = ForbiddenTermsRegistry.class.getDeclaredMethod("load");
         load.setAccessible(true);
         load.invoke(registry);
-        validator = new ResponseValidator(mapper, registry);
+        validator = new ResponseValidator(mapper, registry, new SimpleMeterRegistry());
     }
 
     /**

@@ -85,8 +85,10 @@ public class AiSignalService {
         long started = System.currentTimeMillis();
         AiSignal result;
         try {
-            LlmClient.LlmResult raw = llmClient.generate(systemPrompt, userPrompt);
-            ResponseValidator.Result validated = validator.validate(raw.content());
+            LlmClient.LlmResult raw = llmClient.generate(systemPrompt, userPrompt,
+                    com.aistockadvisor.common.metrics.LlmMetrics.FEATURE_AI_SIGNAL);
+            ResponseValidator.Result validated = validator.validate(raw.content(),
+                    com.aistockadvisor.common.metrics.LlmMetrics.FEATURE_AI_SIGNAL);
             if (!validated.valid()) {
                 log.warn("ai-signal validation failed ticker={} reason={} hits={}",
                         ticker, validated.reason(), validated.forbiddenDetected());

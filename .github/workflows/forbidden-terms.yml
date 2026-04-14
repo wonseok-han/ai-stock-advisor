@@ -28,9 +28,13 @@ jobs:
           fi
 
           # docs/ 는 문맥상 금지용어가 문서(예: '금지: 매수 추천')에 포함될 수 있으므로 제외.
-          # 스캔 범위: apps/**/src/main + apps/**/src/app (FE) 하위 실제 구현 코드.
+          # 스캔 범위: production 코드만 한정 — apps/api/src/main + apps/web/src.
+          # 테스트 코드(src/test/**)는 필터/가드 로직 검증 목적으로 forbidden 용어를
+          # 의도적으로 사용하므로 스캔 대상에서 제외 (Red-team / Micrometer 관측성 테스트 등).
           # 파일 확장자: .java / .ts / .tsx / .kt 만 대상.
           mapfile -t TERMS < <(jq -r '.terms.ko[], .terms.en[]' "$TERMS_FILE")
+
+          SCAN_PATHS="apps/api/src/main apps/web/src"
 
           failed=0
           for term in "${TERMS[@]}"; do
@@ -40,7 +44,7 @@ jobs:
             hits=$(grep -rIn --include="*.java" --include="*.ts" --include="*.tsx" --include="*.kt" \
                        --exclude-dir=docs --exclude-dir=archive --exclude-dir=node_modules \
                        --exclude-dir=build --exclude-dir=dist --exclude-dir=.next \
-                       -i -F "$term" apps/ || true)
+                       -i -F "$term" $SCAN_PATHS || true)
             # forbidden-terms.json 자체 및 테스트 레드팀 문자열은 의도적 허용.
             hits=$(printf '%s\n' "$hits" | grep -v "forbidden-terms.json" | grep -v "RedTeam" | grep -v "red-team" || true)
             if [ -n "$hits" ]; then
