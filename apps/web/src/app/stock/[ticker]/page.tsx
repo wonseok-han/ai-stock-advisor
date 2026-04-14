@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { ChartPanel } from '@/features/stock-detail/chart/chart-panel';
+import { StockDetailView } from '@/features/stock-detail/stock-detail-view';
 
 import type { Metadata } from 'next';
 
@@ -27,17 +27,11 @@ export default async function StockDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {ticker}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          참고용 정보이며 투자 자문이 아닙니다. 투자 판단과 책임은 사용자 본인에게
-          있습니다.
-        </p>
-      </header>
-
-      <ChartPanel ticker={ticker} tf="1D" />
+      <p className="text-xs text-zinc-500">
+        참고용 정보이며 투자 자문이 아닙니다. 투자 판단과 책임은 사용자 본인에게
+        있습니다.
+      </p>
+      <StockDetailView ticker={ticker} />
     </main>
   );
 }
