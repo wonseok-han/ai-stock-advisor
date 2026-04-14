@@ -1,0 +1,56 @@
+name: Forbidden Terms Guard
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    name: Scan source tree for forbidden investment-advice phrasing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Scan for forbidden terms (Level 4 of 4-level guard)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TERMS_FILE="apps/api/src/main/resources/legal/forbidden-terms.json"
+          if [ ! -f "$TERMS_FILE" ]; then
+            echo "::error::forbidden-terms.json not found at $TERMS_FILE"
+            exit 1
+          fi
+
+          # docs/ 는 문맥상 금지용어가 문서(예: '금지: 매수 추천')에 포함될 수 있으므로 제외.
+          # 스캔 범위: apps/**/src/main + apps/**/src/app (FE) 하위 실제 구현 코드.
+          # 파일 확장자: .java / .ts / .tsx / .kt 만 대상.
+          mapfile -t TERMS < <(jq -r '.terms.ko[], .terms.en[]' "$TERMS_FILE")
+
+          failed=0
+          for term in "${TERMS[@]}"; do
+            # 빈 문자열 방어
+            [ -z "$term" ] && continue
+            # grep -n: 라인번호, -r: 재귀, -I: 바이너리 제외, 대소문자 무시, fixed-string
+            hits=$(grep -rIn --include="*.java" --include="*.ts" --include="*.tsx" --include="*.kt" \
+                       --exclude-dir=docs --exclude-dir=archive --exclude-dir=node_modules \
+                       --exclude-dir=build --exclude-dir=dist --exclude-dir=.next \
+                       -i -F "$term" apps/ || true)
+            # forbidden-terms.json 자체 및 테스트 레드팀 문자열은 의도적 허용.
+            hits=$(printf '%s\n' "$hits" | grep -v "forbidden-terms.json" | grep -v "RedTeam" | grep -v "red-team" || true)
+            if [ -n "$hits" ]; then
+              echo "::error::Forbidden term found: '$term'"
+              echo "$hits"
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::Forbidden terms detected in source. See phase2-rag-pipeline.design.md §7 (4-level guard)."
+            exit 1
+          fi
+          echo "OK — no forbidden terms in source."

@@ -1,7 +1,11 @@
 package com.aistockadvisor.stock.service;
 
+import com.aistockadvisor.ai.domain.AiSignal;
+import com.aistockadvisor.ai.service.AiSignalService;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.news.domain.NewsItem;
+import com.aistockadvisor.news.service.NewsService;
 import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
@@ -45,15 +49,21 @@ public class StockDetailService {
     private final QuoteService quoteService;
     private final CandleService candleService;
     private final IndicatorService indicatorService;
+    private final NewsService newsService;
+    private final AiSignalService aiSignalService;
 
     public StockDetailService(StockProfileService profileService,
                               QuoteService quoteService,
                               CandleService candleService,
-                              IndicatorService indicatorService) {
+                              IndicatorService indicatorService,
+                              NewsService newsService,
+                              AiSignalService aiSignalService) {
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.candleService = candleService;
         this.indicatorService = indicatorService;
+        this.newsService = newsService;
+        this.aiSignalService = aiSignalService;
     }
 
     public StockDetailResponse getDetail(String ticker, TimeFrame tf) {
@@ -64,11 +74,15 @@ public class StockDetailService {
             Future<Quote> quoteF = executor.submit(() -> quoteService.getQuote(ticker));
             Future<List<Candle>> candlesF = executor.submit(() -> candleService.getCandles(ticker, tf));
             Future<IndicatorSnapshot> indF = executor.submit(() -> indicatorService.compute(ticker));
+            Future<List<NewsItem>> newsF = executor.submit(() -> newsService.getNews(ticker, 5));
+            Future<AiSignal> aiF = executor.submit(() -> aiSignalService.getSignal(ticker, tf));
 
             StockProfile profile = await("profile", profileF, errors);
             Quote quote = await("quote", quoteF, errors);
             List<Candle> candles = await("candles", candlesF, errors);
             IndicatorSnapshot indicators = await("indicators", indF, errors);
+            List<NewsItem> news = await("news", newsF, errors);
+            AiSignal aiSignal = await("aiSignal", aiF, errors);
 
             // Profile 과 Quote 모두 실패면 ticker 자체가 무효 → 404 로 통일.
             if (profile == null && quote == null) {
@@ -86,8 +100,8 @@ public class StockDetailService {
                     quote,
                     candles,
                     indicators,
-                    null,  // news: Phase 2
-                    null,  // aiSignal: Phase 2
+                    news,
+                    aiSignal,
                     disclaimer,
                     !errors.isEmpty(),
                     errors.isEmpty() ? List.of() : List.copyOf(errors),
