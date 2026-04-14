@@ -6,12 +6,14 @@ import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.SearchHit;
+import com.aistockadvisor.stock.domain.StockDetailResponse;
 import com.aistockadvisor.stock.domain.StockProfile;
 import com.aistockadvisor.stock.domain.TimeFrame;
 import com.aistockadvisor.stock.service.CandleService;
 import com.aistockadvisor.stock.service.IndicatorService;
 import com.aistockadvisor.stock.service.QuoteService;
 import com.aistockadvisor.stock.service.SearchService;
+import com.aistockadvisor.stock.service.StockDetailService;
 import com.aistockadvisor.stock.service.StockProfileService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -42,17 +44,20 @@ public class StockController {
     private final QuoteService quoteService;
     private final CandleService candleService;
     private final IndicatorService indicatorService;
+    private final StockDetailService detailService;
 
     public StockController(SearchService searchService,
                            StockProfileService profileService,
                            QuoteService quoteService,
                            CandleService candleService,
-                           IndicatorService indicatorService) {
+                           IndicatorService indicatorService,
+                           StockDetailService detailService) {
         this.searchService = searchService;
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.candleService = candleService;
         this.indicatorService = indicatorService;
+        this.detailService = detailService;
     }
 
     @GetMapping("/search")
@@ -89,5 +94,17 @@ public class StockController {
     public IndicatorSnapshot indicators(
             @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
         return indicatorService.compute(ticker);
+    }
+
+    @GetMapping("/{ticker}/detail")
+    public StockDetailResponse detail(
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker,
+            @RequestParam(value = "tf", defaultValue = "1D") String tf) {
+        TimeFrame frame = TimeFrame.fromCode(tf);
+        if (frame == null) {
+            throw new BusinessException(ErrorCode.INVALID_TICKER,
+                    "지원하지 않는 timeframe: " + tf);
+        }
+        return detailService.getDetail(ticker, frame);
     }
 }

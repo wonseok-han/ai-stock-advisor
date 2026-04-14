@@ -66,6 +66,26 @@ export interface IndicatorSnapshot {
   tooltipsKo: Record<string, string>;
 }
 
+export interface StockDetail {
+  profile: StockProfile | null;
+  quote: Quote | null;
+  candles: Candle[] | null;
+  indicators: IndicatorSnapshot | null;
+  news: unknown[] | null;
+  aiSignal: unknown | null;
+  disclaimer: {
+    page: string;
+    version: string;
+    text: string;
+  };
+  partial: boolean;
+  errors: { block: string; code: string; message: string }[];
+  meta: {
+    requestId: string;
+    timestamp: string;
+  };
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

@@ -5,6 +5,7 @@ import type {
   IndicatorSnapshot,
   Quote,
   SearchHit,
+  StockDetail,
   StockProfile,
   TimeFrame,
 } from '@/types/stock';
@@ -28,4 +29,8 @@ export function getCandles(ticker: string, tf: TimeFrame): Promise<Candle[]> {
 
 export function getIndicators(ticker: string): Promise<IndicatorSnapshot> {
   return apiFetch<IndicatorSnapshot>(`/stocks/${ticker}/indicators`);
+}
+
+export function getDetail(ticker: string, tf: TimeFrame): Promise<StockDetail> {
+  return apiFetch<StockDetail>(`/stocks/${ticker}/detail?tf=${tf}`);
 }
