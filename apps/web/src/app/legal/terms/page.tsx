@@ -1,0 +1,76 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: '이용약관 · AI Stock Advisor',
+  description: 'AI Stock Advisor 서비스 이용약관 초안.',
+};
+
+export default function TermsPage() {
+  return (
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        이용약관 (Terms of Service)
+      </h1>
+
+      <section className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+        <p className="text-xs text-zinc-500">
+          본 약관은 초안이며, 정식 런칭 전 법률 검토를 거쳐 최종화됩니다.
+          시행일·개정 이력은 런칭 시 별도 고지됩니다.
+        </p>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제1조 (서비스의 목적)
+        </h2>
+        <p>
+          본 서비스(&ldquo;AI Stock Advisor&rdquo;)는 미국 상장 주식에 대한
+          공개된 시장 데이터, 기술 지표, 뉴스 요약 등의{' '}
+          <strong>투자 참고용 정보</strong>를 제공하는 것을 목적으로 합니다.
+          본 서비스는 특정 금융상품의 매수·매도를 권유하지 않으며, 자본시장법에
+          따른 투자자문업·투자일임업을 영위하지 않습니다.
+        </p>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제2조 (면책)
+        </h2>
+        <p>
+          서비스 이용 결과 발생한 투자 손익의 책임은 이용자 본인에게 있습니다.
+          서비스 운영자는 제공 정보의 정확성·완전성·적시성에 대해 보증하지
+          않으며, 이용자에게 발생한 직·간접 손해에 대해 법령이 허용하는 최대
+          범위에서 책임을 지지 않습니다.
+        </p>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제3조 (금지 행위)
+        </h2>
+        <ul className="list-disc pl-6">
+          <li>자동화된 수단(크롤러·봇)을 통한 대량 요청·스크래핑</li>
+          <li>제공되는 원시 데이터의 재배포·재판매</li>
+          <li>서비스 정상 운영을 방해하는 일체의 행위</li>
+          <li>타인의 계정·정보에 대한 무단 접근</li>
+        </ul>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제4조 (계정 및 데이터)
+        </h2>
+        <p>
+          MVP 단계에서는 회원가입이 없으며, 개인식별정보 수집을 최소화합니다.
+          향후 회원 기능 도입 시 개인정보 처리방침을 통해 별도 고지합니다.
+        </p>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제5조 (서비스 변경·중단)
+        </h2>
+        <p>
+          운영자는 서비스 내용·구성·제공 조건을 예고 없이 변경하거나 운영상·
+          기술상 필요에 따라 일시 또는 영구 중단할 수 있으며, 이에 따른 손해에
+          대해 책임을 지지 않습니다.
+        </p>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제6조 (준거법)
+        </h2>
+        <p>본 약관의 해석과 분쟁 해결은 대한민국 법령을 준거법으로 합니다.</p>
+      </section>
+    </main>
+  );
+}

@@ -1,6 +1,8 @@
 import { Geist, Geist_Mono } from 'next/font/google';
 
 import { Providers } from '@/app/providers';
+import { DisclaimerBanner } from '@/components/legal/disclaimer-banner';
+import { DisclaimerFooter } from '@/components/legal/disclaimer-footer';
 
 import type { Metadata } from 'next';
 
@@ -32,7 +34,11 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-black">
-        <Providers>{children}</Providers>
+        <Providers>
+          <DisclaimerBanner />
+          <div className="flex flex-1 flex-col">{children}</div>
+          <DisclaimerFooter />
+        </Providers>
       </body>
     </html>
   );
