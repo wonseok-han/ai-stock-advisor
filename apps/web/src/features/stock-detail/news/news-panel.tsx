@@ -1,6 +1,6 @@
 'use client';
 
-import { useNews } from '@/features/news/hooks/use-news';
+import { useNews } from '@/features/stock-detail/news/hooks/use-news';
 import { cn } from '@/lib/cn';
 
 import type { NewsItem, NewsSentiment } from '@/types/news';
