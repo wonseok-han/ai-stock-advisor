@@ -72,7 +72,8 @@ public class NewsTranslator {
         }
         String userPrompt = buildUserPrompt(news);
         try {
-            LlmClient.LlmResult result = llmClient.generate(systemPrompt(), userPrompt);
+            LlmClient.LlmResult result = llmClient.generate(systemPrompt(), userPrompt,
+                    com.aistockadvisor.common.metrics.LlmMetrics.FEATURE_NEWS);
             TranslateResponse parsed = objectMapper.readValue(result.content(), TranslateResponse.class);
             if (parsed.title_ko == null || parsed.summary_ko == null || parsed.sentiment == null) {
                 log.warn("translator: incomplete payload articleId={}", news.id());
