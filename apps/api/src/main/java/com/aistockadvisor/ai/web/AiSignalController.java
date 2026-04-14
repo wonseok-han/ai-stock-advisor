@@ -8,6 +8,7 @@ import com.aistockadvisor.stock.domain.TimeFrame;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,10 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
  * AI 시그널 REST 엔드포인트.
  * 참조: docs/02-design/features/phase2-rag-pipeline.design.md §4
  *
- * <p>GET /api/v1/ai-signal?ticker=AAPL&tf=1D
+ * <p>GET /api/v1/stocks/{ticker}/ai-signal?tf=1D — Phase 1 `/stocks/{ticker}/{resource}` 컨벤션.
  */
 @RestController
-@RequestMapping("/api/v1/ai-signal")
+@RequestMapping("/api/v1/stocks")
 @Validated
 public class AiSignalController {
 
@@ -31,14 +32,17 @@ public class AiSignalController {
         this.service = service;
     }
 
-    @GetMapping
+    @GetMapping("/{ticker}/ai-signal")
     public AiSignal signal(
-            @RequestParam("ticker") @Pattern(regexp = TICKER_REGEX) String ticker,
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker,
             @RequestParam(value = "tf", defaultValue = "1D") String tf) {
         TimeFrame frame;
         try {
             frame = TimeFrame.fromCode(tf);
         } catch (IllegalArgumentException ex) {
+            throw new BusinessException(ErrorCode.INVALID_TICKER, "지원하지 않는 timeframe: " + tf, null);
+        }
+        if (frame == null) {
             throw new BusinessException(ErrorCode.INVALID_TICKER, "지원하지 않는 timeframe: " + tf, null);
         }
         return service.getSignal(ticker, frame);

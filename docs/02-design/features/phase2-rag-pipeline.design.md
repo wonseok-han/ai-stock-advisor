@@ -1076,22 +1076,23 @@ apps/web/src/
 
 ### 13.3 Dependencies (Gradle 추가)
 
+> **v0.2 구현 결정 (2026-04-14)** — MVP 범위에서 외부 라이브러리 의존을 최소화하기 위해 다음 대체 전략을 채택. 기능적 동등성 유지, 장기적으로 필요 시 원안대로 전환.
+>
+> | 원안 | 대체 | 사유 |
+> |---|---|---|
+> | `com.bucket4j:bucket4j-redis` | `AiSignalRateLimiter` (Redis `INCR` 분-버킷 + TTL 65s, fail-open) | Redis 가 이미 Phase 1 에 있으므로 추가 의존 없이 동등 기능 구현. |
+> | `resilience4j-spring-boot3` / `circuitbreaker` | `try/catch` + neutral fallback (Audit `fallback=true`) | MVP 트래픽 규모에서 circuit breaker 필요성 낮음. 서킷 상태 대신 Audit 로그로 실패 추적. |
+> | `com.samskivert:jmustache` | `PromptBuilder` 내 Java 텍스트 빌드 + 경계 마커 | 프롬프트가 system/user 2개뿐이라 템플릿 엔진 과잉. 추후 `resources/prompts/*.txt` 외부화 예정. |
+> | `org.wiremock:wiremock-standalone` | `RedTeamPromptInjectionTest` (ResponseValidator 단위 검증 20 케이스) | Launch Gate "레드팀 20/20" 은 응답 검증 계약만 확인하면 충분. 전체 엔드포인트 통합은 Phase 3 에서 도입. |
+
 ```kotlin
-// apps/api/build.gradle.kts (Phase 2 추가분)
+// apps/api/build.gradle.kts (Phase 2 실제 채택분)
 dependencies {
-    // 기존 Phase 1 유지
+    // 기존 Phase 1 유지 (Spring Web, Data JPA, Redis, WebFlux, Flyway 등)
     // ...
 
-    // Phase 2
-    implementation("com.bucket4j:bucket4j-redis:8.10.1")
-    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
-    implementation("io.github.resilience4j:resilience4j-circuitbreaker:2.2.0")
-    implementation("io.micrometer:micrometer-registry-prometheus") // Phase 1 이미 있으면 생략
-    implementation("com.samskivert:jmustache:1.15") // 프롬프트 템플릿 바인딩
-    // Gemini: WebClient (Spring WebFlux) 로 직접 호출 (공식 SDK 생략)
-
-    testImplementation("org.wiremock:wiremock-standalone:3.9.2") // Gemini + Finnhub stub
-    testImplementation("io.rest-assured:rest-assured:5.4.0")
+    // Phase 2: Gemini WebClient 호출은 이미 Phase 1 WebFlux 로 커버
+    // implementation("io.micrometer:micrometer-registry-prometheus") // FR-15 (후속 보강)
 }
 ```
 
