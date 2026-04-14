@@ -11,7 +11,8 @@ API_DIR := apps/api
         check web-check api-check \
         lint web-lint \
         test web-test api-test \
-        clean web-clean api-clean
+        clean web-clean api-clean \
+        infra-up infra-down infra-logs infra-clean infra-status
 
 help:
 	@echo "AI Stock Advisor — Make targets"
@@ -45,6 +46,13 @@ help:
 	@echo ""
 	@echo "Clean:"
 	@echo "  clean          Remove build artifacts (FE + BE)"
+	@echo ""
+	@echo "Infra (local Docker: Postgres + Redis):"
+	@echo "  infra-up       Start postgres+redis in background"
+	@echo "  infra-down     Stop containers (preserve volumes)"
+	@echo "  infra-logs     Tail container logs"
+	@echo "  infra-status   Show container + healthcheck status"
+	@echo "  infra-clean    Stop + remove data volumes (destructive)"
 
 # ---------- Setup ----------
 install:
@@ -105,3 +113,22 @@ web-clean:
 
 api-clean:
 	cd $(API_DIR) && ./gradlew clean --no-daemon
+
+# ---------- Infra (local Docker) ----------
+infra-up:
+	docker compose up -d
+	@echo ""
+	@echo "Postgres: localhost:5432  (db=aistockadvisor user=dev pass=dev)"
+	@echo "Redis:    localhost:6379"
+
+infra-down:
+	docker compose down
+
+infra-logs:
+	docker compose logs -f --tail=100
+
+infra-status:
+	docker compose ps
+
+infra-clean:
+	docker compose down -v
