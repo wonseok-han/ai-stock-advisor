@@ -30,7 +30,7 @@ class GeminiLlmClientMetricsTest {
     private GeminiLlmClient client;
 
     private static final String FEATURE = "ai-signal";
-    private static final String MODEL = "gemini-1.5-flash";
+    private static final String MODEL = "gemini-2.5-flash";
 
     /** 정상 응답 JSON (GeminiResponse 레코드 구조에 맞춤) */
     private static final String SUCCESS_BODY = """

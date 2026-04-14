@@ -1,5 +1,6 @@
 package com.aistockadvisor.common.metrics;
 
+import com.aistockadvisor.ai.infra.GeminiProperties;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import org.springframework.stereotype.Component;
@@ -17,20 +18,28 @@ import org.springframework.stereotype.Component;
 @Component
 public class LlmMetricsBinder implements MeterBinder {
 
+    private final GeminiProperties geminiProps;
+
+    public LlmMetricsBinder(GeminiProperties geminiProps) {
+        this.geminiProps = geminiProps;
+    }
+
     @Override
     public void bindTo(MeterRegistry registry) {
+        String model = geminiProps.modelOrDefault();
+
         // call.count — feature 별 기본 시리즈 (ai-signal, unknown)
         for (String feature : new String[]{LlmMetrics.FEATURE_AI_SIGNAL, LlmMetrics.FEATURE_UNKNOWN}) {
             registry.counter(LlmMetrics.CALL_COUNT,
                     LlmMetrics.TAG_FEATURE, feature,
-                    LlmMetrics.TAG_MODEL, "gemini-1.5-flash");
+                    LlmMetrics.TAG_MODEL, model);
         }
 
         // token.total — input / output 양방향
         for (String direction : new String[]{LlmMetrics.DIRECTION_INPUT, LlmMetrics.DIRECTION_OUTPUT}) {
             registry.counter(LlmMetrics.TOKEN_TOTAL,
                     LlmMetrics.TAG_DIRECTION, direction,
-                    LlmMetrics.TAG_MODEL, "gemini-1.5-flash");
+                    LlmMetrics.TAG_MODEL, model);
         }
 
         // failure.count — timeout, http, parse, validation, forbidden
