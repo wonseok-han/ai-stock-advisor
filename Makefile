@@ -60,16 +60,25 @@ install:
 	cd $(API_DIR) && ./gradlew --version
 
 # ---------- Dev ----------
+# apps/api/.env.local 이 있으면 자동 로드 (Spring Boot 가 dotenv 를 직접 지원하지 않아 Makefile 에서 처리).
+# apps/web 은 Next.js 가 .env.local 을 자동 로드.
+API_ENV_LOCAL := $(API_DIR)/.env.local
+
 dev:
 	@trap 'kill 0' INT TERM EXIT; \
 	( cd $(WEB_DIR) && pnpm dev ) & \
-	( cd $(API_DIR) && ./gradlew bootRun ) & \
+	( if [ -f $(API_ENV_LOCAL) ]; then echo "[api-dev] loading $(API_ENV_LOCAL)"; set -a; . $(API_ENV_LOCAL); set +a; fi; \
+	  cd $(API_DIR) && ./gradlew bootRun ) & \
 	wait
 
 web-dev:
 	cd $(WEB_DIR) && pnpm dev
 
 api-dev:
+	@if [ -f $(API_ENV_LOCAL) ]; then \
+	  echo "[api-dev] loading $(API_ENV_LOCAL)"; \
+	  set -a; . $(API_ENV_LOCAL); set +a; \
+	fi; \
 	cd $(API_DIR) && ./gradlew bootRun
 
 # ---------- Build ----------

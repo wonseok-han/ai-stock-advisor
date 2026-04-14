@@ -1,0 +1,35 @@
+# 로컬 YAML 오버라이드 템플릿 (선택).
+#
+# ⚠️ 대부분의 경우 이 파일은 불필요합니다.
+#    apps/api/.env.local 에 환경변수만 넣어도 application.yml 의 ${VAR:default}
+#    플레이스홀더가 모두 치환됩니다. Makefile 이 api-dev 실행 전 .env.local 을
+#    자동 source 합니다.
+#
+# 이 파일이 필요한 경우:
+#   - YAML 구조 자체를 바꾸고 싶을 때 (예: CORS origin 리스트, logging 레벨 튜닝)
+# 복사:
+#   cp application.example.yml application-local.yml
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aistockadvisor
+    username: dev
+    password: dev
+  data:
+    redis:
+      url: redis://localhost:6379
+
+app:
+  external:
+    finnhub:
+      api-key: YOUR_FINNHUB_API_KEY
+    alphavantage:
+      api-key: YOUR_ALPHAVANTAGE_API_KEY
+    gemini:
+      api-key: YOUR_GEMINI_API_KEY
+  supabase:
+    jwt-secret: YOUR_SUPABASE_JWT_SECRET
+
+logging:
+  level:
+    com.aistockadvisor: DEBUG
