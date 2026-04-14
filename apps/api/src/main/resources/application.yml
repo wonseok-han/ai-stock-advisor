@@ -51,6 +51,9 @@ app:
     finnhub:
       api-key: ${FINNHUB_API_KEY:}
       base-url: https://finnhub.io/api/v1
+    twelvedata:
+      api-key: ${TWELVE_DATA_API_KEY:}
+      base-url: https://api.twelvedata.com
     alphavantage:
       api-key: ${ALPHAVANTAGE_API_KEY:}
       base-url: https://www.alphavantage.co/query

@@ -23,6 +23,8 @@ app:
   external:
     finnhub:
       api-key: YOUR_FINNHUB_API_KEY
+    twelvedata:
+      api-key: YOUR_TWELVE_DATA_API_KEY
     alphavantage:
       api-key: YOUR_ALPHAVANTAGE_API_KEY
     gemini:

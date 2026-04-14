@@ -3,30 +3,38 @@ package com.aistockadvisor.stock.domain;
 import java.time.Duration;
 
 /**
- * 차트 타임프레임. Finnhub /stock/candle 의 resolution + lookback 기간 매핑.
+ * 차트 타임프레임. provider 별 해상도 + 반환 bar 개수 매핑.
  * 참조: docs/02-design/features/mvp.design.md §3.2, §3.4.
  *
- * <p>resolution 값은 Finnhub API 규격: "1","5","15","30","60","D","W","M".
+ * <p>OHLCV provider 는 Twelve Data (Finnhub 무료 /candle 403 우회).
+ * Twelve Data interval 규격: "1min","5min","15min","30min","1h","1day","1week","1month".
+ * <p>lookback 은 참고용 (provider 가 epoch-from/to 를 요구할 때 사용).
  */
 public enum TimeFrame {
 
-    D1("5",  Duration.ofDays(1)),
-    W1("30", Duration.ofDays(7)),
-    M1("D",  Duration.ofDays(30)),
-    M3("D",  Duration.ofDays(90)),
-    Y1("D",  Duration.ofDays(365)),
-    Y5("W",  Duration.ofDays(365L * 5));
+    D1("5min",   78,  Duration.ofDays(1)),
+    W1("30min",  70,  Duration.ofDays(7)),
+    M1("1day",   30,  Duration.ofDays(30)),
+    M3("1day",   90,  Duration.ofDays(90)),
+    Y1("1day",   260, Duration.ofDays(365)),
+    Y5("1week",  260, Duration.ofDays(365L * 5));
 
-    private final String finnhubResolution;
+    private final String twelveDataInterval;
+    private final int outputSize;
     private final Duration lookback;
 
-    TimeFrame(String finnhubResolution, Duration lookback) {
-        this.finnhubResolution = finnhubResolution;
+    TimeFrame(String twelveDataInterval, int outputSize, Duration lookback) {
+        this.twelveDataInterval = twelveDataInterval;
+        this.outputSize = outputSize;
         this.lookback = lookback;
     }
 
-    public String finnhubResolution() {
-        return finnhubResolution;
+    public String twelveDataInterval() {
+        return twelveDataInterval;
+    }
+
+    public int outputSize() {
+        return outputSize;
     }
 
     public Duration lookback() {

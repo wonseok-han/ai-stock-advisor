@@ -2,7 +2,6 @@ package com.aistockadvisor.stock.infra.client;
 
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
-import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.StockProfile;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -22,7 +21,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +29,8 @@ import java.util.concurrent.TimeUnit;
  * Endpoints: /search, /stock/profile2, /quote.
  * Timeout: 3s (design §6.3).
  * 무료 60 req/min — 호출 빈도는 Service 캐시로 통제.
+ *
+ * <p>OHLCV 캔들은 Finnhub 무료에서 403 이므로 TwelveDataClient 가 담당 (기획 04-data-sources hybrid).
  */
 @Component
 public class FinnhubClient {
@@ -81,36 +81,6 @@ public class FinnhubClient {
         );
     }
 
-    /**
-     * Candles. resolution: "1","5","15","30","60","D","W","M".
-     * Finnhub 무료 plan 에서는 403 응답 → UPSTREAM_UNAVAILABLE 로 매핑됨.
-     * 빈 결과(s != "ok") 는 빈 리스트.
-     */
-    public List<Candle> candles(String ticker, String resolution, long fromEpochSec, long toEpochSec) {
-        CandleResponse resp = call("/stock/candle", uri -> uri
-                .queryParam("symbol", ticker)
-                .queryParam("resolution", resolution)
-                .queryParam("from", fromEpochSec)
-                .queryParam("to", toEpochSec)
-                .queryParam("token", apiKey), CandleResponse.class);
-        if (resp == null || !"ok".equals(resp.s()) || resp.t() == null || resp.t().isEmpty()) {
-            return List.of();
-        }
-        int n = resp.t().size();
-        List<Candle> out = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            out.add(new Candle(
-                    resp.t().get(i),
-                    resp.o().get(i),
-                    resp.h().get(i),
-                    resp.l().get(i),
-                    resp.c().get(i),
-                    resp.v() == null ? 0L : resp.v().get(i)
-            ));
-        }
-        return out;
-    }
-
     /** Quote. 데이터 없으면 null (timestamp 0 케이스 포함). */
     public Quote quote(String ticker) {
         QuoteResponse resp = call("/quote", uri -> uri
@@ -128,7 +98,7 @@ public class FinnhubClient {
                 resp.l(),
                 resp.o(),
                 resp.pc(),
-                0L, // Finnhub free /quote 는 volume 미제공. Step 6 candle 에서 보강.
+                0L, // Finnhub free /quote 는 volume 미제공. Twelve Data candle 에서 보강 가능.
                 OffsetDateTime.ofInstant(Instant.ofEpochSecond(resp.t()), ZoneOffset.UTC)
         );
     }
@@ -182,18 +152,6 @@ public class FinnhubClient {
             BigDecimal c, BigDecimal d, BigDecimal dp,
             BigDecimal h, BigDecimal l, BigDecimal o, BigDecimal pc,
             long t
-    ) {
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record CandleResponse(
-            String s,
-            List<Long> t,
-            List<BigDecimal> o,
-            List<BigDecimal> h,
-            List<BigDecimal> l,
-            List<BigDecimal> c,
-            List<Long> v
     ) {
     }
 }

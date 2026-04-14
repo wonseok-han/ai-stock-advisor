@@ -7,7 +7,7 @@
 | 실시간 시세(15분 지연) | **Finnhub** `/quote` | Yahoo (yfinance) | 무료 |
 | 종목 검색 | **Finnhub** `/search` | — | 무료 |
 | 기업 프로필 | **Finnhub** `/stock/profile2` | — | 무료 |
-| OHLCV 캔들 | **Finnhub** `/stock/candle`*1 | Alpha Vantage `TIME_SERIES_DAILY` | 무료 |
+| OHLCV 캔들 | **Twelve Data** `/time_series`*1 | Alpha Vantage `TIME_SERIES_DAILY` | 무료 |
 | 종목 뉴스 | **Finnhub** `/company-news` | Marketaux | 무료 |
 | 시장 뉴스 | **Finnhub** `/news?category=general` | Marketaux | 무료 |
 | 실적 캘린더 | Finnhub `/calendar/earnings` | — | 무료 |
@@ -18,14 +18,17 @@
 | USD/KRW 환율 | exchangerate.host | Yahoo `KRW=X` | 무료 |
 | 섹터 ETF (시장 스냅샷) | Yahoo `XLK`, `XLF`, `XLE` 등 | — | 무료 |
 
-> *1 Finnhub `/stock/candle`은 최근 정책 변경으로 **무료 플랜에서 미국 주식 일봉 제공이 축소**되었을 수 있음. 실제 구현 시점에 확인 필요. 대체는 Alpha Vantage 또는 Yahoo yfinance.
+> *1 **확정 (2026-04-14)**: Finnhub `/stock/candle`은 무료 플랜에서 **403 Forbidden** (유료 $49.99/mo 이상만 허용). 확인 로그:
+> `{"error":"You don't have access to this resource."}`. 이에 따라 OHLCV 캔들 1순위를 **Twelve Data `/time_series`** 로 교체. 무료 800 req/day, 8 req/min — Redis 캐시로 한도 내 운영 가능.
+> 검색/프로필/시세/뉴스는 Finnhub 무료 그대로 유지 (hybrid provider 전략).
 
 ## 4.2 Rate Limit 및 대응
 
 | API | 무료 한도 | 대응 |
 |---|---|---|
 | Finnhub | 60 req/min | Redis 캐시 + 토큰 버킷 큐 |
-| Alpha Vantage | 25 req/day, 5 req/min | 캔들 백업용으로만 제한 사용 |
+| Twelve Data | 8 req/min, 800 req/day | Redis 캐시(5m/1h TTL) 로 한도 내 유지 |
+| Alpha Vantage | 25 req/day, 5 req/min | 캔들 legacy 백업 (현재 미사용) |
 | Yahoo (비공식) | 명시 없음 (너무 많이 쓰면 차단) | 분당 30회 이하로 제한, User-Agent 필수 |
 | Gemini 1.5 Flash | 분당 15 RPM, 일 1M 토큰 (무료) | 캐시 공격적 적용 |
 | exchangerate.host | 1000 req/month (무료) | 5분 TTL 캐시 |
