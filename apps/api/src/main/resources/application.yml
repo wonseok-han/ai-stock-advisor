@@ -59,9 +59,19 @@ app:
       base-url: https://www.alphavantage.co/query
     gemini:
       api-key: ${GEMINI_API_KEY:}
-      model: gemini-1.5-flash
+      model: ${GEMINI_MODEL:gemini-1.5-flash}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+      timeout-ms: ${GEMINI_TIMEOUT_MS:8000}
   supabase:
     jwt-secret: ${SUPABASE_JWT_SECRET:}
+  legal:
+    forbidden-terms-path: ${FORBIDDEN_TERMS_PATH:classpath:legal/forbidden-terms.json}
+  cache:
+    news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
+    ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:60}
+  ai:
+    signal:
+      rate-limit-rpm: ${AI_SIGNAL_RATE_LIMIT_RPM:15}
 
 logging:
   level:

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { AiSignalPanel } from '@/features/ai-signal/ai-signal-panel';
+import { NewsPanel } from '@/features/news/news-panel';
 import { ChartPanel } from '@/features/stock-detail/chart/chart-panel';
 import { IndicatorsPanel } from '@/features/stock-detail/indicators/indicators-panel';
 import { StockHeader } from '@/features/stock-detail/stock-header';
@@ -22,6 +24,8 @@ export function StockDetailView({ ticker }: { ticker: string }) {
       <TimeFrameTabs value={tf} onChange={setTf} />
       <ChartPanel ticker={ticker} tf={tf} />
       <IndicatorsPanel ticker={ticker} />
+      <AiSignalPanel ticker={ticker} tf={tf} />
+      <NewsPanel ticker={ticker} />
     </div>
   );
 }

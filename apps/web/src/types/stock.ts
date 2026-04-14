@@ -71,8 +71,8 @@ export interface StockDetail {
   quote: Quote | null;
   candles: Candle[] | null;
   indicators: IndicatorSnapshot | null;
-  news: unknown[] | null;
-  aiSignal: unknown | null;
+  news: import('./news').NewsItem[] | null;
+  aiSignal: import('./ai-signal').AiSignal | null;
   disclaimer: {
     page: string;
     version: string;
