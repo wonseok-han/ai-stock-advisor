@@ -6,6 +6,18 @@
 |---|---|---:|---|---|---|
 | [mvp](mvp/) | Phase 1 | 94% | 2026-04-10 | 2026-04-14 | prd, plan, design, do, analysis, report |
 | [phase2-rag-pipeline](phase2-rag-pipeline/) | Phase 2 | 93% | 2026-04-14 | 2026-04-14 | prd, plan, design, analysis, report |
+| [phase2.1-metrics-fe-refactor](phase2.1-metrics-fe-refactor/) | Phase 2.1 | 100% | 2026-04-14 | 2026-04-14 | plan, design, analysis, report |
+
+## phase2.1-metrics-fe-refactor — Phase 2.1 Micrometer 관측성 + FE stock-detail 재배치
+
+Phase 2 잔여 Major gap 2건(FR-15 Micrometer 미구현 + FE 폴더 편차)을 단일 스코프로 해소. Match Rate 88% → 100% (pdca-iterator 1 iteration 으로 3 Gap 전부 해소), 33/33 tests green.
+
+- **범위**: Micrometer 5 메트릭 (`llm.call.count` / `llm.token.total` / `llm.failure.count` / `llm.forbidden.hit.count` / `llm.call.latency` Timer) + `/actuator/prometheus` 노출 + FE `features/stock-detail/{news,ai-signal}/` 재배치
+- **결과**: 요구사항 25/25 (100%), Acceptance §9 8/8, tag allowlist 6종 (feature/model/direction/reason/layer/outcome — ticker 배제), 이론 최대 22 시계열
+- **PR**: #3 squash-merged (`40fad50`)
+- **Lessons**: CI forbidden-terms scan 범위를 production source 로 한정 (테스트 픽스처의 의도적 forbidden 용어 허용), MockWebServer 로 WebClient 외부 호출도 자동 단위 검증, MeterBinder 기동 시점 register 로 Actuator smoke 통과 보장
+
+**링크**: [plan](phase2.1-metrics-fe-refactor/phase2.1-metrics-fe-refactor.plan.md) · [design](phase2.1-metrics-fe-refactor/phase2.1-metrics-fe-refactor.design.md) · [analysis](phase2.1-metrics-fe-refactor/phase2.1-metrics-fe-refactor.analysis.md) · [report](phase2.1-metrics-fe-refactor/phase2.1-metrics-fe-refactor.report.md)
 
 ## phase2-rag-pipeline — Phase 2 RAG 파이프라인 (뉴스 + AI 시그널)
 
