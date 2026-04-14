@@ -89,6 +89,19 @@ public class ForbiddenTermsRegistry {
         return allLower.size();
     }
 
+    /**
+     * 프롬프트 삽입용: {@code "a", "b", "c"} 형태의 쌍따옴표 CSV.
+     * Java 소스에 literal 을 두지 않고 런타임에 주입하여 Level 4 CI grep 오탐을 방지.
+     */
+    public String quotedList() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < allLower.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append('"').append(allLower.get(i)).append('"');
+        }
+        return sb.toString();
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ForbiddenTermsFile(
             String version,
