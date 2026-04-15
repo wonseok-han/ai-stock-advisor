@@ -12,7 +12,8 @@ API_DIR := apps/api
         lint web-lint \
         test web-test api-test \
         clean web-clean api-clean \
-        infra-up infra-down infra-logs infra-clean infra-status
+        infra-up infra-down infra-logs infra-clean infra-status \
+        cache-keys cache-clear-ai cache-clear
 
 help:
 	@echo "AI Stock Advisor — Make targets"
@@ -53,6 +54,11 @@ help:
 	@echo "  infra-logs     Tail container logs"
 	@echo "  infra-status   Show container + healthcheck status"
 	@echo "  infra-clean    Stop + remove data volumes (destructive)"
+	@echo ""
+	@echo "Cache (Redis, local docker):"
+	@echo "  cache-keys     List keys (PATTERN='ai:*' to filter; default '*')"
+	@echo "  cache-clear-ai Delete AI signal cache (ai:*)"
+	@echo "  cache-clear    FLUSHDB on local redis (prompts confirm)"
 
 # ---------- Setup ----------
 install:
@@ -141,3 +147,26 @@ infra-status:
 
 infra-clean:
 	docker compose down -v
+
+# ---------- Cache (Redis) ----------
+# 로컬 docker-compose redis 서비스에 붙어 키를 조회/삭제. 운영(Upstash)에는 영향 없음.
+#   make cache-keys                   # 전체 키
+#   make cache-keys PATTERN='ai:*'    # AI 시그널만
+#   make cache-clear-ai               # ai:* 일괄 삭제
+#   make cache-clear                  # FLUSHDB (y/N 확인)
+PATTERN ?= *
+
+cache-keys:
+	@docker compose exec -T redis redis-cli --scan --pattern '$(PATTERN)'
+
+cache-clear-ai:
+	@docker compose exec -T redis sh -c "redis-cli --scan --pattern 'ai:*' | xargs -r redis-cli DEL" \
+	  && echo "[cache] AI signal keys cleared (ai:*)"
+
+cache-clear:
+	@read -p "전체 Redis DB 를 비웁니다 (로컬 한정). 계속? [y/N] " ans; \
+	  if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
+	    docker compose exec -T redis redis-cli FLUSHDB && echo "[cache] FLUSHDB done"; \
+	  else \
+	    echo "[cache] cancelled"; \
+	  fi
