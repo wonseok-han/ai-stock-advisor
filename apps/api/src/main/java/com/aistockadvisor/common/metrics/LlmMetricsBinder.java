@@ -60,5 +60,13 @@ public class LlmMetricsBinder implements MeterBinder {
                     LlmMetrics.TAG_LAYER, layer,
                     LlmMetrics.TAG_FEATURE, LlmMetrics.FEATURE_AI_SIGNAL);
         }
+
+        // retry.count — phase2.2: feature × outcome(success / exhausted) 0 시리즈
+        for (String outcome : new String[]{LlmMetrics.OUTCOME_SUCCESS, LlmMetrics.OUTCOME_EXHAUSTED}) {
+            registry.counter(LlmMetrics.RETRY_COUNT,
+                    LlmMetrics.TAG_FEATURE, LlmMetrics.FEATURE_AI_SIGNAL,
+                    LlmMetrics.TAG_MODEL, model,
+                    LlmMetrics.TAG_OUTCOME, outcome);
+        }
     }
 }

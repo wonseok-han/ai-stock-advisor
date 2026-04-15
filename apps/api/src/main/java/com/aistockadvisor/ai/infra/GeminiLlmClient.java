@@ -26,7 +26,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Gemini 2.5 Flash 기반 LlmClient 구현.
  * 참조: docs/02-design/features/phase2-rag-pipeline.design.md §5,
- *      docs/02-design/features/phase2.1-metrics-fe-refactor.design.md §4.2
+ *      docs/02-design/features/phase2.1-metrics-fe-refactor.design.md §4.2,
+ *      docs/02-design/features/phase2.2-prompt-externalization.design.md §7
  *
  * <p>Endpoint: {@code POST {baseUrl}/models/{model}:generateContent?key={apiKey}}<br>
  * {@code responseMimeType=application/json} 으로 JSON 모드 강제.
@@ -36,13 +37,21 @@ import java.util.concurrent.TimeUnit;
  * 중간 절단되는 현상 방지 ({@code finishReason=MAX_TOKENS}). extractText 는 방어적으로
  * {@code thought=true} part 를 스킵하고 첫 유효 text 를 반환.
  *
- * <p>Micrometer 지표: call.count, token.total, failure.count, call.latency.<br>
- * 로그 태그: 모든 WARN 에 feature / model 포함 — 호출 경로(ai-signal / news) 식별 가능.
+ * <p>Phase 2.2 — transient retry 1회 (총 최대 {@value #MAX_ATTEMPTS} 시도, 고정 backoff
+ * {@value #RETRY_BACKOFF_MS}ms). 분류 매트릭스: 5xx / 429 / timeout / io = retryable,
+ * 4xx (429 제외) / parse / validation / MAX_TOKENS = non-retryable.
+ *
+ * <p>Micrometer 지표: call.count(호출 단위 1회), token.total, failure.count(시도별),
+ * call.latency, retry.count(outcome=success|exhausted).<br>
+ * 로그 태그: 모든 WARN 에 feature / model 포함.
  */
 @Component
 public class GeminiLlmClient implements LlmClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiLlmClient.class);
+
+    static final int MAX_ATTEMPTS = 2;
+    static final long RETRY_BACKOFF_MS = 250L;
 
     private final WebClient webClient;
     private final GeminiProperties props;
@@ -81,6 +90,41 @@ public class GeminiLlmClient implements LlmClient {
         if (props.apiKey() == null || props.apiKey().isBlank()) {
             throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, "Gemini API key is not configured.", null);
         }
+
+        BusinessException lastTransient = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                LlmResult result = callOnce(systemPrompt, userPrompt, feature, model);
+                if (attempt > 1) {
+                    meterRegistry.counter(LlmMetrics.RETRY_COUNT,
+                            LlmMetrics.TAG_FEATURE, feature,
+                            LlmMetrics.TAG_MODEL, model,
+                            LlmMetrics.TAG_OUTCOME, LlmMetrics.OUTCOME_SUCCESS
+                    ).increment();
+                    log.info("gemini retry success feature={} model={} attempt={}", feature, model, attempt);
+                }
+                return result;
+            } catch (RetryableUpstreamException ex) {
+                lastTransient = ex.cause();
+                if (attempt < MAX_ATTEMPTS) {
+                    sleepBackoff();
+                    continue;
+                }
+                meterRegistry.counter(LlmMetrics.RETRY_COUNT,
+                        LlmMetrics.TAG_FEATURE, feature,
+                        LlmMetrics.TAG_MODEL, model,
+                        LlmMetrics.TAG_OUTCOME, LlmMetrics.OUTCOME_EXHAUSTED
+                ).increment();
+                log.warn("gemini retry exhausted feature={} model={} attempts={}",
+                        feature, model, MAX_ATTEMPTS);
+                throw lastTransient;
+            }
+        }
+        // unreachable — loop either returns or throws
+        throw lastTransient;
+    }
+
+    private LlmResult callOnce(String systemPrompt, String userPrompt, String feature, String model) {
         String path = "/models/" + model + ":generateContent";
         Map<String, Object> body = Map.of(
                 "systemInstruction", Map.of(
@@ -143,18 +187,49 @@ public class GeminiLlmClient implements LlmClient {
                     feature, model, status, ex.getResponseBodyAsString());
             recordFailure(feature, LlmMetrics.REASON_HTTP, start);
             if (status == HttpStatus.TOO_MANY_REQUESTS) {
-                throw new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex);
+                throw new RetryableUpstreamException(
+                        new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex));
             }
             if (status != null && status.is5xxServerError()) {
-                throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex);
+                throw new RetryableUpstreamException(
+                        new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex));
             }
+            // 4xx (429 제외) → non-retryable
             throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex);
         } catch (BusinessException ex) {
+            throw ex;
+        } catch (RetryableUpstreamException ex) {
             throw ex;
         } catch (RuntimeException ex) {
             log.warn("gemini call timeout/io feature={} model={} msg={}", feature, model, ex.getMessage());
             recordFailure(feature, LlmMetrics.REASON_TIMEOUT, start);
-            throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
+            throw new RetryableUpstreamException(
+                    new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex));
+        }
+    }
+
+    private void sleepBackoff() {
+        try {
+            Thread.sleep(RETRY_BACKOFF_MS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Internal marker — callOnce 가 transient(재시도 가능) 실패임을 generate 루프에 신호.
+     * 원본 {@link BusinessException} 을 wrapping 하여 retry 소진 시 그대로 throw 한다.
+     */
+    private static final class RetryableUpstreamException extends RuntimeException {
+        private final BusinessException cause;
+
+        RetryableUpstreamException(BusinessException cause) {
+            super(cause);
+            this.cause = cause;
+        }
+
+        BusinessException cause() {
+            return cause;
         }
     }
 

@@ -63,11 +63,12 @@ class GeminiLlmClientMetricsTest {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
 
+        // timeout 을 300ms 로 단축 — T-4 retry 케이스의 누적 대기 시간 최소화
         GeminiProperties props = new GeminiProperties(
                 "test-api-key",
                 MODEL,
                 baseUrl,
-                3000
+                300
         );
         client = new GeminiLlmClient(props, registry);
     }
@@ -141,12 +142,16 @@ class GeminiLlmClientMetricsTest {
     }
 
     // -------------------------------------------------------------------------
-    // T-4: timeout → llm.failure.count{feature, reason=timeout} +1
+    // T-4: timeout → llm.failure.count{feature, reason=timeout} 시도별 +1
+    //      phase2.2: timeout 은 retryable → 2 시도 모두 timeout 시 카운터 +2
     // -------------------------------------------------------------------------
     @Test
-    @DisplayName("T-4 WebClient timeout → llm.failure.count{reason=timeout} +1")
-    void timeout_incrementsTimeoutFailureCount() {
+    @DisplayName("T-4 WebClient timeout → llm.failure.count{reason=timeout} +2 (시도별 1, retry 1)")
+    void timeout_incrementsTimeoutFailureCountPerAttempt() {
         // MockWebServer 에 응답 없이 연결 직후 닫으면 ReactorNetty ReadTimeout 발생
+        // 2 시도 (MAX_ATTEMPTS=2) 모두 timeout 처리되도록 enqueue 2개
+        mockWebServer.enqueue(new MockResponse()
+                .setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE));
         mockWebServer.enqueue(new MockResponse()
                 .setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE));
 
@@ -156,7 +161,7 @@ class GeminiLlmClientMetricsTest {
         double timeoutFailures = registry.counter(LlmMetrics.FAILURE_COUNT,
                 LlmMetrics.TAG_FEATURE, FEATURE,
                 LlmMetrics.TAG_REASON, LlmMetrics.REASON_TIMEOUT).count();
-        assertThat(timeoutFailures).isEqualTo(1.0);
+        assertThat(timeoutFailures).isEqualTo(2.0);
     }
 
     // -------------------------------------------------------------------------
