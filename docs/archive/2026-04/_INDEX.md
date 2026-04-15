@@ -7,6 +7,19 @@
 | [mvp](mvp/) | Phase 1 | 94% | 2026-04-10 | 2026-04-14 | prd, plan, design, do, analysis, report |
 | [phase2-rag-pipeline](phase2-rag-pipeline/) | Phase 2 | 93% | 2026-04-14 | 2026-04-14 | prd, plan, design, analysis, report |
 | [phase2.1-metrics-fe-refactor](phase2.1-metrics-fe-refactor/) | Phase 2.1 | 100% | 2026-04-14 | 2026-04-14 | plan, design, analysis, report |
+| [phase2.2-prompt-externalization](phase2.2-prompt-externalization/) | Phase 2.2 | 96% | 2026-04-15 | 2026-04-15 | plan, design, analysis, report |
+
+## phase2.2-prompt-externalization — Phase 2.2 프롬프트 외부화 + Gemini 재시도 1회 루프
+
+Phase 2 archive index 의 deferred 2건(프롬프트 외부화 / Gemini 재시도 1회)을 단일 PDCA 사이클로 동시 해소. Match Rate 96% (24/25, 1 partial — 회귀 byte-equality 테스트 부재는 옵셔널), 신규 테스트 7건 (L-1~L-3 + R-1~R-4) green.
+
+- **범위**: `PromptLoader` + `classpath:prompts/{ai-signal,news-translate}.system.txt` 외부화, `GeminiLlmClient` transient(5xx/429/timeout) 1회 재시도(MAX_ATTEMPTS=2, 250ms 고정 backoff), `llm.retry.count{outcome=success|exhausted}` 메트릭 신설
+- **결과**: production 코드 net +260, 테스트 +247 (R-1~R-4 = 186줄, L-1~L-3 = 60줄). Phase 2.1 메트릭 14개 시리즈 회귀 0, runtime `/actuator/prometheus` 노출 검증 완료
+- **PR**: #8 squash-merged (`9344b4b`)
+- **Lessons**: RetryableException marker 패턴이 generate/callOnce 분리 + transient 분류 매트릭스 표현에 가장 명료, MockWebServer enqueue 개수와 retry MAX_ATTEMPTS 정합으로 retry 행위 fully verifiable, ConcurrentHashMap.computeIfAbsent + ResourceLoader 가 ForbiddenTermsRegistry 패턴과 정확히 대칭
+- **Design 보완**: §4.2/§10.2 retry WARN 로그 포맷이 실제 구현(success INFO + exhausted WARN 두 지점)과 미세 차이 — `retry.count` 메트릭으로 의도 충족하므로 후속 design 정정 권고
+
+**링크**: [plan](phase2.2-prompt-externalization/phase2.2-prompt-externalization.plan.md) · [design](phase2.2-prompt-externalization/phase2.2-prompt-externalization.design.md) · [analysis](phase2.2-prompt-externalization/phase2.2-prompt-externalization.analysis.md) · [report](phase2.2-prompt-externalization/phase2.2-prompt-externalization.report.md)
 
 ## phase2.1-metrics-fe-refactor — Phase 2.1 Micrometer 관측성 + FE stock-detail 재배치
 
