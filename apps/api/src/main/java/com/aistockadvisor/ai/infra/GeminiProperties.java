@@ -19,7 +19,11 @@ public record GeminiProperties(
     }
 
     public String modelOrDefault() {
-        return model == null || model.isBlank() ? "gemini-1.5-flash" : model;
+        if (model == null || model.isBlank()) {
+            throw new IllegalStateException(
+                    "app.external.gemini.model must be configured (env: GEMINI_MODEL)");
+        }
+        return model;
     }
 
     public int timeoutMsOrDefault() {

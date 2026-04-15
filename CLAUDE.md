@@ -42,7 +42,7 @@ PDCA 방법론은 자동 적용됩니다. `/pdca plan|design|do|analyze|report` 
 | **ORM** | Spring Data JPA + Hibernate |
 | **Migration** | Flyway |
 | **Auth** | Supabase Auth (발급) + Spring Security JWT Resource Server (검증) |
-| **AI** | Google Gemini 1.5 Flash (RAG) |
+| **AI** | Google Gemini 2.5 Flash (RAG) |
 | **Tech Indicators** | ta4j (MACD / Bollinger / RSI) |
 | **Deploy (FE)** | Vercel |
 | **Deploy (BE)** | Fly.io or Oracle Cloud Free Tier (ARM) |
