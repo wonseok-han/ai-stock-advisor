@@ -76,19 +76,19 @@ public class NewsTranslator {
                     com.aistockadvisor.common.metrics.LlmMetrics.FEATURE_NEWS);
             TranslateResponse parsed = objectMapper.readValue(result.content(), TranslateResponse.class);
             if (parsed.title_ko == null || parsed.summary_ko == null || parsed.sentiment == null) {
-                log.warn("translator: incomplete payload articleId={}", news.id());
+                log.warn("news-translator incomplete payload id={}", news.id());
                 return null;
             }
             String combined = parsed.title_ko + " " + parsed.summary_ko;
             List<String> hits = forbiddenTerms.detect(combined);
             if (!hits.isEmpty()) {
-                log.warn("translator: forbidden terms detected id={} hits={}", news.id(), hits);
+                log.warn("news-translator forbidden detected id={} hits={}", news.id(), hits);
                 return null;
             }
             Sentiment sentiment = parseSentiment(parsed.sentiment);
             return new Translation(parsed.title_ko, parsed.summary_ko, sentiment);
         } catch (Exception ex) {
-            log.warn("translator failed id={} reason={}", news.id(), ex.getMessage());
+            log.warn("news-translator failed id={} reason={}", news.id(), ex.getMessage());
             return null;
         }
     }

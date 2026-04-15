@@ -180,6 +180,80 @@ class GeminiLlmClientMetricsTest {
         assertThat(timers.iterator().next().count()).isGreaterThanOrEqualTo(1L);
     }
 
+    // -------------------------------------------------------------------------
+    // T-9: MAX_TOKENS truncation → content 비어있으면 parse 실패로 분류
+    // Gemini 2.5 호환: thinking 토큰이 maxOutputTokens 소진 시 parts 가 빈 경우 방어
+    // -------------------------------------------------------------------------
+    @Test
+    @DisplayName("T-9 MAX_TOKENS finishReason + empty parts → llm.failure.count{reason=parse} +1")
+    void maxTokensTruncation_incrementsParseFailure() {
+        String truncatedBody = """
+                {
+                  "candidates": [{
+                    "content": {"parts": [], "role": "model"},
+                    "finishReason": "MAX_TOKENS"
+                  }],
+                  "usageMetadata": {
+                    "promptTokenCount": 100,
+                    "candidatesTokenCount": 0,
+                    "totalTokenCount": 100
+                  }
+                }
+                """;
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(truncatedBody));
+
+        assertThatThrownBy(() -> client.generate("system", "user", FEATURE))
+                .isInstanceOf(com.aistockadvisor.common.error.BusinessException.class);
+
+        double parseFailures = registry.counter(LlmMetrics.FAILURE_COUNT,
+                LlmMetrics.TAG_FEATURE, FEATURE,
+                LlmMetrics.TAG_REASON, LlmMetrics.REASON_PARSE).count();
+        assertThat(parseFailures).isEqualTo(1.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // T-10: thought part 스킵 → 유효 text 가 있는 part 를 선택
+    // Gemini 2.5 호환: thinking part(thought=true) 가 앞에 오더라도 실제 JSON 파트 반환
+    // -------------------------------------------------------------------------
+    @Test
+    @DisplayName("T-10 thought=true part 스킵 → 유효 text 반환 + success 기록")
+    void thoughtPart_isSkippedAndNextValidTextReturned() {
+        String thoughtBody = """
+                {
+                  "candidates": [{
+                    "content": {
+                      "parts": [
+                        {"text": "reasoning...", "thought": true},
+                        {"text": "{\\"signal\\":\\"BUY\\"}"}
+                      ],
+                      "role": "model"
+                    },
+                    "finishReason": "STOP"
+                  }],
+                  "usageMetadata": {
+                    "promptTokenCount": 80,
+                    "candidatesTokenCount": 20,
+                    "totalTokenCount": 100
+                  }
+                }
+                """;
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(thoughtBody));
+
+        LlmClient.LlmResult result = client.generate("system", "user", FEATURE);
+
+        assertThat(result.content()).contains("BUY");
+        double callCount = registry.counter(LlmMetrics.CALL_COUNT,
+                LlmMetrics.TAG_FEATURE, FEATURE,
+                LlmMetrics.TAG_MODEL, MODEL).count();
+        assertThat(callCount).isEqualTo(1.0);
+    }
+
     @Test
     @DisplayName("T-8 latency Timer → failure outcome 에서 1회 이상 기록")
     void failureCall_recordsLatencyTimerFailure() {

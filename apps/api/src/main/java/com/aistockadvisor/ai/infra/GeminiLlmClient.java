@@ -24,14 +24,20 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Gemini 1.5 Flash 기반 LlmClient 구현.
+ * Gemini 2.5 Flash 기반 LlmClient 구현.
  * 참조: docs/02-design/features/phase2-rag-pipeline.design.md §5,
  *      docs/02-design/features/phase2.1-metrics-fe-refactor.design.md §4.2
  *
  * <p>Endpoint: {@code POST {baseUrl}/models/{model}:generateContent?key={apiKey}}<br>
  * {@code responseMimeType=application/json} 으로 JSON 모드 강제.
  *
- * <p>Micrometer 지표: call.count, token.total, failure.count, call.latency.
+ * <p>Gemini 2.5 호환: {@code thinkingConfig.thinkingBudget=0} 으로 thinking mode 비활성화.
+ * 활성 상태에서는 thinking 토큰이 {@code maxOutputTokens} 예산을 소진해 실제 응답 JSON 이
+ * 중간 절단되는 현상 방지 ({@code finishReason=MAX_TOKENS}). extractText 는 방어적으로
+ * {@code thought=true} part 를 스킵하고 첫 유효 text 를 반환.
+ *
+ * <p>Micrometer 지표: call.count, token.total, failure.count, call.latency.<br>
+ * 로그 태그: 모든 WARN 에 feature / model 포함 — 호출 경로(ai-signal / news) 식별 가능.
  */
 @Component
 public class GeminiLlmClient implements LlmClient {
@@ -90,8 +96,11 @@ public class GeminiLlmClient implements LlmClient {
                 "generationConfig", Map.of(
                         "temperature", 0.2,
                         "topP", 0.9,
-                        "maxOutputTokens", 1024,
-                        "responseMimeType", "application/json"
+                        "maxOutputTokens", 2048,
+                        "responseMimeType", "application/json",
+                        // Gemini 2.5 호환: thinking 토큰이 maxOutputTokens 예산을 소진해
+                        // 실제 응답 JSON 이 중간 절단되는 현상 방지. 0=disabled.
+                        "thinkingConfig", Map.of("thinkingBudget", 0)
                 )
         );
 
@@ -107,11 +116,18 @@ public class GeminiLlmClient implements LlmClient {
             long elapsed = System.currentTimeMillis() - start;
 
             if (resp == null || resp.candidates() == null || resp.candidates().isEmpty()) {
+                log.warn("gemini call no-candidates feature={} model={}", feature, model);
                 recordFailure(feature, LlmMetrics.REASON_PARSE, start);
                 throw new BusinessException(ErrorCode.LLM_VALIDATION_FAILED, "Gemini returned no candidates.", null);
             }
+            GeminiResponse.Candidate candidate = resp.candidates().get(0);
+            if ("MAX_TOKENS".equals(candidate == null ? null : candidate.finishReason())) {
+                log.warn("gemini call truncated feature={} model={} finishReason=MAX_TOKENS", feature, model);
+            }
             String text = extractText(resp);
             if (text == null || text.isBlank()) {
+                log.warn("gemini call empty-content feature={} model={} finishReason={}",
+                        feature, model, candidate == null ? null : candidate.finishReason());
                 recordFailure(feature, LlmMetrics.REASON_PARSE, start);
                 throw new BusinessException(ErrorCode.LLM_VALIDATION_FAILED, "Gemini empty content.", null);
             }
@@ -123,7 +139,8 @@ public class GeminiLlmClient implements LlmClient {
             return new LlmResult(text, model, tokensIn, tokensOut, elapsed);
         } catch (WebClientResponseException ex) {
             HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
-            log.warn("gemini call failed status={} body={}", status, ex.getResponseBodyAsString());
+            log.warn("gemini call failed feature={} model={} status={} body={}",
+                    feature, model, status, ex.getResponseBodyAsString());
             recordFailure(feature, LlmMetrics.REASON_HTTP, start);
             if (status == HttpStatus.TOO_MANY_REQUESTS) {
                 throw new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex);
@@ -135,7 +152,7 @@ public class GeminiLlmClient implements LlmClient {
         } catch (BusinessException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            log.warn("gemini timeout/io: {}", ex.getMessage());
+            log.warn("gemini call timeout/io feature={} model={} msg={}", feature, model, ex.getMessage());
             recordFailure(feature, LlmMetrics.REASON_TIMEOUT, start);
             throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
         }
@@ -177,7 +194,12 @@ public class GeminiLlmClient implements LlmClient {
         if (c == null || c.content() == null || c.content().parts() == null || c.content().parts().isEmpty()) {
             return null;
         }
-        return c.content().parts().get(0).text();
+        // Gemini 2.5: parts 배열에 thought part 가 섞일 수 있음. thought=true 는 스킵.
+        for (GeminiResponse.Part p : c.content().parts()) {
+            if (Boolean.TRUE.equals(p.thought())) continue;
+            if (p.text() != null && !p.text().isBlank()) return p.text();
+        }
+        return null;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -191,7 +213,7 @@ public class GeminiLlmClient implements LlmClient {
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record Part(String text) {
+        record Part(String text, Boolean thought) {
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
