@@ -1,0 +1,2 @@
+invalid token sample.
+this contains %d which is not allowed.
