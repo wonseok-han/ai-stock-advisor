@@ -1,44 +1,33 @@
 package com.aistockadvisor.stock.service;
 
-import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.stock.domain.SearchHit;
-import com.aistockadvisor.stock.infra.client.FinnhubClient;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.aistockadvisor.stock.infra.StockSymbolRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 
 /**
- * 종목 검색. Finnhub SymbolLookup 결과를 정제.
- * Cache: search:{query} (1h, design §3.4).
+ * 종목 검색. DB stock_symbol 테이블 로컬 검색 (외부 API 호출 없음).
+ * pg_trgm + prefix 매치로 심볼/종목명 검색.
  */
 @Service
 public class SearchService {
 
-    private static final Duration TTL = Duration.ofHours(1);
     private static final int MAX_RESULTS = 10;
-    private static final TypeReference<List<SearchHit>> LIST_TYPE = new TypeReference<>() {
-    };
 
-    private final FinnhubClient finnhub;
-    private final RedisCacheAdapter cache;
+    private final StockSymbolRepository symbolRepository;
 
-    public SearchService(FinnhubClient finnhub, RedisCacheAdapter cache) {
-        this.finnhub = finnhub;
-        this.cache = cache;
+    public SearchService(StockSymbolRepository symbolRepository) {
+        this.symbolRepository = symbolRepository;
     }
 
     public List<SearchHit> search(String query) {
-        String normalized = query.trim().toLowerCase(Locale.ROOT);
-        String key = "search:" + normalized;
-        return cache.getOrLoad(key, LIST_TYPE, TTL, () -> finnhub.search(normalized).stream()
-                .filter(hit -> "Common Stock".equalsIgnoreCase(hit.type()) || hit.type() == null)
-                .map(hit -> new SearchHit(hit.symbol(), hit.description(), null, "ticker"))
-                .sorted(Comparator.comparing(SearchHit::ticker))
-                .limit(MAX_RESULTS)
-                .toList());
+        String normalized = query.trim();
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+        return symbolRepository.search(normalized, MAX_RESULTS).stream()
+                .map(e -> new SearchHit(e.getSymbol(), e.getDescription(), null, "ticker"))
+                .toList();
     }
 }

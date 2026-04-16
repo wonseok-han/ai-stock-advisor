@@ -44,6 +44,7 @@ public class FinnhubClient {
     public FinnhubClient(FinnhubProperties props) {
         this.apiKey = props.apiKey();
         HttpClient httpClient = HttpClient.create()
+                .followRedirect(true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
                         new ReadTimeoutHandler(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)))
@@ -126,6 +127,62 @@ public class FinnhubClient {
         }
     }
 
+    /**
+     * /stock/symbol?exchange=US — 전체 US 심볼 목록 (동기화용, 1회/일).
+     * Finnhub이 CDN으로 302 리다이렉트하며 원본 token이 CDN에 전달되면 안 됨.
+     * java.net.http.HttpClient (NEVER redirect) + 수동 Location follow 로 처리.
+     */
+    public List<StockSymbol> stockSymbols(String exchange) {
+        try {
+            var client = java.net.http.HttpClient.newBuilder()
+                    .followRedirects(java.net.http.HttpClient.Redirect.NEVER)
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            // 1단계: 302 Location 추출
+            var req1 = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(
+                            "https://finnhub.io/api/v1/stock/symbol?exchange=" + exchange + "&token=" + apiKey))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET().build();
+            var resp1 = client.send(req1, java.net.http.HttpResponse.BodyHandlers.discarding());
+
+            String location;
+            if (resp1.statusCode() == 302 || resp1.statusCode() == 301) {
+                location = resp1.headers().firstValue("Location").orElse(null);
+            } else {
+                log.warn("finnhub /stock/symbol unexpected status={}", resp1.statusCode());
+                return List.of();
+            }
+
+            if (location == null || location.isBlank()) {
+                log.warn("finnhub /stock/symbol 302 but no Location header");
+                return List.of();
+            }
+
+            // 2단계: CDN URL 직접 호출 (token 없이)
+            var req2 = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(location))
+                    .timeout(Duration.ofSeconds(30))
+                    .GET().build();
+            var resp2 = client.send(req2, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (resp2.statusCode() != 200 || resp2.body() == null || resp2.body().isBlank()) {
+                log.warn("finnhub /stock/symbol CDN failed: status={} bodyLen={}",
+                        resp2.statusCode(), resp2.body() == null ? 0 : resp2.body().length());
+                return List.of();
+            }
+
+            log.info("finnhub /stock/symbol fetched {} bytes from CDN", resp2.body().length());
+            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            StockSymbol[] symbols = mapper.readValue(resp2.body(), StockSymbol[].class);
+            return List.of(symbols);
+        } catch (Exception ex) {
+            log.warn("finnhub /stock/symbol error: {}", ex.getMessage());
+            throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex);
+        }
+    }
+
     // ---------- Finnhub raw response DTOs ----------
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SearchResponse(int count, List<SearchHit> result) {
@@ -133,6 +190,10 @@ public class FinnhubClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SearchHit(String symbol, String description, String displaySymbol, String type) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record StockSymbol(String symbol, String description, String type, String currency) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
