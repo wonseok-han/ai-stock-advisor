@@ -60,7 +60,7 @@ export function MarketMovers() {
       <h2 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
         급등/급락 종목
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="space-y-4">
         <MoverList title="급등" movers={data.gainers} variant="gain" />
         <MoverList title="급락" movers={data.losers} variant="loss" />
       </div>
