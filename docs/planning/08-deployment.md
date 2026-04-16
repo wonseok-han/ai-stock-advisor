@@ -51,7 +51,7 @@
 
 | 변수 | 설명 | 예시 / 형식 |
 |---|---|---|
-| `DATABASE_URL` | Supabase **Session Pooler** JDBC URL | `jdbc:postgresql://aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres` |
+| `DATABASE_URL` | Supabase **Transaction Pooler** JDBC URL | `jdbc:postgresql://aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?prepareThreshold=0` |
 | `DATABASE_USERNAME` | Supabase Pooler 사용자 | `postgres.{project-ref}` |
 | `DATABASE_PASSWORD` | Supabase DB 비밀번호 | (프로젝트 생성 시 설정값) |
 | `REDIS_URL` | Upstash Redis **프로토콜 URL** | `rediss://default:{password}@{host}.upstash.io:6379` |
@@ -74,19 +74,19 @@
 ### 4.1 Supabase (DB)
 
 1. 프로젝트 생성 (리전 선택, DB 비밀번호 설정)
-2. **Settings → Database → Connection string → Session Pooler** 선택
+2. **Settings → Database → Connection string → Transaction** 모드 선택
 3. 호스트/유저/비밀번호 확인
 
 **주의 — Direct vs Pooler**:
 
 | 연결 방식 | 호스트 형태 | 포트 | 유저명 | 용도 |
 |---|---|---|---|---|
-| Direct | `db.{ref}.supabase.co` | 5432 | `postgres` | IPv4 전용 |
-| **Session Pooler** (사용) | `aws-*.pooler.supabase.com` | 5432 | `postgres.{ref}` | IPv6 지원, Render 호환 |
-| Transaction Pooler | `aws-*.pooler.supabase.com` | 6543 | `postgres.{ref}` | Flyway 비호환 |
+| Direct | `db.{ref}.supabase.co` | 5432 | `postgres` | IPv4 전용, Render 불가 |
+| Session Pooler | `aws-*.pooler.supabase.com` | 5432 | `postgres.{ref}` | pool_size 한도 작아 배포 반복 시 MaxClients 에러 발생 |
+| **Transaction Pooler** (사용) | `aws-*.pooler.supabase.com` | 6543 | `postgres.{ref}` | 쿼리 단위 반환, Render 호환 |
 
-> Render Free 는 IPv6 outbound 전용이라 **반드시 Session Pooler** 사용.
-> Transaction Pooler 는 Flyway 마이그레이션과 호환 문제 있으므로 사용 금지.
+> Render Free 는 IPv6 outbound 전용이라 Direct 불가, **Transaction Pooler** 사용.
+> JDBC URL 에 `?prepareThreshold=0` 필수 (Transaction Pooler 에서 prepared statement 호환).
 
 ### 4.2 Upstash (Redis)
 
@@ -168,13 +168,15 @@ curl https://{render-service}.onrender.com/actuator/prometheus | grep llm_call_c
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| `Network is unreachable` (DB) | Direct connection + Render IPv6 | Session Pooler 로 변경 |
-| `Invalid Redis URL 'https://...'` | REST API URL 사용 | `rediss://` 프로토콜 URL 로 변경 |
-| `Out of memory (over 512Mi)` | JVM 힙/GC 과다 설정 | SerialGC + Xmx256m 적용 |
-| Cold start 30~60초 | Render Free sleep 정책 | 정상 동작, 유료 전환 시 해소 |
+| `Network is unreachable` (DB) | Direct connection + Render IPv6 | Transaction Pooler (6543) 로 변경 |
+| `Invalid Redis URL 'https://...'` | Upstash REST API URL 사용 | `rediss://` 프로토콜 URL 로 변경 |
+| `Out of memory (over 512Mi)` | JVM 힙/GC 과다 설정 | SerialGC + Xmx200m + MaxMetaspaceSize=150m |
+| `Metaspace OOM` | MaxMetaspaceSize 부족 | 150m 이상 확보 (Spring+JPA+WebFlux 필요) |
+| `MaxClientsInSessionMode` | Session Pooler pool_size 한도 초과 | Transaction Pooler (6543) + `?prepareThreshold=0` 로 전환 |
+| Cold start 30~60초 (128초까지) | Render Free sleep 정책 | 정상 동작, 유료 전환 시 해소 |
 | Supabase pause | 7일 미접속 | 콘솔에서 Restore 클릭 |
 | CORS 에러 (FE → BE) | CORS_ALLOWED_ORIGINS 미설정 | Render 환경변수 + 재배포 |
-| Flyway 마이그레이션 실패 | Transaction Pooler 사용 | Session Pooler 로 변경 |
+| 502 Bad Gateway | cold start 중 요청 | 2분 대기 후 재시도 |
 
 ---
 
