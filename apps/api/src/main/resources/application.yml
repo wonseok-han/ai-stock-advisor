@@ -8,6 +8,10 @@ spring:
     username: ${DATABASE_USERNAME:dev}
     password: ${DATABASE_PASSWORD:dev}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL:3}
+      minimum-idle: 1
+      connection-timeout: 10000
   jpa:
     open-in-view: false
     properties:
