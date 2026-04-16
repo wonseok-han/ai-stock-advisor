@@ -8,6 +8,18 @@
 | [phase2-rag-pipeline](phase2-rag-pipeline/) | Phase 2 | 93% | 2026-04-14 | 2026-04-14 | prd, plan, design, analysis, report |
 | [phase2.1-metrics-fe-refactor](phase2.1-metrics-fe-refactor/) | Phase 2.1 | 100% | 2026-04-14 | 2026-04-14 | plan, design, analysis, report |
 | [phase2.2-prompt-externalization](phase2.2-prompt-externalization/) | Phase 2.2 | 96% | 2026-04-15 | 2026-04-15 | plan, design, analysis, report |
+| [market-dashboard](market-dashboard/) | Phase 3 | 95% | 2026-04-16 | 2026-04-16 | plan, design, report |
+
+## market-dashboard — Phase 3 시장 대시보드
+
+메인 페이지를 시장 대시보드로 전환. 지수·VIX·환율·시장 뉴스·급등락 종목을 한 화면에 제공. Match Rate 95%, iteration 0회.
+
+- **범위**: BE 3개 엔드포인트 (`/market/overview`, `/market/news`, `/market/movers`) + FE 대시보드 위젯 3종 + 메인 페이지 통합
+- **결과**: 25 파일, +2,213 lines. Finnhub→TwelveData fallback, 인기 종목 30개 풀 기반 movers, NewsTranslator 재사용, Redis 캐시 (5분/15분)
+- **PR**: #9 squash-merged (`78ec523`)
+- **Known gaps**: `MarketMover.volume` 필드 미포함, `usdKrwChange` 환율 변동 미계산 (둘 다 Low impact, Phase 3.1 개선 가능)
+
+**링크**: [plan](market-dashboard/market-dashboard.plan.md) · [design](market-dashboard/market-dashboard.design.md) · [report](market-dashboard/market-dashboard.report.md)
 
 ## phase2.2-prompt-externalization — Phase 2.2 프롬프트 외부화 + Gemini 재시도 1회 루프
 
