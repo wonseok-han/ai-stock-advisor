@@ -18,8 +18,10 @@ COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8080
 
 ENTRYPOINT ["java", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-XX:+UseZGC", \
-  "-XX:+ZGenerational", \
+  "-Xmx256m", \
+  "-Xms128m", \
+  "-XX:MaxMetaspaceSize=100m", \
+  "-Xss256k", \
+  "-XX:+UseSerialGC", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]
