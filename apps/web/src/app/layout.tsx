@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/next';
 import { Geist, Geist_Mono } from 'next/font/google';
 
 import { Providers } from '@/app/providers';
@@ -41,6 +42,7 @@ export default function RootLayout({
           <div className="flex flex-1 flex-col">{children}</div>
           <DisclaimerFooter />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
