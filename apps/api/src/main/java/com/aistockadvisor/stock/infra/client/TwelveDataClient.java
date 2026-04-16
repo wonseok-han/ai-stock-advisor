@@ -3,6 +3,7 @@ package com.aistockadvisor.stock.infra.client;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.Quote;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.netty.channel.ChannelOption;
@@ -18,7 +19,9 @@ import reactor.netty.http.client.HttpClient;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -58,6 +61,36 @@ public class TwelveDataClient {
                 .baseUrl(props.baseUrl())
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
+    }
+
+    /**
+     * /quote. 지수/종목 실시간 시세 조회.
+     * 지수: symbol = "SPX", "IXIC", "DJI", "VIX" 등.
+     * 반환: Quote record (기존 도메인 재사용). 데이터 없으면 null.
+     */
+    public Quote quote(String symbol) {
+        TwelveQuoteResponse resp = call("/quote", uri -> uri
+                .queryParam("symbol", symbol)
+                .queryParam("apikey", apiKey), TwelveQuoteResponse.class);
+        if (resp == null || resp.close() == null) {
+            return null;
+        }
+        BigDecimal change = resp.change() != null ? resp.change() : BigDecimal.ZERO;
+        BigDecimal pctChange = resp.percent_change() != null ? resp.percent_change() : BigDecimal.ZERO;
+        BigDecimal prev = resp.previous_close() != null ? resp.previous_close() : BigDecimal.ZERO;
+        long timestamp = resp.timestamp() != null ? resp.timestamp() : Instant.now().getEpochSecond();
+        return new Quote(
+                symbol,
+                resp.close(),
+                change,
+                pctChange,
+                resp.high() != null ? resp.high() : resp.close(),
+                resp.low() != null ? resp.low() : resp.close(),
+                resp.open() != null ? resp.open() : resp.close(),
+                prev,
+                0L,
+                OffsetDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC)
+        );
     }
 
     /**
@@ -148,6 +181,20 @@ public class TwelveDataClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Meta(String symbol, String interval, String currency, String exchange) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record TwelveQuoteResponse(
+            String symbol,
+            BigDecimal open,
+            BigDecimal high,
+            BigDecimal low,
+            BigDecimal close,
+            BigDecimal change,
+            BigDecimal percent_change,
+            BigDecimal previous_close,
+            Long timestamp
+    ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
