@@ -10,7 +10,6 @@ import com.aistockadvisor.news.infra.NewsRawRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,22 +91,14 @@ public class NewsService {
                 result.add(existing.get());
                 continue;
             }
-            NewsRawEntity entity = new NewsRawEntity(
-                    UUID.randomUUID(),
-                    ticker,
-                    hash,
-                    Optional.ofNullable(news.source()).orElse("Finnhub"),
-                    news.url(),
-                    news.headline(),
-                    Instant.ofEpochSecond(news.datetime()),
-                    Instant.now()
-            );
-            try {
-                result.add(repository.saveAndFlush(entity));
-            } catch (DataIntegrityViolationException race) {
-                // URL hash unique race — 다른 요청이 먼저 저장. 재조회.
-                repository.findByArticleUrlHash(hash).ifPresent(result::add);
-            }
+            // INSERT ... ON CONFLICT DO NOTHING — PostgreSQL 트랜잭션 abort 방지.
+            UUID id = UUID.randomUUID();
+            Instant publishedAt = Instant.ofEpochSecond(news.datetime());
+            String source = Optional.ofNullable(news.source()).orElse("Finnhub");
+            repository.insertIgnoreConflict(id, ticker, hash, source, news.url(),
+                    news.headline(), publishedAt, Instant.now());
+            // 삽입 성공이든 충돌 무시든 재조회로 엔티티 획득.
+            repository.findByArticleUrlHash(hash).ifPresent(result::add);
         }
         return result;
     }
