@@ -99,7 +99,8 @@ public class MarketMoversService {
                 name,
                 tq.quote.price(),
                 tq.quote.change(),
-                tq.quote.changePercent()
+                tq.quote.changePercent(),
+                tq.quote.volume()
         );
     }
 

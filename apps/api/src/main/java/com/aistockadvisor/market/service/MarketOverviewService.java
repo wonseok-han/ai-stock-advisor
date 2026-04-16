@@ -59,9 +59,9 @@ public class MarketOverviewService {
 
     private MarketOverviewResponse fetchOverview() {
         List<MarketIndex> indices = fetchIndices();
-        BigDecimal usdKrw = fetchUsdKrw();
+        BigDecimal[] forex = fetchUsdKrw();
 
-        if (indices.isEmpty() && usdKrw == null) {
+        if (indices.isEmpty() && forex[0] == null) {
             throw new BusinessException(
                     com.aistockadvisor.common.error.ErrorCode.UPSTREAM_UNAVAILABLE,
                     "모든 시장 데이터 소스 실패");
@@ -69,8 +69,8 @@ public class MarketOverviewService {
 
         return new MarketOverviewResponse(
                 indices,
-                usdKrw,
-                null, // 환율 전일 대비 변동 — 별도 캐시 로직 불필요 (Phase 3.1 개선 가능)
+                forex[0],
+                forex[1],
                 OffsetDateTime.now(ZoneOffset.UTC),
                 Disclaimers.MARKET
         );
@@ -124,12 +124,15 @@ public class MarketOverviewService {
         );
     }
 
-    private BigDecimal fetchUsdKrw() {
+    /**
+     * @return BigDecimal[2] — [0]=price, [1]=change (전일 대비 변동). 실패 시 {null, null}.
+     */
+    private BigDecimal[] fetchUsdKrw() {
         // Finnhub /forex/rates 사용
         try {
             Quote q = finnhubClient.quote("USDKRW=X");
             if (q != null && q.price() != null && q.price().signum() > 0) {
-                return q.price();
+                return new BigDecimal[]{q.price(), q.change()};
             }
         } catch (BusinessException ex) {
             log.debug("finnhub forex USDKRW failed: {}", ex.getMessage());
@@ -139,12 +142,12 @@ public class MarketOverviewService {
         try {
             Quote q = twelveDataClient.quote("USD/KRW");
             if (q != null && q.price() != null && q.price().signum() > 0) {
-                return q.price();
+                return new BigDecimal[]{q.price(), q.change()};
             }
         } catch (BusinessException ex) {
             log.warn("twelvedata forex USD/KRW also failed: {}", ex.getMessage());
         }
 
-        return null;
+        return new BigDecimal[]{null, null};
     }
 }

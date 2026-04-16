@@ -4,6 +4,8 @@ import { useMarketOverview } from '@/features/market-dashboard/hooks/use-market-
 import { cn } from '@/lib/cn';
 import { formatPercentChange, formatSignedNumber } from '@/lib/format/percent';
 
+import type { MarketOverview } from '@/types/market';
+
 import type { MarketIndex } from '@/types/market';
 
 /**
@@ -61,6 +63,18 @@ export function MarketOverview() {
               maximumFractionDigits: 2,
             })}
           </span>
+          {data.usdKrwChange != null && data.usdKrwChange !== 0 && (
+            <span
+              className={cn(
+                'text-xs tabular-nums font-medium',
+                data.usdKrwChange > 0
+                  ? 'text-green-600 dark:text-green-500'
+                  : 'text-red-600 dark:text-red-500',
+              )}
+            >
+              {formatSignedNumber(data.usdKrwChange)}
+            </span>
+          )}
         </div>
       )}
     </section>

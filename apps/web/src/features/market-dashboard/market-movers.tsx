@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMarketMovers } from '@/features/market-dashboard/hooks/use-market-movers';
 import { cn } from '@/lib/cn';
 import { formatUsd } from '@/lib/format/currency';
+import { formatCompact } from '@/lib/format/number';
 import { formatPercentChange } from '@/lib/format/percent';
 
 import type { MarketMover } from '@/types/market';
@@ -129,6 +130,11 @@ function MoverList({
                 >
                   {formatPercentChange(m.changePercent)}
                 </span>
+                {m.volume > 0 && (
+                  <span className="ml-1.5 text-[10px] tabular-nums text-zinc-400">
+                    {formatCompact(m.volume)}
+                  </span>
+                )}
               </div>
             </button>
           </li>

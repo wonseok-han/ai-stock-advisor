@@ -11,6 +11,7 @@ public record MarketMover(
         String name,
         BigDecimal price,
         BigDecimal change,
-        BigDecimal changePercent
+        BigDecimal changePercent,
+        long volume
 ) {
 }

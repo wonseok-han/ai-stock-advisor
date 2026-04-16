@@ -21,6 +21,7 @@ export interface MarketMover {
   price: number;
   change: number;
   changePercent: number;
+  volume: number;
 }
 
 export interface MarketMovers {
