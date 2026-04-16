@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from 'next/font/google';
 
 import { Providers } from '@/app/providers';
+import { SiteHeader } from '@/components/layout/site-header';
 import { DisclaimerBanner } from '@/components/legal/disclaimer-banner';
 import { DisclaimerFooter } from '@/components/legal/disclaimer-footer';
 
@@ -35,6 +36,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-black">
         <Providers>
+          <SiteHeader />
           <DisclaimerBanner />
           <div className="flex flex-1 flex-col">{children}</div>
           <DisclaimerFooter />
