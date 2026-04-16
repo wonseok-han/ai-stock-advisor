@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useMarketMovers } from '@/features/market-dashboard/hooks/use-market-movers';
 import { cn } from '@/lib/cn';
 import { formatUsd } from '@/lib/format/currency';
-import { formatCompact } from '@/lib/format/number';
 import { formatPercentChange } from '@/lib/format/percent';
 
 import type { MarketMover } from '@/types/market';
@@ -106,23 +105,25 @@ function MoverList({
           <li key={m.ticker}>
             <button
               onClick={() => router.push(`/stock/${m.ticker}`)}
-              className="flex w-full items-center justify-between gap-2 py-1.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+              className="flex w-full items-center justify-between gap-3 py-1.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
             >
-              <div className="min-w-0">
-                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  {m.ticker}
-                </span>
-                <span className="ml-1.5 truncate text-xs text-zinc-500">
-                  {m.name}
-                </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="shrink-0 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {m.ticker}
+                  </span>
+                  <span className="truncate text-xs text-zinc-500">
+                    {m.name}
+                  </span>
+                </div>
               </div>
-              <div className="shrink-0 text-right">
+              <div className="flex shrink-0 items-baseline gap-1.5 text-right">
                 <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-400">
                   {formatUsd(m.price)}
                 </span>
                 <span
                   className={cn(
-                    'ml-1.5 text-xs tabular-nums font-medium',
+                    'min-w-[4.5rem] text-right text-xs tabular-nums font-medium',
                     variant === 'gain'
                       ? 'text-green-600 dark:text-green-500'
                       : 'text-red-600 dark:text-red-500',
@@ -130,11 +131,6 @@ function MoverList({
                 >
                   {formatPercentChange(m.changePercent)}
                 </span>
-                {m.volume > 0 && (
-                  <span className="ml-1.5 text-[10px] tabular-nums text-zinc-400">
-                    {formatCompact(m.volume)}
-                  </span>
-                )}
               </div>
             </button>
           </li>

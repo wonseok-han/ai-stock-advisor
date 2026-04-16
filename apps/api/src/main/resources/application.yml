@@ -67,6 +67,9 @@ app:
     twelvedata:
       api-key: ${TWELVE_DATA_API_KEY:}
       base-url: https://api.twelvedata.com
+    fmp:
+      api-key: ${FMP_API_KEY:}
+      base-url: https://financialmodelingprep.com/stable
     alphavantage:
       api-key: ${ALPHAVANTAGE_API_KEY:}
       base-url: https://www.alphavantage.co/query
