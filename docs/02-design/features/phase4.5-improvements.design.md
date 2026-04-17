@@ -19,7 +19,7 @@
 3. **마이페이지 리디자인**: 프로필/북마크(카드)/알림/계정 4섹션 완성도 있는 레이아웃
 4. **알림 진입점**: 종목 상세에서 직접 알림 설정 가능하도록 UX 개선
 5. **잔여 gap 일괄 해소**: Phase 1~4 Known gaps 클린업
-6. **Rate Limiter**: Bucket4j 기반 API 보호
+6. **Rate Limiter**: Token Bucket 기반 API 보호 (외부 라이브러리 없이 구현)
 
 ### 1.2 Design Principles
 
@@ -34,13 +34,7 @@
 ### 2.1 캔들 데이터 흐름
 
 ```
-[초기 벌크 로드 - 1회성]
-  scripts/seed-candles.py (yfinance)
-    → CSV 출력
-    → Flyway V8 seed 또는 Spring Boot CommandLineRunner 적재
-    → candles 테이블
-
-[실시간 조회 - 매 요청]
+[On-Demand 로드 - 사용자 첫 조회 시]
   FE → GET /api/v1/stocks/{ticker}/candles?tf=1Y
     → StockController.candles()
     → CandleService.getCandles(ticker, tf)
@@ -61,6 +55,10 @@
     → INSERT ON CONFLICT DO NOTHING
 ```
 
+> **설계 결정**: 벌크 초기 로드(Python 스크립트) 대신 on-demand 방식 채택.
+> 사용자가 종목 페이지를 방문할 때 DB에 데이터가 없으면 Yahoo Finance에서 가져와 비동기 저장.
+> 사용자 트래픽 기반으로 자연스럽게 데이터가 축적되므로 불필요한 종목 적재를 방지.
+
 ### 2.2 Dependencies
 
 | Component | Depends On | Purpose |
@@ -69,7 +67,7 @@
 | YahooFinanceClient | WebClient, Jackson | Yahoo Finance v8 REST API 호출 |
 | CandleBatchScheduler | CandleRepository, YahooFinanceClient | 일간 배치 적재 |
 | NotificationSettingModal (FE) | useNotificationSettings, useBookmarks | 종목 상세 알림 모달 |
-| RateLimitFilter | Bucket4j, Redis | IP 기반 요청 제한 |
+| RateLimitFilter | ConcurrentHashMap, AtomicLong | IP 기반 Token Bucket 요청 제한 |
 
 ---
 
@@ -348,37 +346,21 @@ public class CandleBatchScheduler {
 }
 ```
 
-### 5.4 벌크 초기 로드 스크립트
+### 5.4 On-Demand 로드 전략
 
-```python
-# scripts/seed-candles.py
-# 의존: pip install yfinance pandas
-# 실행: python scripts/seed-candles.py > scripts/candles-seed.csv
+벌크 초기 로드(Python 스크립트) 대신 **on-demand 방식**을 채택했습니다.
 
-import yfinance as yf
-import pandas as pd
-from datetime import datetime, timedelta
+**동작 방식:**
+1. 사용자가 종목 페이지 방문 → `CandleService.getDailyCandles()` 호출
+2. DB에 해당 종목 데이터 없음 → `loadAndPersist()` 트리거
+3. `YahooFinanceClient.fetchDailyCandles(ticker, from, to)` 호출
+4. 즉시 결과 반환 + `CompletableFuture.runAsync(() -> candleRepo.saveAll())` 비동기 저장
+5. 이후 재방문 시 DB에서 즉시 반환
 
-TICKERS = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B",
-    "JPM", "V", "UNH", "JNJ", "WMT", "PG", "MA", "HD", "XOM", "DIS",
-    "BAC", "NFLX", "CRM", "ADBE", "AMD", "INTC", "CSCO", "PEP", "KO",
-    "ABT", "MRK", "TMO"
-]
-
-end = datetime.now()
-start = end - timedelta(days=365*5+30)  # 5년 + 여유
-
-for ticker in TICKERS:
-    df = yf.download(ticker, start=start, end=end, auto_adjust=False)
-    # CSV: ticker, trade_date, open, high, low, close, adj_close, volume
-    for idx, row in df.iterrows():
-        print(f"{ticker},{idx.strftime('%Y-%m-%d')},"
-              f"{row['Open']:.4f},{row['High']:.4f},{row['Low']:.4f},"
-              f"{row['Close']:.4f},{row['Adj Close']:.4f},{int(row['Volume'])}")
-```
-
-**적재 방법:** CSV → Spring Boot CommandLineRunner 또는 PostgreSQL `COPY` 커맨드.
+**장점:**
+- Python/yfinance 의존성 제거 (Java 단일 스택)
+- 사용자 트래픽 기반 자연 축적 → 불필요 종목 적재 방지
+- 배포 즉시 동작 (별도 시드 작업 불필요)
 
 ---
 
@@ -574,42 +556,46 @@ return new BigDecimal[]{q.price(), change};
 
 ---
 
-## 8. Rate Limiter (Bucket4j)
+## 8. Rate Limiter (Token Bucket)
 
 ### 8.1 설계
+
+외부 라이브러리(Bucket4j) 없이 `ConcurrentHashMap` + `AtomicLong` 기반 Token Bucket 자체 구현.
 
 ```java
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    // IP 기반 버킷: 분당 60 요청 (무료 서비스 적정 수준)
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
-    private final long capacity;      // default 60
-    private final long refillPerMin;  // default 60
+    // IP 기반 Token Bucket: 분당 60 요청 (무료 서비스 적정 수준)
+    private final ConcurrentHashMap<String, TokenBucket> buckets = new ConcurrentHashMap<>();
+    private final long capacity;          // default 60
+    private final long refillPerMinute;   // default 60
 
     @Override
     protected void doFilterInternal(HttpServletRequest req,
                                      HttpServletResponse resp,
                                      FilterChain chain) {
         String clientIp = extractClientIp(req);
-        Bucket bucket = buckets.computeIfAbsent(clientIp, k -> createBucket());
+        TokenBucket bucket = buckets.computeIfAbsent(clientIp, k -> new TokenBucket(capacity, refillPerMinute));
 
-        if (bucket.tryConsume(1)) {
+        if (bucket.tryConsume()) {
             chain.doFilter(req, resp);
         } else {
             resp.setStatus(429);
             resp.setContentType("application/json");
-            resp.getWriter().write("""
-                {"error":{"code":"RATE_LIMITED","message":"요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."}}
-                """);
+            resp.getWriter().write(
+                "{\"error\":{\"code\":\"RATE_LIMITED\",\"message\":\"요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.\"}}"
+            );
         }
     }
 
-    private Bucket createBucket() {
-        return Bucket.builder()
-            .addLimit(Bandwidth.classic(capacity,
-                Refill.greedy(refillPerMin, Duration.ofMinutes(1))))
-            .build();
+    // TokenBucket 내부 클래스: AtomicLong CAS 기반 thread-safe
+    static class TokenBucket {
+        private final long capacity;
+        private final double refillRatePerMs;
+        private final AtomicLong tokens;
+        private volatile long lastRefillTime;
+        // tryConsume(), refill() ...
     }
 }
 ```
@@ -657,7 +643,7 @@ http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class
 | **3** | `YahooFinanceClient` | 1 | — | FR-02, FR-04 |
 | **4** | `CandleService` 리팩터 (DB-first + fallback + 주봉 집계) | 1 | Step 2, 3 | FR-03, FR-04, FR-06, FR-08 |
 | **5** | `TimeFrame` enum 변경 (dbBacked 필드) | 1 | — | FR-07, FR-08 |
-| **6** | 벌크 초기 로드 스크립트 + CommandLineRunner | 2 | Step 2, 3 | FR-02 |
+| ~~6~~ | ~~벌크 초기 로드~~ (삭제: on-demand 방식 채택) | — | — | — |
 | **7** | `CandleBatchScheduler` 일간 배치 | 1 | Step 2, 3 | FR-05 |
 | **8** | `ChartPanel` 거래량 서브차트 + timeVisible | 1 | Step 4 | FR-08 |
 | **9** | 마이페이지 리디자인 (6 컴포넌트) | 7 | — | FR-09 |
@@ -695,8 +681,25 @@ http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class
 
 ---
 
+## 12. Auth 구현 현황 (설계 문서 동기화)
+
+Phase 4 Auth 설계(`docs/archive/2026-04/auth/auth.design.md`)와 실제 구현 간 차이를 기록합니다.
+
+| 항목 | 설계 (Phase 4) | 실제 구현 | 비고 |
+|------|---------------|----------|------|
+| SecurityFilterChain | 단일 체인 (`filterChain`) | **two-chain** — `protectedFilterChain` (Order 1) + `publicFilterChain` (Order 2) | 인증 필요 API와 공개 API를 명확히 분리 |
+| JWT 서명 알고리즘 | RS256 만 명시 | **ES256 + RS256 병행** (`jwsAlgorithms` 에 둘 다 등록) | Supabase Auth v2가 ES256(ECDSA P-256) 사용 |
+| 보호 대상 API | 미상세 | `securityMatcher("/api/v1/me", "/api/v1/bookmarks/**", "/api/v1/push/*", "/api/v1/notifications/**", "/api/v1/stocks/*/ai-signal")` | 명시적 경로 매칭 |
+| Rate Limiter | 미포함 | public chain에 `RateLimitFilter` 적용 (Token Bucket, 60 req/min) | Phase 4.5에서 추가 |
+| CORS | `CorsConfigurationSource` 빈 | 양쪽 체인 모두 `.cors(Customizer.withDefaults())` | `WebCorsConfig` 빈 재사용 |
+
+> 아카이브 문서는 읽기 전용 정책이므로 원본은 수정하지 않고, 이 섹션에서 실제 구현 차이를 보완합니다.
+
+---
+
 ## Version History
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 0.1 | 2026-04-17 | Initial draft | Claude + wonseok-han |
+| 0.2 | 2026-04-17 | 벌크 시드 제거 → on-demand 방식, Bucket4j → Token Bucket 자체 구현, Auth 현황 동기화 | Claude + wonseok-han |

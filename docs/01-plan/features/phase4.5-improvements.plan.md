@@ -14,7 +14,7 @@
 | Perspective | Content |
 |-------------|---------|
 | **Problem** | 무료 API 제한으로 캔들 데이터가 부족하고, 마이페이지가 빈약하며, 알림 진입점이 없고, Phase 1~4 잔여 gap(exchange nullable, volume 소스, 환율 변동 등)이 미해소 상태 |
-| **Solution** | Yahoo Finance 벌크 + on-demand + 일간 배치로 DB 기반 캔들 레이어 구축, 마이페이지 리디자인, 종목 상세 내 알림 설정 진입점, 기술지표 검증, 잔여 gap 일괄 해소 |
+| **Solution** | Yahoo Finance on-demand 로드 + 일간 배치로 DB 기반 캔들 레이어 구축, 마이페이지 리디자인, 종목 상세 내 알림 설정 진입점, 기술지표 검증, 잔여 gap 일괄 해소 |
 | **Function/UX Effect** | 1Y/5Y 캔들이 풍부하게 표시되고, 마이페이지에서 북마크·알림·계정을 한눈에 관리하며, 종목 상세에서 바로 알림 설정 가능 |
 | **Core Value** | 데이터 신뢰성과 UX 완성도를 Phase 5(향후 과제) 진입 전에 확보하여 서비스 품질 기반 마련 |
 
@@ -53,8 +53,7 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 #### Step 1 — 캔들 데이터 레이어 (Data Layer)
 
 - [ ] `candles` DB 테이블 (Flyway V8) — ticker, date, open, high, low, close, adj_close, volume
-- [ ] `YahooFinanceClient` — yfinance Python 스크립트 또는 Java HTTP로 벌크 OHLCV 다운로드
-- [ ] 초기 벌크 로드 스크립트 — 인기 종목 30개 × 5년 일봉 적재
+- [ ] `YahooFinanceClient` — Java HTTP로 Yahoo Finance v8 chart API 호출
 - [ ] `CandleService` 리팩터 — DB 우선 조회 → API fallback → 비동기 DB persist
 - [ ] 일간 배치 스케줄러 — 매일 장 마감 후 당일 캔들 DB 적재
 - [ ] Adjusted close 정합 — Yahoo default=adjusted, Twelve Data `adjust=true`
@@ -114,7 +113,7 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | FR-01 | `candles` 테이블 생성 (ticker, date, OHLCV, adj_close, PK=ticker+date) | High | Pending |
-| FR-02 | Yahoo Finance 벌크 OHLCV 다운로드 (인기 30종목 × 5년 일봉) | High | Pending |
+| FR-02 | Yahoo Finance on-demand OHLCV 다운로드 (사용자 방문 시 자동 적재) | High | Pending |
 | FR-03 | CandleService DB-first 조회 → Twelve Data fallback → 비동기 DB persist | High | Pending |
 | FR-04 | on-demand 캔들 로드: 미적재 종목 첫 조회 시 Yahoo/Twelve Data에서 가져와 DB 저장 | High | Pending |
 | FR-05 | 일간 배치: 매일 장 마감 후 적재된 종목의 당일 캔들 DB append | Medium | Pending |
@@ -148,7 +147,7 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 
 ### 4.1 Definition of Done
 
-- [ ] `candles` 테이블에 인기 30종목 × 5년 일봉 적재 완료
+- [ ] `candles` 테이블에 on-demand 방식으로 데이터 적재 동작 확인
 - [ ] 1Y/5Y 차트에 풍부한 캔들(260+개)이 표시됨
 - [ ] 미적재 종목 첫 조회 시 on-demand로 데이터 로드 후 DB 저장
 - [ ] 마이페이지 4섹션 리디자인 완료
@@ -169,11 +168,11 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|------------|------------|
-| Yahoo Finance API 차단/변경 | High | Medium | yfinance 라이브러리 대신 직접 HTTP, User-Agent 로테이션, CSV 수동 다운로드 백업 |
+| Yahoo Finance API 차단/변경 | High | Medium | User-Agent 로테이션, 에러 시 Twelve Data fallback, 수동 CSV 업로드 백업 |
 | Supabase 500MB 초과 | High | Low | 종목 수 제한(1000개), 5Y 이상 데이터 정리, 주봉만 저장 옵션 |
 | Twelve Data adjust=true 미지원 | Medium | Low | Yahoo adj_close를 SoR로 사용, Twelve Data는 intraday 전용 |
 | ta4j 지표 불일치 | Medium | Medium | 파라미터/데이터 범위 차이 원인 분석, 필요 시 자체 계산 로직 |
-| 벌크 로드 시 Supabase rate limit | Medium | Medium | 배치 insert (1000 rows/batch), 인기 종목 우선 순차 적재 |
+| On-demand 첫 로드 지연 | Low | Medium | 3초 내 완료 목표, 로딩 스피너 표시, 이후 재방문은 DB에서 즉시 반환 |
 
 ---
 
@@ -191,32 +190,28 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 
 | Decision | Options | Selected | Rationale |
 |----------|---------|----------|-----------|
-| 캔들 벌크 로드 | Python yfinance / Java HTTP Yahoo | Python yfinance 스크립트 | 성숙한 라이브러리, 벌크 데이터 접근 용이, 초기 로드 1회성 |
+| 캔들 로드 전략 | Python yfinance 벌크 / Java HTTP on-demand | Java HTTP on-demand | Python 의존성 제거, 사용자 트래픽 기반 자연 축적, 불필요 종목 적재 방지 |
 | 일간 배치 | Spring @Scheduled / 외부 cron | Spring @Scheduled | 기존 Push 스케줄러 패턴 재사용, 인프라 추가 없음 |
 | DB 캔들 스키마 | 단일 테이블 / interval별 파티션 | 단일 테이블 (일봉 only) | 단순성, 인기 종목 규모에서 파티션 불필요 |
 | On-demand fallback | 동기 로드 / 비동기 로드+stale 반환 | 동기 로드 (첫 조회 시 대기) | 빈 차트보다 3초 대기가 나은 UX |
 | 주봉 생성 | DB 집계 쿼리 / 서비스 레벨 변환 | DB 일봉 → 서비스 레벨 weekly 집계 | 저장 공간 절약, 일봉이 SoR |
-| Rate Limiter | Bucket4j / Resilience4j | Bucket4j | Phase 1 로드맵 원안, Spring Boot 통합 우수 |
+| Rate Limiter | Bucket4j / 자체 구현 Token Bucket | 자체 구현 Token Bucket | 외부 의존성 제거, ConcurrentHashMap + AtomicLong 기반 경량 구현 |
 
 ### 6.3 데이터 흐름
 
 ```
-[초기 벌크 로드]
-  yfinance script → CSV/JSON → Flyway seed or Spring batch insert → candles 테이블
-
-[실시간 조회]
+[On-Demand 로드 - 사용자 첫 조회 시]
   FE → GET /stocks/{t}/candles?tf=1Y
     → CandleService
       → DB 조회 (candles WHERE ticker=? AND date BETWEEN ?)
       → 데이터 있음 → 반환
-      → 데이터 없음 → Yahoo/TwelveData API 호출
-                     → 응답을 DB에 비동기 저장
-                     → 즉시 반환
+      → 데이터 없음 → Yahoo Finance API 호출
+                     → 즉시 반환 + 비동기 DB 저장
 
 [일간 배치]
   @Scheduled(cron = "0 0 22 * * MON-FRI")  // UTC 22:00 = KST 07:00 (미장 마감 후)
-    → 적재된 종목 목록 조회
-    → Yahoo Finance daily quote 호출
+    → DB에 적재된 종목 목록 조회
+    → Yahoo Finance daily API로 당일 캔들 다운로드
     → candles 테이블 INSERT ON CONFLICT DO NOTHING
 ```
 
@@ -244,9 +239,9 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 
 | Variable | Purpose | Scope | To Be Created |
 |----------|---------|-------|:-------------:|
-| (없음) | Yahoo Finance는 API key 불필요 (yfinance) | — | — |
-| `BUCKET4J_CAPACITY` | Rate limiter 버킷 용량 | Server | V |
-| `BUCKET4J_REFILL_RATE` | Rate limiter 토큰 리필 속도 | Server | V |
+| (없음) | Yahoo Finance v8 API는 key 불필요 | — | — |
+| `rate-limit.capacity` | Rate limiter 버킷 용량 (기본 60) | Server | V |
+| `rate-limit.refill-per-minute` | Rate limiter 토큰 리필 속도 (기본 60) | Server | V |
 
 ---
 
@@ -257,7 +252,7 @@ Phase 1~4까지 구현된 기능들의 품질을 높이고, 무료 API 제한으
 | Step | Scope | Estimated Files | Depends On |
 |------|-------|-----------------|------------|
 | **Step 1** | `candles` 테이블 + Entity + Repository | ~5 | — |
-| **Step 2** | `YahooFinanceClient` + 벌크 로드 스크립트 | ~3 | Step 1 |
+| **Step 2** | `YahooFinanceClient` (Java HTTP, on-demand) | ~2 | Step 1 |
 | **Step 3** | `CandleService` 리팩터 (DB-first + fallback) | ~3 | Step 1, 2 |
 | **Step 4** | TimeFrame/차트 표현 개선 (BE + FE) | ~6 | Step 3 |
 | **Step 5** | 일간 배치 스케줄러 | ~2 | Step 1, 3 |
