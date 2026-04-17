@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useAddBookmark, useBookmarkCheck } from '@/features/bookmark/hooks/use-bookmarks';
 import {
@@ -15,25 +15,24 @@ interface Props {
 
 const THRESHOLD_OPTIONS = [1, 3, 5, 10];
 
-export function NotificationSettingModal({ ticker, onClose }: Props) {
-  const { data: settings } = useNotificationSettings();
+function NotificationSettingModalInner({
+  ticker,
+  onClose,
+  initialThreshold,
+  initialOnNewNews,
+  initialOnSignalChange,
+}: Props & {
+  initialThreshold: number;
+  initialOnNewNews: boolean;
+  initialOnSignalChange: boolean;
+}) {
   const { data: bookmarkCheck } = useBookmarkCheck(ticker);
   const upsertMutation = useUpsertNotificationSetting();
   const addBookmarkMutation = useAddBookmark();
 
-  const existing = settings?.find((s) => s.ticker === ticker);
-
-  const [threshold, setThreshold] = useState<number>(existing?.priceChangeThreshold ?? 5);
-  const [onNewNews, setOnNewNews] = useState(existing?.onNewNews ?? true);
-  const [onSignalChange, setOnSignalChange] = useState(existing?.onSignalChange ?? true);
-
-  useEffect(() => {
-    if (existing) {
-      setThreshold(existing.priceChangeThreshold ?? 5);
-      setOnNewNews(existing.onNewNews);
-      setOnSignalChange(existing.onSignalChange);
-    }
-  }, [existing]);
+  const [threshold, setThreshold] = useState<number>(initialThreshold);
+  const [onNewNews, setOnNewNews] = useState(initialOnNewNews);
+  const [onSignalChange, setOnSignalChange] = useState(initialOnSignalChange);
 
   function handleSave() {
     // 미북마크 종목이면 자동 북마크 추가
@@ -124,6 +123,25 @@ export function NotificationSettingModal({ ticker, onClose }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+export function NotificationSettingModal({ ticker, onClose }: Props) {
+  const { data: settings } = useNotificationSettings();
+  const existing = useMemo(
+    () => settings?.find((s) => s.ticker === ticker),
+    [settings, ticker],
+  );
+
+  return (
+    <NotificationSettingModalInner
+      key={existing ? 'loaded' : 'default'}
+      ticker={ticker}
+      onClose={onClose}
+      initialThreshold={existing?.priceChangeThreshold ?? 5}
+      initialOnNewNews={existing?.onNewNews ?? true}
+      initialOnSignalChange={existing?.onSignalChange ?? true}
+    />
   );
 }
 
