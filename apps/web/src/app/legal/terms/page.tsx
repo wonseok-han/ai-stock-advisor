@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: '이용약관 · AI Stock Advisor',
-  description: 'AI Stock Advisor 서비스 이용약관 초안.',
+  description: 'AI Stock Advisor 서비스 이용약관.',
 };
 
 export default function TermsPage() {
@@ -14,8 +14,7 @@ export default function TermsPage() {
 
       <section className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
         <p className="text-xs text-zinc-500">
-          본 약관은 초안이며, 정식 런칭 전 법률 검토를 거쳐 최종화됩니다.
-          시행일·개정 이력은 런칭 시 별도 고지됩니다.
+          시행일: 2026년 4월 17일 · 정식 런칭 전 법률 검토를 거쳐 최종화됩니다.
         </p>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -50,15 +49,51 @@ export default function TermsPage() {
         </ul>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          제4조 (계정 및 데이터)
+          제4조 (계정)
         </h2>
-        <p>
-          MVP 단계에서는 회원가입이 없으며, 개인식별정보 수집을 최소화합니다.
-          향후 회원 기능 도입 시 개인정보 처리방침을 통해 별도 고지합니다.
-        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            이용자는 이메일 또는 소셜 로그인(Google)을 통해 계정을 생성할 수
+            있습니다.
+          </li>
+          <li>
+            계정 정보의 관리 책임은 이용자에게 있으며, 타인에게 계정을 양도하거나
+            공유할 수 없습니다.
+          </li>
+          <li>
+            이용자는 마이페이지에서 언제든 회원 탈퇴를 요청할 수 있습니다. 탈퇴 시
+            서비스 내 이용 데이터(북마크, 알림 설정 등)는 즉시 삭제됩니다.
+          </li>
+          <li>
+            탈퇴 후 동일 이메일로 재가입하면 계정 복구가 가능하나, 이전 이용
+            데이터는 복원되지 않습니다.
+          </li>
+          <li>
+            계정 식별 정보는 개인정보 처리방침에 따라 탈퇴일로부터 2년간 보관 후
+            파기됩니다.
+          </li>
+        </ul>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          제5조 (서비스 변경·중단)
+          제5조 (알림 서비스)
+        </h2>
+        <ul className="list-disc pl-6">
+          <li>
+            이용자는 종목별 가격 변동, 뉴스, AI 시그널에 대한 푸시 알림을 설정할
+            수 있습니다.
+          </li>
+          <li>
+            알림은 시장 데이터 및 외부 API에 의존하므로, 실시간성·정확성을
+            보장하지 않습니다.
+          </li>
+          <li>
+            알림 내용은 투자 권유가 아닌 정보 제공 목적이며, 이에 기반한 투자
+            판단의 책임은 이용자에게 있습니다.
+          </li>
+        </ul>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제6조 (서비스 변경·중단)
         </h2>
         <p>
           운영자는 서비스 내용·구성·제공 조건을 예고 없이 변경하거나 운영상·
@@ -67,7 +102,7 @@ export default function TermsPage() {
         </p>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          제6조 (준거법)
+          제7조 (준거법)
         </h2>
         <p>본 약관의 해석과 분쟁 해결은 대한민국 법령을 준거법으로 합니다.</p>
       </section>
