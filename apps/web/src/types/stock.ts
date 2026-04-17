@@ -8,7 +8,7 @@ export type TimeFrame = '1D' | '1W' | '1M' | '3M' | '1Y' | '5Y';
 export interface SearchHit {
   ticker: string;
   name: string;
-  exchange: string;
+  exchange: string | null;
   matchType: string;
 }
 

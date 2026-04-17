@@ -10,6 +10,18 @@
 | [phase2.2-prompt-externalization](phase2.2-prompt-externalization/) | Phase 2.2 | 96% | 2026-04-15 | 2026-04-15 | plan, design, analysis, report |
 | [market-dashboard](market-dashboard/) | Phase 3 | 95% | 2026-04-16 | 2026-04-16 | plan, design, report |
 | [auth](auth/) | Phase 4 | 95% | 2026-04-16 | 2026-04-17 | plan, design, analysis, report |
+| [phase4.5-improvements](phase4.5-improvements/) | Phase 4.5 | 96.4% | 2026-04-17 | 2026-04-17 | plan, design, analysis, report |
+
+## phase4.5-improvements — Phase 4.5 캔들 DB + 마이페이지 + 알림 UX + Rate Limiter
+
+캔들 DB 레이어(Yahoo Finance on-demand + 일간 배치) + 마이페이지 4섹션 리디자인 + 종목 상세 알림 버튼 + Rate Limiter(Token Bucket) + 회원 탈퇴(soft delete, 2년 보관) + 잔여 Gap 8건 해소. Match Rate 96.4%, iteration 0회.
+
+- **범위**: BE 캔들 인프라(Flyway V8/V9, YahooFinanceClient, CandleService, CandleBatchScheduler) + FE 마이페이지(6 컴포넌트) + 알림 설정 모달 + Rate Limiter + 계정 삭제/복구 + 법적 문서 업데이트
+- **결과**: 25 commits, 63 파일, +3,246 lines. 설계 14 steps 중 13 fully implemented, 1 partial→fixed
+- **PR**: #11 squash-merged (`754a01b`)
+- **설계 외 추가 구현**: 회원 탈퇴(soft delete + Supabase ban), 재가입 시 계정 복구(unban + restore), 이용약관 9조 확장, 개인정보 처리방침 현행화, cursor-pointer 전수 적용(17 FE 파일)
+
+**링크**: [plan](phase4.5-improvements/phase4.5-improvements.plan.md) · [design](phase4.5-improvements/phase4.5-improvements.design.md) · [analysis](phase4.5-improvements/phase4.5-improvements.analysis.md) · [report](phase4.5-improvements/phase4.5-improvements.report.md)
 
 ## auth — Phase 4 인증 / 북마크 / Web Push 알림
 

@@ -17,6 +17,12 @@ export function upsertNotificationSetting(
   });
 }
 
+export function deleteNotificationSetting(ticker: string): Promise<void> {
+  return apiFetch(`/notifications/settings/${encodeURIComponent(ticker)}`, {
+    method: 'DELETE',
+  });
+}
+
 export function pushSubscribe(subscription: PushSubscription): Promise<{ subscribed: boolean }> {
   const json = subscription.toJSON();
   return apiFetch('/push/subscribe', {

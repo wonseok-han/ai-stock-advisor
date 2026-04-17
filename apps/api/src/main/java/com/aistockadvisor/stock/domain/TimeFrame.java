@@ -1,32 +1,32 @@
 package com.aistockadvisor.stock.domain;
 
-import java.time.Duration;
-
 /**
  * 차트 타임프레임. provider 별 해상도 + 반환 bar 개수 매핑.
- * 참조: docs/02-design/features/mvp.design.md §3.2, §3.4.
+ * 참조: docs/02-design/features/phase4.5-improvements.design.md §4.2.
  *
- * <p>OHLCV provider 는 Twelve Data (Finnhub 무료 /candle 403 우회).
- * Twelve Data interval 규격: "1min","5min","15min","30min","1h","1day","1week","1month".
- * <p>lookback 은 참고용 (provider 가 epoch-from/to 를 요구할 때 사용).
+ * <p>Phase 4.5 변경: D1(intraday)만 TwelveData API, W1~Y5는 DB 일봉 기반.
+ * <p>OHLCV provider 는 Twelve Data (intraday) + Yahoo Finance (daily DB).
  */
 public enum TimeFrame {
 
-    D1("5min",   78,  Duration.ofDays(1)),
-    W1("30min",  70,  Duration.ofDays(7)),
-    M1("1day",   30,  Duration.ofDays(30)),
-    M3("1day",   90,  Duration.ofDays(90)),
-    Y1("1day",   260, Duration.ofDays(365)),
-    Y5("1week",  260, Duration.ofDays(365L * 5));
+    D1("5min",    78,    1, false),
+    W1("1day",     5,    7,  true),
+    M1("1day",    22,   30,  true),
+    M3("1day",    66,   90,  true),
+    Y1("1day",   252,  365,  true),
+    Y5("1day",  1260, 1825,  true);
 
     private final String twelveDataInterval;
     private final int outputSize;
-    private final Duration lookback;
+    /** lookback 기간 (일 단위). LocalDate.minusDays() 에 직접 사용. */
+    private final long lookbackDays;
+    private final boolean dbBacked;
 
-    TimeFrame(String twelveDataInterval, int outputSize, Duration lookback) {
+    TimeFrame(String twelveDataInterval, int outputSize, long lookbackDays, boolean dbBacked) {
         this.twelveDataInterval = twelveDataInterval;
         this.outputSize = outputSize;
-        this.lookback = lookback;
+        this.lookbackDays = lookbackDays;
+        this.dbBacked = dbBacked;
     }
 
     public String twelveDataInterval() {
@@ -37,8 +37,13 @@ public enum TimeFrame {
         return outputSize;
     }
 
-    public Duration lookback() {
-        return lookback;
+    public long lookbackDays() {
+        return lookbackDays;
+    }
+
+    /** true이면 DB 일봉 기반 조회, false��면 TwelveData API 실시간. */
+    public boolean dbBacked() {
+        return dbBacked;
     }
 
     /** 외부 입력 ("1D","1W","1M","3M","1Y","5Y") → enum. */

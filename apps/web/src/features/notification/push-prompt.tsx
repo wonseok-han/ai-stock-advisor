@@ -20,7 +20,7 @@ export function PushPrompt() {
         <button
           onClick={unsubscribe}
           disabled={loading}
-          className="text-sm text-red-600 hover:underline disabled:opacity-50"
+          className="cursor-pointer text-sm text-red-600 hover:underline disabled:opacity-50"
         >
           푸시 알림 해제
         </button>
@@ -28,7 +28,7 @@ export function PushPrompt() {
         <button
           onClick={subscribe}
           disabled={loading}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="cursor-pointer rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           푸시 알림 받기
         </button>

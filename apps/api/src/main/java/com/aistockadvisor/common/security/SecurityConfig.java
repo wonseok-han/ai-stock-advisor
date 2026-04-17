@@ -10,8 +10,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import com.aistockadvisor.common.web.RateLimitFilter;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security 설정.
@@ -30,6 +32,12 @@ public class SecurityConfig {
 
     @Value("${app.supabase.url:}")
     private String supabaseUrl;
+
+    private final RateLimitFilter rateLimitFilter;
+
+    public SecurityConfig(RateLimitFilter rateLimitFilter) {
+        this.rateLimitFilter = rateLimitFilter;
+    }
 
     /** 인증 필요 API — JWT 검증 적용 */
     @Bean
@@ -59,6 +67,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 

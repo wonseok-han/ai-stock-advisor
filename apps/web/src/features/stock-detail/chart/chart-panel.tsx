@@ -15,14 +15,15 @@ import { getCandles } from '@/lib/api/stocks';
 import type { Candle, TimeFrame } from '@/types/stock';
 
 /**
- * TradingView Lightweight Charts 기반 캔들 차트 (design §4.2).
- * BE /api/v1/stocks/{ticker}/candles?tf=... 로드.
- * 실패 시 메시지 표시. 리사이즈는 ResizeObserver.
+ * TradingView Lightweight Charts 기반 캔들 차트 + 거래량 서브차트.
+ * Phase 4.5: 거래량 히스토그램 추가, D1일 때만 시간 표시.
+ * 참조: docs/02-design/features/phase4.5-improvements.design.md §6.3
  */
 export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
   const { data, isLoading, error } = useQuery<Candle[]>({
     queryKey: ['candles', ticker, tf],
@@ -34,7 +35,7 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
     const el = containerRef.current;
     if (!el) return;
     const chart = createChart(el, {
-      height: 360,
+      height: 400,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#71717a',
@@ -44,17 +45,31 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
         horzLines: { color: 'rgba(228,228,231,0.4)' },
       },
       rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false, timeVisible: false },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: tf === '1D',
+      },
     });
-    const series = chart.addCandlestickSeries({
+
+    const candleSeries = chart.addCandlestickSeries({
       upColor: '#16a34a',
       downColor: '#dc2626',
       borderVisible: false,
       wickUpColor: '#16a34a',
       wickDownColor: '#dc2626',
     });
+
+    const volumeSeries = chart.addHistogramSeries({
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+    });
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    });
+
     chartRef.current = chart;
-    seriesRef.current = series;
+    candleSeriesRef.current = candleSeries;
+    volumeSeriesRef.current = volumeSeries;
 
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -67,14 +82,17 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
-      seriesRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
     };
-  }, []);
+  }, [tf]);
 
   useEffect(() => {
-    const series = seriesRef.current;
-    if (!series || !data) return;
-    series.setData(
+    const candleSeries = candleSeriesRef.current;
+    const volumeSeries = volumeSeriesRef.current;
+    if (!candleSeries || !volumeSeries || !data) return;
+
+    candleSeries.setData(
       data.map((c) => ({
         time: c.time as UTCTimestamp,
         open: c.open,
@@ -83,6 +101,15 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
         close: c.close,
       })),
     );
+
+    volumeSeries.setData(
+      data.map((c) => ({
+        time: c.time as UTCTimestamp,
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(22,163,74,0.3)' : 'rgba(220,38,38,0.3)',
+      })),
+    );
+
     chartRef.current?.timeScale().fitContent();
   }, [data]);
 

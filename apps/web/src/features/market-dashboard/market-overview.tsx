@@ -39,7 +39,7 @@ export function MarketOverview() {
         </p>
         <button
           onClick={() => refetch()}
-          className="mt-2 text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="mt-2 cursor-pointer text-xs text-blue-600 hover:underline dark:text-blue-400"
         >
           다시 시도
         </button>
