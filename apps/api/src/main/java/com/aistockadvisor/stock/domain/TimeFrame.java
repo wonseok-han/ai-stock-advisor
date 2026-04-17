@@ -1,7 +1,5 @@
 package com.aistockadvisor.stock.domain;
 
-import java.time.Duration;
-
 /**
  * 차트 타임프레임. provider 별 해상도 + 반환 bar 개수 매핑.
  * 참조: docs/02-design/features/phase4.5-improvements.design.md §4.2.
@@ -11,22 +9,23 @@ import java.time.Duration;
  */
 public enum TimeFrame {
 
-    D1("5min",    78, Duration.ofDays(1),    false),
-    W1("1day",     5, Duration.ofDays(7),     true),
-    M1("1day",    22, Duration.ofDays(30),    true),
-    M3("1day",    66, Duration.ofDays(90),    true),
-    Y1("1day",   252, Duration.ofDays(365),   true),
-    Y5("1day",  1260, Duration.ofDays(365L * 5), true);
+    D1("5min",    78,    1, false),
+    W1("1day",     5,    7,  true),
+    M1("1day",    22,   30,  true),
+    M3("1day",    66,   90,  true),
+    Y1("1day",   252,  365,  true),
+    Y5("1day",  1260, 1825,  true);
 
     private final String twelveDataInterval;
     private final int outputSize;
-    private final Duration lookback;
+    /** lookback 기간 (일 단위). LocalDate.minusDays() 에 직접 사용. */
+    private final long lookbackDays;
     private final boolean dbBacked;
 
-    TimeFrame(String twelveDataInterval, int outputSize, Duration lookback, boolean dbBacked) {
+    TimeFrame(String twelveDataInterval, int outputSize, long lookbackDays, boolean dbBacked) {
         this.twelveDataInterval = twelveDataInterval;
         this.outputSize = outputSize;
-        this.lookback = lookback;
+        this.lookbackDays = lookbackDays;
         this.dbBacked = dbBacked;
     }
 
@@ -38,8 +37,8 @@ public enum TimeFrame {
         return outputSize;
     }
 
-    public Duration lookback() {
-        return lookback;
+    public long lookbackDays() {
+        return lookbackDays;
     }
 
     /** true이면 DB 일봉 기반 조회, false��면 TwelveData API 실시간. */

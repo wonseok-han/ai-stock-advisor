@@ -79,7 +79,7 @@ public class CandleService {
     /** W1~Y5: DB 우선 → on-demand Yahoo fallback → 비동기 persist. */
     private List<Candle> getDailyCandles(String ticker, TimeFrame tf) {
         LocalDate to = LocalDate.now(ZoneOffset.UTC);
-        LocalDate from = to.minus(tf.lookback());
+        LocalDate from = to.minusDays(tf.lookbackDays());
 
         List<CandleEntity> entities = candleRepo
                 .findByTickerAndTradeDateBetweenOrderByTradeDateAsc(ticker, from, to);
