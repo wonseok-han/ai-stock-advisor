@@ -30,7 +30,7 @@ export function ProfileSection({ user, onSignOut }: { user: User; onSignOut: () 
       </div>
       <button
         onClick={onSignOut}
-        className="shrink-0 rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+        className="shrink-0 cursor-pointer rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
       >
         로그아웃
       </button>
