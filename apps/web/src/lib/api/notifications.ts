@@ -3,14 +3,14 @@ import { apiFetch } from '@/lib/api/client';
 import type { NotificationSetting, NotificationSettingRequest } from '@/types/notification';
 
 export function getNotificationSettings(): Promise<NotificationSetting[]> {
-  return apiFetch('/api/v1/notifications/settings');
+  return apiFetch('/notifications/settings');
 }
 
 export function upsertNotificationSetting(
   ticker: string,
   req: NotificationSettingRequest,
 ): Promise<NotificationSetting> {
-  return apiFetch(`/api/v1/notifications/settings/${encodeURIComponent(ticker)}`, {
+  return apiFetch(`/notifications/settings/${encodeURIComponent(ticker)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -19,7 +19,7 @@ export function upsertNotificationSetting(
 
 export function pushSubscribe(subscription: PushSubscription): Promise<{ subscribed: boolean }> {
   const json = subscription.toJSON();
-  return apiFetch('/api/v1/push/subscribe', {
+  return apiFetch('/push/subscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -33,7 +33,7 @@ export function pushSubscribe(subscription: PushSubscription): Promise<{ subscri
 }
 
 export function pushUnsubscribe(endpoint: string): Promise<void> {
-  return apiFetch('/api/v1/push/unsubscribe', {
+  return apiFetch('/push/unsubscribe', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ endpoint }),
@@ -41,5 +41,5 @@ export function pushUnsubscribe(endpoint: string): Promise<void> {
 }
 
 export function getVapidKey(): Promise<{ publicKey: string }> {
-  return apiFetch('/api/v1/push/vapid-key');
+  return apiFetch('/push/vapid-key');
 }
