@@ -66,6 +66,43 @@ public class AccountService {
         banSupabaseUser(userId);
     }
 
+    /**
+     * 탈퇴 계정 복구: Supabase ban 해제 + deleted_accounts 레코드 삭제.
+     * @return true if reactivated, false if email not found in deleted_accounts.
+     */
+    @Transactional
+    public boolean reactivateAccount(String email) {
+        return deletedAccountRepo.findByEmail(email)
+                .map(entity -> {
+                    unbanSupabaseUser(entity.getUserId());
+                    deletedAccountRepo.delete(entity);
+                    log.info("account reactivated for email {}", email);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    private void unbanSupabaseUser(UUID userId) {
+        if (supabaseUrl.isBlank() || serviceRoleKey.isBlank()) {
+            log.warn("account reactivate: Supabase credentials not configured, skipping unban");
+            return;
+        }
+
+        try {
+            restClient.put()
+                    .uri(supabaseUrl + "/auth/v1/admin/users/{id}", userId)
+                    .header("apikey", serviceRoleKey)
+                    .header("Authorization", "Bearer " + serviceRoleKey)
+                    .header("Content-Type", "application/json")
+                    .body("{\"ban_duration\":\"none\"}")
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("account reactivate: Supabase user {} unbanned", userId);
+        } catch (Exception ex) {
+            log.error("account reactivate: Supabase unban failed for user {}: {}", userId, ex.getMessage());
+        }
+    }
+
     private void banSupabaseUser(UUID userId) {
         if (supabaseUrl.isBlank() || serviceRoleKey.isBlank()) {
             log.warn("account delete: Supabase credentials not configured, skipping ban");

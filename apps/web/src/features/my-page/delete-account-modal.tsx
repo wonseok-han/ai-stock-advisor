@@ -29,7 +29,7 @@ export function DeleteAccountModal({ open, onClose, onConfirm, isLoading }: Dele
           <ul className="list-disc space-y-1 pl-5">
             <li>북마크, 알림 설정 등 모든 데이터가 삭제됩니다.</li>
             <li>개인정보는 관련 법령에 따라 2년간 보관 후 파기됩니다.</li>
-            <li>탈퇴 후에는 동일 계정으로 재가입할 수 없습니다.</li>
+            <li>탈퇴 후 동일 이메일로 재가입 시 계정을 복구할 수 있습니다.</li>
           </ul>
         </div>
 

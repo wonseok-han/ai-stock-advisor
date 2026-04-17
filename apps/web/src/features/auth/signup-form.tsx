@@ -1,25 +1,27 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { reactivateAccount } from "@/lib/api/auth";
 
 /**
  * 이메일/비밀번호 회원가입 폼.
+ * 탈퇴 계정 재가입 시 복구 플로우 지원.
  */
 export function SignupForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [result, setResult] = useState<'idle' | 'signup-success' | 'reactivated'>('idle');
+  const [showReactivate, setShowReactivate] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setShowReactivate(false);
 
     if (password !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.");
@@ -43,16 +45,51 @@ export function SignupForm() {
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      if (signUpError.message.toLowerCase().includes("already registered")) {
+        setShowReactivate(true);
+        setError("이미 등록된 이메일입니다.");
+      } else {
+        setError(signUpError.message);
+      }
       setIsLoading(false);
       return;
     }
 
-    setSuccess(true);
+    setResult('signup-success');
     setIsLoading(false);
   };
 
-  if (success) {
+  const handleReactivate = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    const reactivated = await reactivateAccount(email);
+    if (reactivated) {
+      setShowReactivate(false);
+      setResult('reactivated');
+      setError(null);
+    } else {
+      setShowReactivate(false);
+      setError("이미 등록된 이메일입니다. 로그인을 시도해 주세요.");
+    }
+
+    setIsLoading(false);
+  };
+
+  if (result === 'reactivated') {
+    return (
+      <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
+        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+          계정이 복구되었습니다.
+        </p>
+        <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+          기존 이메일과 비밀번호로 로그인해 주세요.
+        </p>
+      </div>
+    );
+  }
+
+  if (result === 'signup-success') {
     return (
       <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
         <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -125,6 +162,22 @@ export function SignupForm() {
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+
+      {showReactivate && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            이전에 탈퇴한 계정이 있을 수 있습니다.
+          </p>
+          <button
+            type="button"
+            onClick={handleReactivate}
+            disabled={isLoading}
+            className="mt-2 w-full rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {isLoading ? "복구 중..." : "계정 복구하기"}
+          </button>
+        </div>
       )}
 
       <button

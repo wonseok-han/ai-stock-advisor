@@ -13,3 +13,16 @@ export function deleteAccount(reason?: string): Promise<void> {
     body: reason ? JSON.stringify({ reason }) : undefined,
   });
 }
+
+export async function reactivateAccount(email: string): Promise<boolean> {
+  try {
+    await apiFetch('/auth/reactivate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
