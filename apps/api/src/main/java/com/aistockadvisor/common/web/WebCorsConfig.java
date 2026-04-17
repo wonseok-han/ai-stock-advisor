@@ -1,17 +1,21 @@
 package com.aistockadvisor.common.web;
 
+import java.util.Arrays;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * CORS 설정.
- * application.yml 의 app.cors.allowed-origins 를 읽어 /api/** 경로에 허용 origin 적용.
- * 콤마 구분 복수 origin 지원. MVP 는 credentials 비활성 (JWT Phase 4 이후 재검토).
+ * CorsConfigurationSource 빈으로 등록하여 Spring Security 필터 체인에서도 적용.
+ * (WebMvcConfigurer 방식은 Security 체인이 먼저 가로채면 CORS 미적용됨)
  */
 @Configuration
-public class WebCorsConfig implements WebMvcConfigurer {
+public class WebCorsConfig {
 
     private final String[] allowedOrigins;
 
@@ -22,13 +26,18 @@ public class WebCorsConfig implements WebMvcConfigurer {
                 : origins.split("\\s*,\\s*");
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins(allowedOrigins)
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .exposedHeaders("X-Request-Id")
-                .maxAge(3600);
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.addAllowedHeader("*");
+        config.addExposedHeader("X-Request-Id");
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
     }
 }

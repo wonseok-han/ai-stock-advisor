@@ -32,7 +32,7 @@ app:
     gemini:
       api-key: YOUR_GEMINI_API_KEY
   supabase:
-    jwt-secret: YOUR_SUPABASE_JWT_SECRET
+    url: https://YOUR_PROJECT_REF.supabase.co
 
 logging:
   level:
