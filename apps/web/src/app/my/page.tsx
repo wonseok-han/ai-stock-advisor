@@ -3,16 +3,17 @@
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/auth-provider';
-import { BookmarkList } from '@/features/bookmark/bookmark-list';
-import { NotificationSettings } from '@/features/notification/notification-settings';
-import { PushPrompt } from '@/features/notification/push-prompt';
+import { ProfileSection } from '@/features/my-page/profile-section';
+import { BookmarkGrid } from '@/features/my-page/bookmark-grid';
+import { NotificationSection } from '@/features/my-page/notification-section';
+import { AccountSection } from '@/features/my-page/account-section';
 
 export default function MyPage() {
   const { user, isLoading, signOut } = useAuth();
   const router = useRouter();
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm text-gray-500">로딩 중...</div>;
+    return <div className="py-12 text-center text-sm text-zinc-500">로딩 중...</div>;
   }
 
   if (!user) {
@@ -21,33 +22,26 @@ export default function MyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-6">
+    <div className="mx-auto max-w-2xl space-y-6 py-6">
+      <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">마이페이지</h1>
+
+      <ProfileSection user={user} />
+
       <section>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">마이페이지</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+        <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
+          내 북마크
+        </h2>
+        <BookmarkGrid />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">내 북마크</h2>
-        <BookmarkList />
+        <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
+          알림 설정
+        </h2>
+        <NotificationSection />
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">알림 설정</h2>
-        <PushPrompt />
-        <div className="mt-4">
-          <NotificationSettings />
-        </div>
-      </section>
-
-      <section className="border-t border-gray-200 pt-6 dark:border-gray-700">
-        <button
-          onClick={signOut}
-          className="text-sm text-red-600 hover:underline"
-        >
-          로그아웃
-        </button>
-      </section>
+      <AccountSection onSignOut={signOut} />
     </div>
   );
 }
