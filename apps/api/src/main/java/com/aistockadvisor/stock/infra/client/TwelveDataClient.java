@@ -88,7 +88,7 @@ public class TwelveDataClient {
                 resp.low() != null ? resp.low() : resp.close(),
                 resp.open() != null ? resp.open() : resp.close(),
                 prev,
-                0L,
+                resp.volume() != null ? resp.volume() : 0L,
                 OffsetDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC)
         );
     }
@@ -193,6 +193,7 @@ public class TwelveDataClient {
             BigDecimal change,
             BigDecimal percent_change,
             BigDecimal previous_close,
+            Long volume,
             Long timestamp
     ) {
     }
