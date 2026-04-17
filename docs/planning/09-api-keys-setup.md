@@ -149,10 +149,63 @@ GEMINI_API_KEY=your_gemini_api_key_here
    - Password: 프로젝트 생성 시 설정한 값
    - Database: `postgres`
 
-### JWT Secret 확인 (Phase 4 Auth용)
+### Publishable Key 확인 (Phase 4 Auth용)
 
 1. **Settings** → **API** 클릭
-2. **JWT Settings** 섹션 → **JWT Secret** 복사
+2. **Project API keys** 섹션:
+   - `publishable` (= 구 anon key): FE에서 사용 — 브라우저에 노출 가능
+   - `secret` (= 구 service_role key): 서버 전용 — 절대 노출 금지
+
+> BE(Spring Boot)는 별도의 secret key 없이 JWKS endpoint(`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`)로 JWT 서명을 검증합니다.
+
+### Google OAuth 설정 (Phase 4 소셜 로그인)
+
+FE의 "Google로 계속" 버튼이 동작하려면 Google Cloud Console + Supabase 양쪽 설정이 필요합니다.
+
+#### A. Google Cloud Console — OAuth 동의 화면
+
+1. https://console.cloud.google.com 접속 → Google 계정 로그인
+2. 프로젝트가 없으면 상단 프로젝트 선택 → **New Project** 생성 (예: `ai-stock-advisor`)
+3. 좌측 메뉴 **APIs & Services** → **OAuth consent screen**
+4. User Type: **External** 선택 → **Create**
+5. 앱 정보 입력:
+   - App name: `AI Stock Advisor`
+   - User support email: 본인 이메일
+   - Developer contact email: 본인 이메일
+6. **Scopes** → **Add or remove scopes** → `email`, `profile`, `openid` 선택 → **Save**
+7. **Test users** → 본인 이메일 추가 (앱이 "Testing" 상태일 때 테스트 가능)
+8. **Save and Continue** → 완료
+
+#### B. Google Cloud Console — OAuth Client ID 생성
+
+1. 좌측 메뉴 **APIs & Services** → **Credentials**
+2. 상단 **+ CREATE CREDENTIALS** → **OAuth client ID**
+3. Application type: **Web application**
+4. Name: `AI Stock Advisor` (자유)
+5. **Authorized JavaScript origins** 추가:
+   - `http://localhost:3000` (로컬 개발)
+   - `https://your-app.vercel.app` (배포 후 추가)
+6. **Authorized redirect URIs** 추가:
+   - `https://{project-ref}.supabase.co/auth/v1/callback`
+   > `{project-ref}`는 Supabase Dashboard URL에서 확인 (예: `abcdefghij.supabase.co`)
+7. **Create** 클릭
+8. 팝업에서 **Client ID** 와 **Client Secret** 복사
+
+#### C. Supabase Dashboard — Google Provider 활성화
+
+1. https://supabase.com/dashboard → 프로젝트 선택
+2. 좌측 **Authentication** → **Providers**
+3. **Google** 클릭
+4. **Enable Sign in with Google** 토글 ON
+5. **Client ID**: B단계에서 복사한 값 붙여넣기
+6. **Client Secret**: B단계에서 복사한 값 붙여넣기
+7. **Save**
+
+#### 주의
+
+- 앱이 Google에서 **Testing** 상태인 동안에는 **Test users에 등록된 계정만** 로그인 가능
+- 실서비스 공개 시: OAuth consent screen → **Publishing status** → **In production** 변경 → Google 심사 필요 (간단한 앱은 보통 즉시 통과)
+- Redirect URI를 틀리면 `redirect_uri_mismatch` 에러 발생 — Google Console과 Supabase 양쪽의 URI가 정확히 일치해야 함
 
 ### 환경변수
 
@@ -162,15 +215,17 @@ DATABASE_URL=jdbc:postgresql://aws-0-ap-northeast-2.pooler.supabase.com:6543/pos
 DATABASE_USERNAME=postgres.your-project-ref
 DATABASE_PASSWORD=your_database_password
 
-# Phase 4 Auth
-SUPABASE_JWT_SECRET=your_jwt_secret
+# Phase 4 Auth — JWKS 기반 JWT 검증 (secret key 불필요)
+SUPABASE_URL=https://your-project-ref.supabase.co
 ```
 
 ```
 # apps/web/.env.local (Phase 4 Auth)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 ```
+
+> Google OAuth의 Client ID / Client Secret은 **Supabase 콘솔에만 입력**합니다. 코드나 환경변수에 넣을 필요 없습니다.
 
 ### 로컬 개발 시
 
@@ -318,7 +373,7 @@ NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
 | `NEXT_PUBLIC_API_BASE_URL` | - | ✅ | `http://localhost:8080/api/v1` (로컬) |
 | `NEXT_PUBLIC_SITE_URL` | - | ✅ | `http://localhost:3000` (로컬) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Phase 4 | `https://{ref}.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Phase 4 | Settings → API → anon/public |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase | Phase 4 | Settings → API → anon/public |
 
 ---
 

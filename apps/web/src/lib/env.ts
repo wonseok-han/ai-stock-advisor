@@ -15,4 +15,6 @@ export const env = {
     'NEXT_PUBLIC_API_BASE_URL',
     process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1',
   ),
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  supabasePublishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
 } as const;

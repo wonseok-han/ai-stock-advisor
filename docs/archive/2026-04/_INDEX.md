@@ -9,6 +9,19 @@
 | [phase2.1-metrics-fe-refactor](phase2.1-metrics-fe-refactor/) | Phase 2.1 | 100% | 2026-04-14 | 2026-04-14 | plan, design, analysis, report |
 | [phase2.2-prompt-externalization](phase2.2-prompt-externalization/) | Phase 2.2 | 96% | 2026-04-15 | 2026-04-15 | plan, design, analysis, report |
 | [market-dashboard](market-dashboard/) | Phase 3 | 95% | 2026-04-16 | 2026-04-16 | plan, design, report |
+| [auth](auth/) | Phase 4 | 95% | 2026-04-16 | 2026-04-17 | plan, design, analysis, report |
+
+## auth — Phase 4 인증 / 북마크 / Web Push 알림
+
+Supabase Auth + Spring Security JWT 기반 인증, 북마크 CRUD, Web Push 알림. Match Rate 95%, iteration 0회.
+
+- **범위**: Phase 4.0 인증 기반 (Google OAuth + 이메일, ES256 JWKS JWT 검증, two-chain SecurityFilterChain) + Phase 4.1 북마크 CRUD (BE + FE + 마이페이지) + Phase 4.2 Web Push (VAPID, Service Worker, 15분 스케줄러)
+- **결과**: 78 파일, +4,369 lines. BE 29/29, FE 27/27, DB 마이그레이션 100% 일치, 규칙 준수 97%
+- **PR**: #10 squash-merged (`88f64ee`)
+- **의도적 개선 6건**: two-chain Security, ES256+RS256, route.ts callback, VAPID API endpoint, AuthGuardModal, BigDecimal price
+- **버그 수정 7건**: 401 on all APIs, ddl-auto data loss, Supabase bulk insert timeout, CORS protected chain, ES256 algorithm mismatch, API path prefix duplication, bookmark link path
+
+**링크**: [plan](auth/auth.plan.md) · [design](auth/auth.design.md) · [analysis](auth/auth.analysis.md) · [report](auth/auth.report.md)
 
 ## market-dashboard — Phase 3 시장 대시보드
 

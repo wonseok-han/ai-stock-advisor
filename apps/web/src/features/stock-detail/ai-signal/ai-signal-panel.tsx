@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+
+import { useAuth } from '@/features/auth/auth-provider';
 import { useAiSignal } from '@/features/stock-detail/ai-signal/hooks/use-ai-signal';
 import { cn } from '@/lib/cn';
 
@@ -8,10 +11,70 @@ import type { TimeFrame } from '@/types/stock';
 
 /**
  * AI 시그널 패널 (design §4.1, §4.2).
- * - 5-class 시그널 + 신뢰도 + 근거/리스크 + 중립 fallback 시 안내 배너
+ * - 비로그인: 미리보기 카드 + 로그인 유도
+ * - 로그인: 5-class 시그널 + 신뢰도 + 근거/리스크 + 중립 fallback 시 안내 배너
  * - 면책 문구 상시 노출. 숫자 confidence 는 바/%로 시각화.
  */
 export function AiSignalPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
+  const { user, isLoading: authLoading } = useAuth();
+
+  if (!authLoading && !user) {
+    return <AiSignalPreview />;
+  }
+
+  return <AiSignalContent ticker={ticker} tf={tf} />;
+}
+
+function AiSignalPreview() {
+  return (
+    <section
+      aria-label="AI 참고 분석 미리보기"
+      className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <div className="mb-3">
+        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+          AI 참고 분석
+        </h2>
+      </div>
+      {/* 블러 처리된 더미 콘텐츠 */}
+      <div className="select-none blur-sm" aria-hidden="true">
+        <div className="rounded-md border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="flex items-center justify-between">
+            <span className="rounded-sm bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-500">
+              시그널
+            </span>
+            <span className="text-xs text-zinc-500">신뢰도 --%</span>
+          </div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div className="h-full w-3/5 rounded-full bg-zinc-400" />
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
+          AI가 시장 데이터, 기술 지표, 뉴스를 종합 분석하여 생성한 참고 시그널입니다.
+        </p>
+      </div>
+      {/* 로그인 유도 오버레이 */}
+      <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-zinc-900/80">
+        <div className="text-center">
+          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+            AI 분석 시그널은 로그인 후 이용할 수 있습니다
+          </p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            매수/매도/중립 시그널과 근거를 AI가 분석해 드립니다
+          </p>
+          <Link
+            href="/auth/login"
+            className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            로그인하기
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AiSignalContent({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
   const { data, isLoading, error } = useAiSignal(ticker, tf);
 
   if (isLoading) {
