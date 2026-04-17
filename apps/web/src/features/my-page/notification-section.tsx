@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useDeleteNotificationSetting,
   useNotificationSettings,
   useUpsertNotificationSetting,
 } from '@/features/notification/hooks/use-notification-settings';
@@ -11,6 +12,7 @@ import type { NotificationSetting } from '@/types/notification';
 export function NotificationSection() {
   const { data, isLoading } = useNotificationSettings();
   const upsertMutation = useUpsertNotificationSetting();
+  const deleteMutation = useDeleteNotificationSetting();
 
   function handleToggle(
     setting: NotificationSetting,
@@ -77,6 +79,16 @@ export function NotificationSection() {
                 <ToggleChip label="뉴스" active={s.onNewNews} onClick={() => handleToggle(s, 'onNewNews')} />
                 <ToggleChip label="시그널" active={s.onSignalChange} onClick={() => handleToggle(s, 'onSignalChange')} />
                 <ToggleChip label="활성" active={s.enabled} onClick={() => handleToggle(s, 'enabled')} />
+                <button
+                  onClick={() => deleteMutation.mutate(s.ticker)}
+                  disabled={deleteMutation.isPending}
+                  className="ml-1 rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                  aria-label={`${s.ticker} 알림 해제`}
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))}
