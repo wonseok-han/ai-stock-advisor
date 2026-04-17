@@ -31,12 +31,24 @@ export default function TermsPage() {
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           제2조 (면책)
         </h2>
-        <p>
-          서비스 이용 결과 발생한 투자 손익의 책임은 이용자 본인에게 있습니다.
-          서비스 운영자는 제공 정보의 정확성·완전성·적시성에 대해 보증하지
-          않으며, 이용자에게 발생한 직·간접 손해에 대해 법령이 허용하는 최대
-          범위에서 책임을 지지 않습니다.
-        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            서비스 이용 결과 발생한 투자 손익의 책임은 이용자 본인에게 있습니다.
+          </li>
+          <li>
+            서비스 운영자는 제공 정보의 정확성·완전성·적시성에 대해 보증하지
+            않으며, 이용자에게 발생한 직·간접 손해에 대해 법령이 허용하는 최대
+            범위에서 책임을 지지 않습니다.
+          </li>
+          <li>
+            본 서비스의 AI 분석 결과는 공개된 시장 데이터와 뉴스를 기반으로 한
+            알고리즘 출력이며, 전문 금융 자문이 아닙니다. AI 분석에 기반한 투자
+            판단의 책임은 전적으로 이용자에게 있습니다.
+          </li>
+          <li>
+            과거 데이터에 기반한 기술 지표·시그널은 미래 수익을 보장하지 않습니다.
+          </li>
+        </ul>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           제3조 (금지 행위)
@@ -93,7 +105,27 @@ export default function TermsPage() {
         </ul>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          제6조 (서비스 변경·중단)
+          제6조 (지적재산권)
+        </h2>
+        <ul className="list-disc pl-6">
+          <li>
+            서비스에서 제공하는 AI 분석 결과, 차트, 기술 지표, UI 디자인 등
+            일체의 콘텐츠에 대한 저작권 및 지적재산권은 서비스 운영자에게
+            귀속됩니다.
+          </li>
+          <li>
+            이용자는 서비스 콘텐츠를 개인적·비상업적 용도로만 이용할 수 있으며,
+            운영자의 사전 서면 동의 없이 복제·배포·전송·2차 저작물 작성 등에
+            이용할 수 없습니다.
+          </li>
+          <li>
+            시세·뉴스 등 외부 제공자로부터 수신한 데이터의 저작권은 해당
+            제공자에게 있습니다.
+          </li>
+        </ul>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제7조 (서비스 변경·중단)
         </h2>
         <p>
           운영자는 서비스 내용·구성·제공 조건을 예고 없이 변경하거나 운영상·
@@ -102,7 +134,25 @@ export default function TermsPage() {
         </p>
 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          제7조 (준거법)
+          제8조 (약관의 변경)
+        </h2>
+        <ul className="list-disc pl-6">
+          <li>
+            운영자는 관련 법령에 위배되지 않는 범위에서 본 약관을 변경할 수
+            있습니다.
+          </li>
+          <li>
+            약관이 변경되는 경우 시행일 7일 전부터 서비스 내 공지를 통해
+            고지합니다. 이용자에게 불리한 변경의 경우 30일 전부터 고지합니다.
+          </li>
+          <li>
+            변경된 약관 시행일 이후에도 서비스를 계속 이용하는 경우 변경 약관에
+            동의한 것으로 간주합니다.
+          </li>
+        </ul>
+
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          제9조 (준거법)
         </h2>
         <p>본 약관의 해석과 분쟁 해결은 대한민국 법령을 준거법으로 합니다.</p>
       </section>
