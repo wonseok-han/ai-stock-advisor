@@ -32,7 +32,7 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain protectedFilterChain(HttpSecurity http) throws Exception {
         return http
-                .securityMatcher("/api/v1/me", "/api/v1/bookmarks/**", "/api/v1/push/**", "/api/v1/notifications/**")
+                .securityMatcher("/api/v1/me", "/api/v1/bookmarks/**", "/api/v1/push/**", "/api/v1/notifications/**", "/api/v1/stocks/*/ai-signal")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
