@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { useAddBookmark, useBookmarkCheck } from '@/features/bookmark/hooks/use-bookmarks';
 import {
+  useDeleteNotificationSetting,
   useNotificationSettings,
   useUpsertNotificationSetting,
 } from '@/features/notification/hooks/use-notification-settings';
@@ -18,16 +19,19 @@ const THRESHOLD_OPTIONS = [1, 3, 5, 10];
 function NotificationSettingModalInner({
   ticker,
   onClose,
+  isExisting,
   initialThreshold,
   initialOnNewNews,
   initialOnSignalChange,
 }: Props & {
+  isExisting: boolean;
   initialThreshold: number;
   initialOnNewNews: boolean;
   initialOnSignalChange: boolean;
 }) {
   const { data: bookmarkCheck } = useBookmarkCheck(ticker);
   const upsertMutation = useUpsertNotificationSetting();
+  const deleteMutation = useDeleteNotificationSetting();
   const addBookmarkMutation = useAddBookmark();
 
   const [threshold, setThreshold] = useState<number>(initialThreshold);
@@ -54,7 +58,11 @@ function NotificationSettingModalInner({
     );
   }
 
-  const isPending = upsertMutation.isPending || addBookmarkMutation.isPending;
+  function handleDelete() {
+    deleteMutation.mutate(ticker, { onSuccess: onClose });
+  }
+
+  const isPending = upsertMutation.isPending || addBookmarkMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -106,20 +114,33 @@ function NotificationSettingModalInner({
           </p>
         )}
 
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isPending}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isPending ? '저장 중...' : '저장'}
-          </button>
+        <div className="mt-6 flex items-center justify-between">
+          {isExisting ? (
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="rounded-lg px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+            >
+              알림 해제
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="rounded-lg px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isPending}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isPending ? '저장 중...' : '저장'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -138,6 +159,7 @@ export function NotificationSettingModal({ ticker, onClose }: Props) {
       key={existing ? 'loaded' : 'default'}
       ticker={ticker}
       onClose={onClose}
+      isExisting={!!existing}
       initialThreshold={existing?.priceChangeThreshold ?? 5}
       initialOnNewNews={existing?.onNewNews ?? true}
       initialOnSignalChange={existing?.onSignalChange ?? true}
