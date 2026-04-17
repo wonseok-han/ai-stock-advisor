@@ -1,6 +1,7 @@
 'use client';
 
 import { BookmarkButton } from '@/features/bookmark/bookmark-button';
+import { NotificationButton } from '@/features/stock-detail/notification-button';
 import { useProfile } from '@/features/stock-detail/hooks/use-profile';
 import { useQuote } from '@/features/stock-detail/hooks/use-quote';
 import { cn } from '@/lib/cn';
@@ -38,6 +39,7 @@ export function StockHeader({ ticker }: { ticker: string }) {
             </span>
           )}
           <BookmarkButton ticker={ticker} />
+          <NotificationButton ticker={ticker} />
         </div>
         {profile?.name && (
           <p className="mt-1 text-sm text-zinc-500">{profile.name}</p>

@@ -36,6 +36,12 @@ public class NotificationSettingService {
         return toResponse(entity);
     }
 
+    @Transactional
+    public void delete(UUID userId, String ticker) {
+        settingRepo.findByUserIdAndTicker(userId, ticker.toUpperCase())
+                .ifPresent(settingRepo::delete);
+    }
+
     private NotificationSettingResponse toResponse(NotificationSettingEntity e) {
         return new NotificationSettingResponse(
                 e.getTicker(), e.getPriceChangeThreshold(),

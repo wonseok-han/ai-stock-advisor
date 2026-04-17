@@ -132,7 +132,7 @@ public class MarketOverviewService {
         try {
             Quote q = finnhubClient.quote("USDKRW=X");
             if (q != null && q.price() != null && q.price().signum() > 0) {
-                return new BigDecimal[]{q.price(), q.change()};
+                return new BigDecimal[]{q.price(), resolveChange(q)};
             }
         } catch (BusinessException ex) {
             log.debug("finnhub forex USDKRW failed: {}", ex.getMessage());
@@ -142,12 +142,23 @@ public class MarketOverviewService {
         try {
             Quote q = twelveDataClient.quote("USD/KRW");
             if (q != null && q.price() != null && q.price().signum() > 0) {
-                return new BigDecimal[]{q.price(), q.change()};
+                return new BigDecimal[]{q.price(), resolveChange(q)};
             }
         } catch (BusinessException ex) {
             log.warn("twelvedata forex USD/KRW also failed: {}", ex.getMessage());
         }
 
         return new BigDecimal[]{null, null};
+    }
+
+    private BigDecimal resolveChange(Quote q) {
+        BigDecimal change = q.change();
+        if (change != null && change.signum() != 0) {
+            return change;
+        }
+        if (q.previousClose() != null && q.previousClose().signum() > 0) {
+            return q.price().subtract(q.previousClose());
+        }
+        return change;
     }
 }

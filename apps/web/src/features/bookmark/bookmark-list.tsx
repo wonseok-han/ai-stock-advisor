@@ -49,7 +49,7 @@ export function BookmarkList() {
           <button
             onClick={() => removeMutation.mutate(b.ticker)}
             disabled={removeMutation.isPending}
-            className="ml-3 text-sm text-gray-400 hover:text-red-500 disabled:opacity-50"
+            className="ml-3 cursor-pointer text-sm text-gray-400 hover:text-red-500 disabled:opacity-50"
             aria-label={`${b.ticker} 북마크 해제`}
           >
             삭제

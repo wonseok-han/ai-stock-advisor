@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-04-17 - Phase 4.5 Complete (Data Layer + UX Improvements)
+
+### 📊 Added - Candle Data Layer & Infrastructure
+
+- **Candle Database Layer (on-demand)**
+  - Flyway V8: `candles` table (ticker, trade_date, OHLCV, adj_close, volume)
+  - CandleEntity + CandleId (composite key) + CandleRepository
+  - YahooFinanceClient: Yahoo Finance v8 REST API (free, no API key)
+  - On-demand loading: DB-first → Yahoo fallback → async persist
+  - Partial data detection: triggers reload if entities < 50% of expected
+
+- **Daily Candle Batch Scheduler**
+  - Scheduled job: MON-FRI 22:00 UTC (EST 17:00, after market close)
+  - Auto-syncs open tickers with fresh daily candles
+  - INSERT ON CONFLICT DO NOTHING (prevents duplicates)
+
+- **Rate Limiter (Token Bucket)**
+  - IP-based, custom Token Bucket implementation (no Bucket4j)
+  - Default: 60 req/min capacity, 60 tokens/min refill
+  - Returns 429 when limit exceeded
+  - Public chain filter: protects `/api/v1/**` endpoints
+
+### 🎨 Added - My Page Redesign & Notifications
+
+- **My Page Components**
+  - ProfileSection: Avatar (initials) + email + join date
+  - BookmarkGrid + BookmarkCard: Card grid layout with price/change%
+  - NotificationSection: Global push toggle + per-stock settings
+  - AccountSection: Logout + delete account buttons
+  - DeleteAccountModal: Reason input + 2-year retention notice
+
+- **Stock Detail Notifications**
+  - NotificationButton: Bell icon in stock header (beside bookmark)
+  - NotificationSettingModal: Price threshold ± %, news alerts, signal changes
+  - Auto-bookmark: Non-bookmarked stocks auto-added when setting notifications
+  - Notification delete: Available from both My page and stock detail
+
+- **Chart Improvements**
+  - Volume histogram subchart (colored: green up, red down)
+  - `timeVisible` conditional: Only for 1D (intraday) timeframe
+  - 1W timeframe: Changed from 30-min × 70 to 1-day × 5 (last 5 trading days)
+  - 1M/3M/1Y: DB-backed daily candles (abundant data)
+  - 5Y: Weekly aggregation from daily DB candles
+
+### 🔐 Added - Account Management & Privacy
+
+- **Account Deletion (Soft Delete)**
+  - Flyway V9: `deleted_accounts` table
+  - AccountService: `deleteAccount(userId)` with 2-year retention
+  - AuthController: `DELETE /api/v1/me`
+  - Local data cleanup: Bookmarks, notifications, push subscriptions
+  - Supabase Auth ban: Prevents re-signup attempt
+  - Reactivation: `POST /api/v1/auth/reactivate` on re-signup (unbans + deletes record)
+
+- **Privacy Policy Updates**
+  - Data collection items: email, bookmarks, notifications, push subscription
+  - Retention period: 2 years after account deletion
+  - Reactivation procedure: Re-signup allowed after 2-year cooling-off
+  - AI disclaimer: Service is for reference only, not investment advice
+
+### 🐛 Fixed - Residual Gaps from Phase 1~4
+
+- **SearchHit.exchange**: FE type now nullable (matches BE Record)
+- **Quote.volume**: TwelveData volume field added to response
+- **MarketMover.volume**: FE hides when 0 (FMP API limitation)
+- **usdKrwChange**: `previousClose` fallback when `change` is null/zero
+- **204 No Content**: apiFetch now handles empty responses
+- **ESLint set-state-in-effect**: Fixed in NotificationModal + AuthProvider
+- **Cursor pointer**: Applied to all buttons (17 FE files)
+- **kebab-case files**: Normalized all FE file names (router.replace → useEffect fix)
+
+### 🔧 Changed
+
+- **TimeFrame enum**: `Duration` → `long lookbackDays` (LocalDate compatibility fix)
+- **CandleService**: DB-first logic replaces TwelveData-first for daily+ timeframes
+- **1Y/5Y data**: TwelveData weekly API replaced with DB daily + aggregation
+- **FE components**: File naming standardized to kebab-case (except Next.js reserved files)
+- **Auth design doc**: Documented two-chain + ES256+RS256 implementation differences
+
+### 📝 Documentation
+
+- **Plan**: `docs/01-plan/features/phase4.5-improvements.plan.md` (10 FR + 6 NFR)
+- **Design**: `docs/02-design/features/phase4.5-improvements.design.md` (14 steps)
+- **Analysis**: `docs/03-analysis/phase4.5-improvements.analysis.md` (96.4% match rate)
+- **Report**: `docs/04-report/features/phase4.5-improvements.report.md` (completion)
+
+---
+
 ## [1.0.0] - 2026-04-17 - Phase 4 Complete
 
 ### 🔐 Added - Authentication & Personalization

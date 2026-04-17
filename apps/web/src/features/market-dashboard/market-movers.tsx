@@ -44,7 +44,7 @@ export function MarketMovers() {
         </p>
         <button
           onClick={() => refetch()}
-          className="mt-2 text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="mt-2 cursor-pointer text-xs text-blue-600 hover:underline dark:text-blue-400"
         >
           다시 시도
         </button>
@@ -105,7 +105,7 @@ function MoverList({
           <li key={m.ticker}>
             <button
               onClick={() => router.push(`/stock/${m.ticker}`)}
-              className="flex w-full items-center justify-between gap-3 py-1.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+              className="flex w-full cursor-pointer items-center justify-between gap-3 py-1.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5">
