@@ -79,7 +79,7 @@ app:
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
       timeout-ms: ${GEMINI_TIMEOUT_MS:8000}
   supabase:
-    jwt-secret: ${SUPABASE_JWT_SECRET:}
+    url: ${SUPABASE_URL:}
   legal:
     forbidden-terms-path: ${FORBIDDEN_TERMS_PATH:classpath:legal/forbidden-terms.json}
   cache:

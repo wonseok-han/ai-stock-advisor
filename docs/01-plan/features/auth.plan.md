@@ -280,7 +280,7 @@ apps/web/src/
 | Variable | Purpose | Scope | To Be Created |
 |----------|---------|-------|:-------------:|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL | Client | ☑ (이미 존재 가능) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key | Client | ☑ |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase anon/public key | Client | ☑ |
 | `SUPABASE_JWT_SECRET` | JWT 서명 검증 (Spring Boot) | Server | ☐ |
 | `VAPID_PUBLIC_KEY` | Web Push VAPID 공개키 | Client + Server | ☐ |
 | `VAPID_PRIVATE_KEY` | Web Push VAPID 비밀키 | Server | ☐ |
