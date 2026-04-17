@@ -1,34 +1,18 @@
 'use client';
 
+import { useState } from 'react';
+
 import {
   useDeleteNotificationSetting,
   useNotificationSettings,
-  useUpsertNotificationSetting,
 } from '@/features/notification/hooks/use-notification-settings';
+import { NotificationSettingModal } from '@/features/stock-detail/notification-setting-modal';
 import { PushPrompt } from '@/features/notification/push-prompt';
-
-import type { NotificationSetting } from '@/types/notification';
 
 export function NotificationSection() {
   const { data, isLoading } = useNotificationSettings();
-  const upsertMutation = useUpsertNotificationSetting();
   const deleteMutation = useDeleteNotificationSetting();
-
-  function handleToggle(
-    setting: NotificationSetting,
-    field: 'onNewNews' | 'onSignalChange' | 'enabled',
-  ) {
-    upsertMutation.mutate({
-      ticker: setting.ticker,
-      req: {
-        priceChangeThreshold: setting.priceChangeThreshold,
-        onNewNews: field === 'onNewNews' ? !setting.onNewNews : setting.onNewNews,
-        onSignalChange:
-          field === 'onSignalChange' ? !setting.onSignalChange : setting.onSignalChange,
-        enabled: field === 'enabled' ? !setting.enabled : setting.enabled,
-      },
-    });
-  }
+  const [editingTicker, setEditingTicker] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -65,58 +49,53 @@ export function NotificationSection() {
           {data.map((s) => (
             <div
               key={s.ticker}
-              className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
+              className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50"
             >
-              <div>
+              <button
+                onClick={() => setEditingTicker(s.ticker)}
+                className="flex flex-1 items-center gap-3 text-left"
+              >
                 <span className="font-semibold text-zinc-900 dark:text-white">{s.ticker}</span>
-                {s.priceChangeThreshold != null && (
-                  <span className="ml-2 text-xs text-zinc-500">
-                    가격 ±{s.priceChangeThreshold}%
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <ToggleChip label="뉴스" active={s.onNewNews} onClick={() => handleToggle(s, 'onNewNews')} />
-                <ToggleChip label="시그널" active={s.onSignalChange} onClick={() => handleToggle(s, 'onSignalChange')} />
-                <ToggleChip label="활성" active={s.enabled} onClick={() => handleToggle(s, 'enabled')} />
-                <button
-                  onClick={() => deleteMutation.mutate(s.ticker)}
-                  disabled={deleteMutation.isPending}
-                  className="ml-1 rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                  aria-label={`${s.ticker} 알림 해제`}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+                <span className="text-xs text-zinc-500">±{s.priceChangeThreshold ?? 5}%</span>
+                <div className="flex gap-1.5">
+                  {s.onNewNews && (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      뉴스
+                    </span>
+                  )}
+                  {s.onSignalChange && (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      시그널
+                    </span>
+                  )}
+                  {!s.enabled && (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                      비활성
+                    </span>
+                  )}
+                </div>
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(s.ticker)}
+                disabled={deleteMutation.isPending}
+                className="ml-2 rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                aria-label={`${s.ticker} 알림 해제`}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           ))}
         </div>
       )}
-    </div>
-  );
-}
 
-function ToggleChip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
-        active
-          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-          : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500'
-      }`}
-    >
-      {label}
-    </button>
+      {editingTicker && (
+        <NotificationSettingModal
+          ticker={editingTicker}
+          onClose={() => setEditingTicker(null)}
+        />
+      )}
+    </div>
   );
 }
