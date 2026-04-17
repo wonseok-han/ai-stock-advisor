@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/auth-provider';
@@ -12,13 +13,14 @@ export default function MyPage() {
   const { user, isLoading, signOut } = useAuth();
   const router = useRouter();
 
-  if (isLoading) {
-    return <div className="py-12 text-center text-sm text-zinc-500">로딩 중...</div>;
-  }
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/auth/login');
+    }
+  }, [isLoading, user, router]);
 
-  if (!user) {
-    router.replace('/auth/login');
-    return null;
+  if (isLoading || !user) {
+    return <div className="py-12 text-center text-sm text-zinc-500">로딩 중...</div>;
   }
 
   return (
