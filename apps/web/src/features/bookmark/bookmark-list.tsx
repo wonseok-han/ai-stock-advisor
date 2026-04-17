@@ -30,7 +30,7 @@ export function BookmarkList() {
           key={b.ticker}
           className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
         >
-          <Link href={`/stocks/${b.ticker}`} className="flex-1">
+          <Link href={`/stock/${b.ticker}`} className="flex-1">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-gray-900 dark:text-white">{b.ticker}</span>
               <span className="text-sm text-gray-500 dark:text-gray-400">{b.name}</span>
