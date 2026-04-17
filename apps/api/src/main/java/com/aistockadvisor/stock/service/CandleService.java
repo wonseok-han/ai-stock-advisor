@@ -86,9 +86,26 @@ public class CandleService {
 
         // DB 데이터가 없거나 기대 봉 수의 절반 미만이면 on-demand 로드
         if (entities.size() < tf.outputSize() / 2) {
-            List<CandleEntity> fetched = loadAndPersist(ticker, from, to);
-            if (fetched.size() > entities.size()) {
-                entities = fetched;
+            // 부분 데이터가 있으면 DB에 없는 과거 구간만 가져옴
+            LocalDate fetchFrom = entities.isEmpty()
+                    ? from
+                    : from.isBefore(entities.get(0).getTradeDate())
+                            ? from
+                            : entities.get(0).getTradeDate();
+            LocalDate fetchTo = entities.isEmpty()
+                    ? to
+                    : entities.get(0).getTradeDate().minusDays(1);
+
+            if (entities.isEmpty() || !fetchFrom.isAfter(fetchTo)) {
+                List<CandleEntity> fetched = loadAndPersist(ticker, fetchFrom,
+                        entities.isEmpty() ? to : fetchTo);
+                if (!fetched.isEmpty()) {
+                    // 새로 가져온 과거 데이터 + 기존 DB 데이터 병합 (시간순)
+                    var merged = new java.util.ArrayList<>(fetched);
+                    merged.addAll(entities);
+                    merged.sort(java.util.Comparator.comparing(CandleEntity::getTradeDate));
+                    entities = merged;
+                }
             }
         }
 
