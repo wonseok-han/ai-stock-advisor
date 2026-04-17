@@ -84,8 +84,12 @@ public class CandleService {
         List<CandleEntity> entities = candleRepo
                 .findByTickerAndTradeDateBetweenOrderByTradeDateAsc(ticker, from, to);
 
-        if (entities.isEmpty()) {
-            entities = loadAndPersist(ticker, from, to);
+        // DB 데이터가 없거나 기대 봉 수의 절반 미만이면 on-demand 로드
+        if (entities.size() < tf.outputSize() / 2) {
+            List<CandleEntity> fetched = loadAndPersist(ticker, from, to);
+            if (fetched.size() > entities.size()) {
+                entities = fetched;
+            }
         }
 
         if (entities.isEmpty()) {
