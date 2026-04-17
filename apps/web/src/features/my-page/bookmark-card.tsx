@@ -44,7 +44,7 @@ export function BookmarkCard({ bookmark }: { bookmark: Bookmark }) {
         <button
           onClick={() => removeMutation.mutate(bookmark.ticker)}
           disabled={removeMutation.isPending}
-          className="ml-2 shrink-0 rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
+          className="ml-2 shrink-0 cursor-pointer rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
           aria-label={`${bookmark.ticker} 북마크 해제`}
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

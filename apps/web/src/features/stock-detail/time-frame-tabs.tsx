@@ -39,7 +39,7 @@ export function TimeFrameTabs({ value, onChange, className }: Props) {
             aria-selected={active}
             onClick={() => onChange(f.value)}
             className={cn(
-              'rounded-md px-3 py-1 transition-colors',
+              'cursor-pointer rounded-md px-3 py-1 transition-colors',
               active
                 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
                 : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800',

@@ -75,7 +75,7 @@ function ToggleChip({ label, active, onClick }: { label: string; active: boolean
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+      className={`cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
         active
           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
           : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'

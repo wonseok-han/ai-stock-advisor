@@ -173,7 +173,7 @@ export function SignupForm() {
             type="button"
             onClick={handleReactivate}
             disabled={isLoading}
-            className="mt-2 w-full rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            className="mt-2 w-full cursor-pointer rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
             {isLoading ? "복구 중..." : "계정 복구하기"}
           </button>
@@ -183,7 +183,7 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+        className="w-full cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
       >
         {isLoading ? "처리 중..." : "회원가입"}
       </button>

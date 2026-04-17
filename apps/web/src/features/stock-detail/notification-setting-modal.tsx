@@ -84,7 +84,7 @@ function NotificationSettingModalInner({
                 <button
                   key={v}
                   onClick={() => setThreshold(v)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                     threshold === v
                       ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                       : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400'
@@ -119,7 +119,7 @@ function NotificationSettingModalInner({
             <button
               onClick={handleDelete}
               disabled={isPending}
-              className="rounded-lg px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
             >
               알림 해제
             </button>
@@ -129,14 +129,14 @@ function NotificationSettingModalInner({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
             >
               취소
             </button>
             <button
               onClick={handleSave}
               disabled={isPending}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {isPending ? '저장 중...' : '저장'}
             </button>
@@ -181,7 +181,7 @@ function ToggleRow({
       <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 rounded-full transition-colors ${
+        className={`relative cursor-pointer h-6 w-11 rounded-full transition-colors ${
           checked ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-600'
         }`}
       >

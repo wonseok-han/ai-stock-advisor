@@ -75,7 +75,7 @@ export function NotificationSection() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setEditingTicker(s.ticker)}
-                  className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
+                  className="cursor-pointer rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
                   aria-label={`${s.ticker} 알림 설정 편집`}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -86,7 +86,7 @@ export function NotificationSection() {
                 <button
                   onClick={() => deleteMutation.mutate(s.ticker)}
                   disabled={deleteMutation.isPending}
-                  className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                  className="cursor-pointer rounded p-1.5 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                   aria-label={`${s.ticker} 알림 해제`}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
