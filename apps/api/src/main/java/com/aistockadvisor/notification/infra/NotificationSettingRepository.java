@@ -13,4 +13,6 @@ public interface NotificationSettingRepository extends JpaRepository<Notificatio
     Optional<NotificationSettingEntity> findByUserIdAndTicker(UUID userId, String ticker);
 
     List<NotificationSettingEntity> findByTickerAndEnabledTrue(String ticker);
+
+    void deleteByUserId(UUID userId);
 }

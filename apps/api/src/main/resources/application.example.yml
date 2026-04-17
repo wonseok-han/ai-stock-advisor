@@ -33,6 +33,7 @@ app:
       api-key: YOUR_GEMINI_API_KEY
   supabase:
     url: https://YOUR_PROJECT_REF.supabase.co
+    service-role-key: YOUR_SUPABASE_SERVICE_ROLE_KEY
 
 logging:
   level:
