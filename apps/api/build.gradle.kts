@@ -30,6 +30,8 @@ dependencies {
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.ta4j:ta4j-core:0.18")
+	implementation("nl.martijndwars:web-push:5.1.1")
+	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")

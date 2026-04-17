@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/auth-provider';
 import { BookmarkList } from '@/features/bookmark/bookmark-list';
+import { NotificationSettings } from '@/features/notification/notification-settings';
+import { PushPrompt } from '@/features/notification/push-prompt';
 
 export default function MyPage() {
   const { user, isLoading, signOut } = useAuth();
@@ -28,6 +30,14 @@ export default function MyPage() {
       <section>
         <h2 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">내 북마크</h2>
         <BookmarkList />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">알림 설정</h2>
+        <PushPrompt />
+        <div className="mt-4">
+          <NotificationSettings />
+        </div>
       </section>
 
       <section className="border-t border-gray-200 pt-6 dark:border-gray-700">

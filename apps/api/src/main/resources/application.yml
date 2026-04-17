@@ -84,6 +84,11 @@ app:
     url: ${SUPABASE_URL:}
   legal:
     forbidden-terms-path: ${FORBIDDEN_TERMS_PATH:classpath:legal/forbidden-terms.json}
+  push:
+    vapid:
+      public-key: ${VAPID_PUBLIC_KEY:}
+      private-key: ${VAPID_PRIVATE_KEY:}
+      subject: ${VAPID_SUBJECT:mailto:admin@aistockadvisor.com}
   cache:
     news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
     ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:60}
