@@ -25,7 +25,7 @@ export default function MyPage() {
     <div className="mx-auto max-w-2xl space-y-6 py-6">
       <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">마이페이지</h1>
 
-      <ProfileSection user={user} />
+      <ProfileSection user={user} onSignOut={signOut} />
 
       <section>
         <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
@@ -41,7 +41,7 @@ export default function MyPage() {
         <NotificationSection />
       </section>
 
-      <AccountSection onSignOut={signOut} />
+      <AccountSection />
     </div>
   );
 }

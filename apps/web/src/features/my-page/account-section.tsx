@@ -7,7 +7,7 @@ import { deleteAccount } from '@/lib/api/auth';
 import { useAuth } from '@/features/auth/auth-provider';
 import { DeleteAccountModal } from '@/features/my-page/delete-account-modal';
 
-export function AccountSection({ onSignOut }: { onSignOut: () => void }) {
+export function AccountSection() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { signOut } = useAuth();
 
@@ -20,22 +20,13 @@ export function AccountSection({ onSignOut }: { onSignOut: () => void }) {
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <span className="text-sm text-zinc-600 dark:text-zinc-400">계정 관리</span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="rounded-md px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
-          >
-            회원 탈퇴
-          </button>
-          <button
-            onClick={onSignOut}
-            className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-          >
-            로그아웃
-          </button>
-        </div>
+      <div className="flex items-center justify-center py-2">
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="text-sm text-zinc-400 underline-offset-2 transition-colors hover:text-red-500 hover:underline dark:text-zinc-500 dark:hover:text-red-400"
+        >
+          회원 탈퇴
+        </button>
       </div>
 
       <DeleteAccountModal
