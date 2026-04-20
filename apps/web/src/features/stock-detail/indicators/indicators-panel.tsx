@@ -160,7 +160,7 @@ function BollingerCard({
       <Row label="Upper" value={bollinger.upper.toFixed(2)} />
       <Row label="Middle" value={bollinger.middle.toFixed(2)} />
       <Row label="Lower" value={bollinger.lower.toFixed(2)} />
-      <Row label="%B" value={bollinger.percentB.toFixed(2)} />
+      <Row label="밴드 위치" value={bollinger.percentB.toFixed(2)} />
     </Card>
   );
 }
