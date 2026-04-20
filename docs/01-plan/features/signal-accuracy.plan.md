@@ -52,7 +52,7 @@ AI 시그널의 과거 방향 정합도를 측정·공개한다. 목적은 두 �
 - [ ] **백필 스크립트**: 기존 audit 레코드 중 평가 window 경과한 건에 대해 일괄 평가 생성 (one-shot Gradle task 또는 admin 엔드포인트)
 - [ ] **스케줄러**: 매일 1회 (UTC 06:00, NY close 후), window 경과한 미평가 audit 을 찾아 캔들 DB 에서 종가 조회 → 평가 저장
 - [ ] **평가 로직**: 방향 매핑(STRONG_BUY=+2 ... STRONG_SELL=-2), change_pct 기반 actual_direction 계산, hit 판정 (완곡한 룰: 방향 대략 일치 시 hit, Neutral 은 ±2% 내)
-- [ ] **집계 API**: `GET /api/ai/accuracy?window=7|30&ticker=X` → `{ sampleSize, hitRate, bySignal: {...}, evaluatedThrough }`
+- [ ] **집계 API**: `GET /api/v1/ai/accuracy?window=7|30&ticker=X` → `{ sampleSize, hitRate, bySignal: {...}, evaluatedThrough }`
 - [ ] **FE UI**: AI 분석 카드 하단에 "지난 30일 분석 방향 정합도 XX% (N건 기준)" 배지. 클릭 → 간단한 툴팁/모달로 by_signal 브레이크다운. **"정확도"·"예측"** 단어 금지 → **"정합도"·"방향 일치율"** 사용.
 - [ ] **Micrometer 메트릭**: `ai_signal_evaluation_total{window,hit}`, `ai_signal_hit_rate{window}` 게이지
 - [ ] **면책 강화**: 배지 옆 `i` 아이콘 → "과거 성과는 미래 수익을 보장하지 않습니다. 본 정합도는 내부 튜닝 지표이며 투자 판단 근거가 아닙니다."
@@ -78,7 +78,7 @@ AI 시그널의 과거 방향 정합도를 측정·공개한다. 목적은 두 �
 | FR-02 | 방향 매핑 + hit 판정 도메인 서비스 (`SignalOutcomeEvaluator`) | High | Pending |
 | FR-03 | 일일 스케줄러: 7d/30d window 미평가 audit 조회 → 캔들 조회 → 평가 저장 | High | Pending |
 | FR-04 | 백필 admin 엔드포인트 (`POST /api/admin/ai/backfill-evaluation?window=30`) — Basic Auth | High | Pending |
-| FR-05 | 집계 API `GET /api/ai/accuracy?window=30&ticker=?` — 캐시 1h | High | Pending |
+| FR-05 | 집계 API `GET /api/v1/ai/accuracy?window=30&ticker=?` — 캐시 1h | High | Pending |
 | FR-06 | FE: AI 분석 카드 배지 + 툴팁 (정합도·샘플 수·면책) | Medium | Pending |
 | FR-07 | 금지 용어 체크: "정확도"/"예측"/"적중" 등 FE/백엔드 메시지에서 배제, 대신 "정합도"/"방향 일치율" | High | Pending |
 | FR-08 | Micrometer 메트릭 + 기존 `/actuator/prometheus` 노출 | Medium | Pending |
@@ -167,7 +167,7 @@ Backend (apps/api/src/main/java/com/aistockadvisor/ai):
 │   └── SignalAccuracyService.java (집계 + 캐시)
 │   └── SignalEvaluationScheduler.java (@Scheduled)
 └── web/
-    └── SignalAccuracyController.java (GET /api/ai/accuracy)
+    └── SignalAccuracyController.java (GET /api/v1/ai/accuracy)
     └── AdminEvaluationController.java (POST /api/admin/ai/backfill-evaluation)
 
 Frontend (apps/web/src):

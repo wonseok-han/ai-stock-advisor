@@ -57,7 +57,7 @@
 │  ai_signal_evaluation  (Postgres)      │
 └─────────┬──────────────────────────────┘
           │
-          ▼ GET /api/ai/accuracy?window=30
+          ▼ GET /api/v1/ai/accuracy?window=30
 ┌────────────────────────────────────────┐
 │  SignalAccuracyService                 │
 │  ─ Redis 1h cache                      │
@@ -85,7 +85,7 @@ Scheduler
 
 [FE 렌더 시]
 StockDetailPage
-  → /api/ai/accuracy?window=30  (전역, ticker 미지정)
+  → /api/v1/ai/accuracy?window=30  (전역, ticker 미지정)
   → Redis 1h cache
   → AccuracyBadge 렌더
 ```
@@ -194,14 +194,14 @@ COMMENT ON COLUMN ai_signal_evaluation.change_pct IS '(end - signal) / signal * 
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/api/ai/accuracy` | 전역 정합도 집계 (window=7\|30) | Public |
+| GET | `/api/v1/ai/accuracy` | 전역 정합도 집계 (window=7\|30) | Public |
 | POST | `/api/admin/ai/backfill-evaluation` | 백필 트리거 (window=7\|30, since=ISO8601) | Basic Auth (admin) |
 
 > 종목별(`?ticker=X`) 엔드포인트는 **Scope Out** — 개별 시그널 정합도 공개는 유사투자자문 해석 여지 있음.
 
 ### 4.2 Detailed Specification
 
-#### `GET /api/ai/accuracy?window=30`
+#### `GET /api/v1/ai/accuracy?window=30`
 
 **Request:** Query param `window` ∈ {7, 30}, default 30.
 
@@ -346,7 +346,7 @@ StockDetailPage 로드
 - [x] 백필 엔드포인트 Basic Auth (Spring Security 기존 admin 체인)
 - [x] 민감 정보 없음 (집계만 노출, 개별 audit 비공개)
 - [x] HTTPS (Vercel·Fly.io TLS)
-- [x] Rate Limiting: 공개 `/api/ai/accuracy` 는 IP 당 60 req/min (기존 Bucket4j 체인 재사용)
+- [x] Rate Limiting: 공개 `/api/v1/ai/accuracy` 는 IP 당 60 req/min (기존 Bucket4j 체인 재사용)
 - [x] SQL Injection 방지: JPA parameter binding only
 
 ---
@@ -527,7 +527,7 @@ src/
      - Redis 1h 캐시 (`ai:accuracy:w30`)
      - JPQL 집계 쿼리 (count, sum(hit))
      - bySignal 그룹핑
-   - `SignalAccuracyController.GET /api/ai/accuracy`
+   - `SignalAccuracyController.GET /api/v1/ai/accuracy`
    - OpenAPI 문서화 (기존 springdoc 설정)
 
 6. **Step 6 — FE 타입·서비스·훅**

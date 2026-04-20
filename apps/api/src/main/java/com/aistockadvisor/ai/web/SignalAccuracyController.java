@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 참조: docs/02-design/features/signal-accuracy.design.md §4.2
  */
 @RestController
-@RequestMapping("/api/ai/accuracy")
+@RequestMapping("/api/v1/ai/accuracy")
 public class SignalAccuracyController {
 
     private final SignalAccuracyService service;

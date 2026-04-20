@@ -1,0 +1,62 @@
+'use client';
+
+import { useState } from 'react';
+
+import { useAccuracy } from '@/features/stock-detail/hooks/use-accuracy';
+import { AiAccuracyTooltip } from '@/features/stock-detail/components/ai-accuracy-tooltip';
+
+import type { AiAccuracyWindow } from '@/types/ai-accuracy';
+
+/**
+ * 전역 AI 시그널 정합도 배지.
+ *
+ * 참조: docs/02-design/features/signal-accuracy.design.md §5.2, §5.3
+ *
+ * 표시 규칙:
+ *   - 로딩 / 에러 / 샘플 미달(sampleSizeSufficient=false) → 렌더하지 않음 (silent hide)
+ *   - 정상: "{window}일 방향 일치율 {pct}% · 샘플 {n}건" 배지 + hover/focus 시 bySignal tooltip
+ *
+ * 용어 정책 (§7.1 / AGENTS.md CI 금지어): "정확도/예측/적중" 금지 → "정합도/방향 일치율".
+ */
+export function AiAccuracyBadge({
+  window = 30,
+}: {
+  window?: AiAccuracyWindow;
+}) {
+  const { data, isLoading, error } = useAccuracy(window);
+  const [open, setOpen] = useState(false);
+
+  if (isLoading || error || !data) return null;
+  if (!data.sampleSizeSufficient || data.hitRate == null) return null;
+
+  const pct = Math.round(data.hitRate * 100);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        aria-label={`최근 ${data.window}일 AI 시그널 방향 일치율 ${pct}퍼센트, 샘플 ${data.sampleSize}건. 상세 보기`}
+        aria-expanded={open}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-sm border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+      >
+        <span className="font-medium">{data.window}일 방향 일치율</span>
+        <span className="font-semibold text-zinc-800 dark:text-zinc-100">
+          {pct}%
+        </span>
+        <span className="text-zinc-400 dark:text-zinc-500">·</span>
+        <span className="text-zinc-500 dark:text-zinc-400">
+          샘플 {data.sampleSize}건
+        </span>
+        <span aria-hidden="true" className="text-zinc-400">
+          ⓘ
+        </span>
+      </button>
+      {open ? <AiAccuracyTooltip data={data} /> : null}
+    </div>
+  );
+}

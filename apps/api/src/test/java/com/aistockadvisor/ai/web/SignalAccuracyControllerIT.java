@@ -51,13 +51,13 @@ class SignalAccuracyControllerIT {
 
     @Test
     void returns_400_for_invalid_window() throws Exception {
-        mvc.perform(get("/api/ai/accuracy").param("window", "14"))
+        mvc.perform(get("/api/v1/ai/accuracy").param("window", "14"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void defaults_to_window_30() throws Exception {
-        mvc.perform(get("/api/ai/accuracy"))
+        mvc.perform(get("/api/v1/ai/accuracy"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.window").value(30))
                 .andExpect(jsonPath("$.sampleSizeSufficient").value(false));
@@ -72,7 +72,7 @@ class SignalAccuracyControllerIT {
             saveEval(auditId, (short) 7, Signal.BUY, Direction.UP, Direction.UP, true, now);
         }
 
-        mvc.perform(get("/api/ai/accuracy").param("window", "7"))
+        mvc.perform(get("/api/v1/ai/accuracy").param("window", "7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.window").value(7))
                 .andExpect(jsonPath("$.sampleSize").value(3))
@@ -93,7 +93,7 @@ class SignalAccuracyControllerIT {
         UUID n2 = saveAudit("TSTN2", Signal.NEUTRAL, now.minus(10, ChronoUnit.DAYS));
         saveEval(n2, (short) 7, Signal.NEUTRAL, Direction.FLAT, Direction.UP, false, now);
 
-        mvc.perform(get("/api/ai/accuracy").param("window", "7"))
+        mvc.perform(get("/api/v1/ai/accuracy").param("window", "7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.window").value(7))
                 .andExpect(jsonPath("$.sampleSize").value(5))
