@@ -70,12 +70,16 @@
 
 | 용도 | 서비스 | 비용 |
 |---|---|---|
-| 주식 시세/뉴스 | Finnhub | 무료 (60 req/min) |
-| 기술지표 보조 | Alpha Vantage | 무료 (25 req/day) |
-| AI 분석 | **Google Gemini 1.5 Flash** | 무료 티어 + 저렴 |
-| 뉴스 번역 | Gemini 1.5 Flash (동일) | " |
+| 주식 시세 (primary) | Yahoo Finance (`query1.finance.yahoo.com`) | 무료 (비공식) |
+| 주식 시세 (fallback) / 뉴스 / 검색 / 프로필 | Finnhub | 무료 (60 req/min) |
+| OHLCV 캔들 | Twelve Data | 무료 (800 req/day, 8 req/min) |
+| 기술지표 보조 | Alpha Vantage (legacy, 현재 미사용) | 무료 (25 req/day) |
+| AI 분석 | **Google Gemini 2.5 Flash** | 무료 티어 + 저렴 |
+| 뉴스 번역 | Gemini 2.5 Flash (동일) | " |
 | 감성분석 (선택) | HuggingFace FinBERT | 무료 추론 API |
 | 환율 | exchangerate.host / Yahoo | 무료 |
+
+> 시세 primary 를 Yahoo 로 둔 이유: Finnhub 무료 `/quote` 가 비정기 delay/미일관성 사례가 관측되어, Yahoo 를 기본으로 쓰고 Finnhub 를 fallback 으로 둠 (PR #16, Phase 4.5 구간). 시장 상태 표시(장중/장외/휴장)도 Yahoo 에서 계산.
 
 ## 3.3 주요 설계 원칙
 
