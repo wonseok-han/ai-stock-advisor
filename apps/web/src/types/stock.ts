@@ -22,6 +22,8 @@ export interface StockProfile {
   marketCap: number | null;
 }
 
+export type MarketStatus = 'OPEN' | 'CLOSED';
+
 export interface Quote {
   ticker: string;
   price: number;
@@ -33,6 +35,8 @@ export interface Quote {
   previousClose: number;
   volume: number;
   updatedAt: string; // ISO 8601
+  marketStatus: MarketStatus;
+  priceLabel: string;
 }
 
 export interface Candle {

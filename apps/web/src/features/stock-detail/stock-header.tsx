@@ -46,15 +46,22 @@ export function StockHeader({ ticker }: { ticker: string }) {
         )}
       </div>
       <div className="text-right">
-        <div className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-          {formatUsd(quote?.price)}
+        <div className="flex items-center justify-end gap-2">
+          <div className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+            {formatUsd(quote?.price)}
+          </div>
+          {quote?.marketStatus === 'OPEN' && (
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-400">
+              LIVE
+            </span>
+          )}
         </div>
         <div className={cn('text-sm tabular-nums', colorClass)}>
           {formatSignedNumber(quote?.change)}{' '}
           ({formatPercentChange(quote?.changePercent)})
         </div>
         <div className="mt-1 text-xs text-zinc-400">
-          업데이트: {formatKst(quote?.updatedAt)}
+          {quote?.priceLabel ?? `업데이트: ${formatKst(quote?.updatedAt)}`}
           {quoteFetching && ' · 새로고침 중'}
         </div>
       </div>

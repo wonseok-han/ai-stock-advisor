@@ -2,6 +2,8 @@ package com.aistockadvisor.stock.infra.client;
 
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.StockProfile;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -90,6 +92,8 @@ public class FinnhubClient {
         if (resp == null || resp.t() == 0L) {
             return null;
         }
+        OffsetDateTime updatedAt = OffsetDateTime.ofInstant(Instant.ofEpochSecond(resp.t()), ZoneOffset.UTC);
+        MarketStatus status = MarketStatusResolver.resolve();
         return new Quote(
                 ticker,
                 resp.c(),
@@ -99,8 +103,10 @@ public class FinnhubClient {
                 resp.l(),
                 resp.o(),
                 resp.pc(),
-                0L, // Finnhub free /quote 는 volume 미제공. Twelve Data candle 에서 보강 가능.
-                OffsetDateTime.ofInstant(Instant.ofEpochSecond(resp.t()), ZoneOffset.UTC)
+                0L, // Finnhub free /quote 는 volume 미제공.
+                updatedAt,
+                status,
+                MarketStatusResolver.priceLabel(status, updatedAt)
         );
     }
 
