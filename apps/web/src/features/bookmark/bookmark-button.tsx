@@ -33,15 +33,15 @@ export function BookmarkButton({ ticker }: { ticker: string }) {
       <button
         onClick={handleClick}
         disabled={isPending}
-        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+        className={`inline-flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 text-base leading-none transition-colors ${
           isBookmarked
             ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400'
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
         } disabled:opacity-50`}
         aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
+        title={isBookmarked ? '북마크 해제' : '북마크 추가'}
       >
-        <span className="text-base">{isBookmarked ? '★' : '☆'}</span>
-        {isBookmarked ? '북마크됨' : '북마크'}
+        {isBookmarked ? '★' : '☆'}
       </button>
       {showAuthModal && <AuthGuardModal onClose={() => setShowAuthModal(false)} />}
     </>

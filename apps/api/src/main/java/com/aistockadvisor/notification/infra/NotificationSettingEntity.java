@@ -32,9 +32,6 @@ public class NotificationSettingEntity {
     private boolean onNewNews;
 
     @Column(nullable = false)
-    private boolean onSignalChange;
-
-    @Column(nullable = false)
     private boolean enabled = true;
 
     @Column(name = "last_notified_at")
@@ -56,7 +53,6 @@ public class NotificationSettingEntity {
     public String getTicker() { return ticker; }
     public BigDecimal getPriceChangeThreshold() { return priceChangeThreshold; }
     public boolean isOnNewNews() { return onNewNews; }
-    public boolean isOnSignalChange() { return onSignalChange; }
     public boolean isEnabled() { return enabled; }
     public OffsetDateTime getLastNotifiedAt() { return lastNotifiedAt; }
     public boolean isLastTriggeredAbove() { return lastTriggeredAbove; }
@@ -65,11 +61,10 @@ public class NotificationSettingEntity {
      * 사용자 설정 업데이트. 임계값이 변경되면 발송 상태를 리셋하여
      * 신규 임계값으로 첫 돌파를 정상 감지하도록 한다.
      */
-    public void update(BigDecimal priceChangeThreshold, boolean onNewNews, boolean onSignalChange, boolean enabled) {
+    public void update(BigDecimal priceChangeThreshold, boolean onNewNews, boolean enabled) {
         boolean thresholdChanged = !Objects.equals(this.priceChangeThreshold, priceChangeThreshold);
         this.priceChangeThreshold = priceChangeThreshold;
         this.onNewNews = onNewNews;
-        this.onSignalChange = onSignalChange;
         this.enabled = enabled;
         if (thresholdChanged) {
             this.lastTriggeredAbove = false;
