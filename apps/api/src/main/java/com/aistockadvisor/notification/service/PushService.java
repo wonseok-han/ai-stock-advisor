@@ -67,26 +67,39 @@ public class PushService {
         subscriptionRepo.deleteByUserIdAndEndpoint(userId, endpoint);
     }
 
-    public void sendToUser(UUID userId, String title, String body) {
+    /**
+     * 사용자의 모든 구독 endpoint로 푸시 발송 시도.
+     *
+     * @return true 면 1개 이상 endpoint 에 발송 성공. false 면 발송된 게 없음
+     *         (webpush 미초기화 / 구독자 0명 / 모든 시도 실패).
+     *         호출측은 이 값을 기준으로 "발송 성공" 상태를 저장해야 한다.
+     */
+    public boolean sendToUser(UUID userId, String title, String body) {
         if (webPushService == null) {
             log.debug("Push disabled — skipping notification for user {}", userId);
-            return;
+            return false;
         }
         List<PushSubscriptionEntity> subs = subscriptionRepo.findByUserId(userId);
+        if (subs.isEmpty()) {
+            return false;
+        }
         String payload = """
                 {"title":"%s","body":"%s","icon":"/icon.svg"}""".formatted(
                 title.replace("\"", "\\\""),
                 body.replace("\"", "\\\""));
 
+        int success = 0;
         for (PushSubscriptionEntity sub : subs) {
             try {
                 Notification notification = new Notification(
                         sub.getEndpoint(), sub.getP256dh(), sub.getAuth(), payload);
                 webPushService.send(notification);
+                success++;
             } catch (Exception e) {
                 log.warn("Push send failed for endpoint {}: {}", sub.getEndpoint(), e.getMessage());
             }
         }
+        return success > 0;
     }
 
     public boolean isEnabled() {

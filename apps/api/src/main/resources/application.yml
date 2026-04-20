@@ -90,6 +90,10 @@ app:
       public-key: ${VAPID_PUBLIC_KEY:}
       private-key: ${VAPID_PRIVATE_KEY:}
       subject: ${VAPID_SUBJECT:mailto:admin@aistockadvisor.com}
+  notification:
+    dedup:
+      reset-ratio: ${NOTIFICATION_DEDUP_RESET_RATIO:0.6}
+      cooldown: ${NOTIFICATION_DEDUP_COOLDOWN:PT4H}
   cache:
     news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
     ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:60}

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-04-20 - Notification Dedup Fix (Phase 4.5 Post)
+
+### 🔧 Fixed - Notification Spam Prevention
+
+- **Duplicate Notification Prevention**
+  - Hysteresis + cooldown mechanism for price change alerts
+  - State-based approach: detects state transitions (not absolute values)
+  - Resets threshold: 60% of trigger threshold to prevent boundary flapping
+  - Cooldown period: 4 hours between re-notifications for same condition
+  - Result: From 20+ daily repeat sends to ≤2 per trigger event
+
+- **Core Implementation**
+  - `NotificationDedupPolicy.java`: Pure function decision logic (DB-free, TDD-ready)
+  - State machine: 5 Actions (SEND, SKIP_NO_TRANSITION, SKIP_COOLDOWN, RESET_ONLY, NOOP)
+  - `PushService.sendToUser()`: Return type changed void → boolean for retry safety
+  - DB schema: `notification_settings` table + 2 new columns (`last_notified_at`, `last_triggered_above`)
+  - Configuration: `app.notification.dedup.reset-ratio`, `app.notification.dedup.cooldown` (yml driven)
+
+- **Quality Metrics**
+  - Match Rate: 100%
+  - Test Cases: 14 (9 Policy scenarios T1~T9 + 5 Entity tests U1~U5)
+  - Build Status: `./gradlew check` BUILD SUCCESSFUL
+  - Gaps Found: 0
+
+- **Database Migration**
+  - Flyway V10: ADD COLUMN `last_notified_at` (TIMESTAMPTZ, nullable)
+  - Flyway V10: ADD COLUMN `last_triggered_above` (BOOLEAN NOT NULL DEFAULT false)
+  - Backward compatible: Existing records initialized to (NULL, false)
+
+### 📝 Documentation
+
+- **Plan**: `docs/01-plan/features/notification-dedup.plan.md`
+- **Design**: `docs/02-design/features/notification-dedup.design.md`
+- **Analysis**: `docs/03-analysis/notification-dedup.analysis.md` (100% match rate)
+- **Report**: `docs/04-report/notification-dedup.report.md` (completion)
+
+---
+
 ## [1.1.0] - 2026-04-17 - Phase 4.5 Complete (Data Layer + UX Improvements)
 
 ### 📊 Added - Candle Data Layer & Infrastructure
