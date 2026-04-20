@@ -11,6 +11,19 @@
 | [market-dashboard](market-dashboard/) | Phase 3 | 95% | 2026-04-16 | 2026-04-16 | plan, design, report |
 | [auth](auth/) | Phase 4 | 95% | 2026-04-16 | 2026-04-17 | plan, design, analysis, report |
 | [phase4.5-improvements](phase4.5-improvements/) | Phase 4.5 | 96.4% | 2026-04-17 | 2026-04-17 | plan, design, analysis, report |
+| [notification-dedup](notification-dedup/) | Phase 4.5.1 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+
+## notification-dedup — Phase 4.5.1 Web Push 중복 억제 (히스테리시스 + 쿨다운)
+
+15분 주기 스케줄러가 임계값 초과 상태에서 매 사이클 동일 알림을 발송하던 스팸 버그를 제거. 상태 전이 게이트 + 히스테리시스(리셋=임계×0.6) + 4h 쿨다운 + 푸시 성공 시에만 상태 전진하는 fail-safe. Match Rate 100%, iteration 0회.
+
+- **범위**: `NotificationDedupPolicy` 순수 함수(5 Action) + `NotificationDedupProperties`(`app.notification.dedup.*`) + `NotificationSettingEntity` 필드 2개(`lastNotifiedAt`, `lastTriggeredAbove`) + Flyway V10 + `PushService.sendToUser` void→boolean + `NotificationCheckService` 리팩터
+- **결과**: 14 unit tests (Policy 9 + Entity 5), `./gradlew check` BUILD SUCCESSFUL, 빌드 경고 0
+- **PR**: #12 squash-merged (`{예정}`)
+- **핵심 UX 개선**: 첫 돌파 1회만 발송 · 경계 진동(4.9%↔5.1%) 차단 · 리셋 후 재돌파도 4h 쿨다운 · 시계 역전 fail-safe(SKIP_COOLDOWN)
+- **Non-gap 조정 5건**: V8→V10(슬롯 점유), `NotificationCheckServiceIntegrationTest` 의도적 연기(Design optional), 나머지 3건은 인프라 재사용/Design 정정 반영
+
+**링크**: [plan](notification-dedup/notification-dedup.plan.md) · [design](notification-dedup/notification-dedup.design.md) · [analysis](notification-dedup/notification-dedup.analysis.md) · [report](notification-dedup/notification-dedup.report.md)
 
 ## phase4.5-improvements — Phase 4.5 캔들 DB + 마이페이지 + 알림 UX + Rate Limiter
 
