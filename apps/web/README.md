@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# apps/web — AI Stock Advisor Frontend
 
-## Getting Started
+Next.js 16 (App Router, Turbopack) + React 19 + Tailwind 4 + TypeScript.
 
-First, run the development server:
+> 루트 개요: [`../../README.md`](../../README.md) · 프로젝트 규칙: [`../../CLAUDE.md`](../../CLAUDE.md)
+
+---
+
+## 요구 사항
+
+- Node.js 20+
+- pnpm 10+
+- Supabase 프로젝트 (Auth + DB) — 베타 키 필요
+- 백엔드(`apps/api`) 또는 배포된 API 엔드포인트
+
+## 빠른 시작
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd apps/web
+pnpm install
+cp .env.local.example .env.local   # 없으면 아래 '환경 변수' 섹션 참조해 직접 작성
+pnpm dev                            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+루트에서 한 번에: `make web-dev` (또는 `make dev` 로 FE+BE 동시 기동).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 스크립트
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 명령 | 설명 |
+|---|---|
+| `pnpm dev` | 개발 서버 (Turbopack) |
+| `pnpm build` | 프로덕션 빌드 |
+| `pnpm start` | 프로덕션 서버 (build 후) |
+| `pnpm lint` | ESLint (next/core-web-vitals + react-hooks) |
+| `pnpm exec tsc --noEmit` | 타입 체크 |
 
-## Learn More
+## 환경 변수
 
-To learn more about Next.js, take a look at the following resources:
+`.env.local` (Git 무시). **`NEXT_PUBLIC_` 접두사가 붙은 값만 브라우저로 노출**됩니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# API 연결
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Supabase (anon 키만 브라우저 노출 — service-role 키는 BE 전용)
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 
-## Deploy on Vercel
+# 웹 푸시 (VAPID 공개 키만 브라우저에 필요)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<base64url-encoded-public-key>
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Vercel Analytics (선택)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 디렉토리 구조
+
+```
+apps/web/
+├── public/            정적 자산 (favicon, og-image 등)
+├── src/
+│   ├── app/           App Router 페이지 + 레이아웃
+│   │   ├── (market)/  시장 대시보드
+│   │   ├── stock/     종목 상세
+│   │   ├── legal/     이용약관·개인정보처리방침
+│   │   ├── feedback/  베타 피드백 폼
+│   │   └── api/       (필요 시) route handlers
+│   ├── components/    재사용 UI (Header, Footer, Legal 등)
+│   ├── features/      도메인별 모듈 (stock/, news/, bookmark/, notification/, feedback/, auth/)
+│   ├── lib/           Supabase 클라이언트, fetcher, 유틸
+│   ├── hooks/         공용 훅 (use-auth 등)
+│   └── styles/        globals.css (Tailwind 4)
+├── next.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+## 코딩 컨벤션
+
+- **파일명**: `kebab-case.{ts,tsx}` (Next.js 예약 파일 제외: `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `sitemap.ts`, `robots.ts`)
+- **컴포넌트 식별자**: `PascalCase` (export 이름)
+- **함수/훅**: `camelCase`
+- **상수**: `UPPER_SNAKE_CASE`
+- **타입/인터페이스**: `PascalCase`
+- **import 순서**: 외부 → `@/...` 절대경로 → 상대경로 → `import type` → 스타일
+
+루트 [`CLAUDE.md`](../../CLAUDE.md) 의 Coding Conventions 섹션이 SoR.
+
+## 주의 사항 (Next.js 16)
+
+이 프로젝트는 Next.js 16 — 학습 데이터와 API/컨벤션/디렉토리 구조가 다를 수 있습니다.
+새 코드 작성 전 [`node_modules/next/dist/docs/`](./node_modules/next/dist/docs/) 를 먼저 확인하세요.
+deprecation 경고는 반드시 반영합니다. 상세는 [`AGENTS.md`](./AGENTS.md).
+
+## 배포
+
+- **플랫폼**: Vercel (Root Directory = `apps/web`, Framework preset = Next.js)
+- **브랜치**: `main` push 시 프로덕션 자동 배포, 그 외 브랜치는 프리뷰 배포
+- **환경 변수**: Vercel Dashboard → Project → Settings → Environment Variables
+
+## 테스트
+
+현재 FE 단위 테스트는 최소(`pnpm test --if-present` 는 스크립트 없으면 no-op). E2E/단위 테스트는 추후 도입 예정.
