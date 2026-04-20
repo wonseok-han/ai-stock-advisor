@@ -3,6 +3,8 @@ package com.aistockadvisor.stock.infra.client;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -79,6 +81,8 @@ public class TwelveDataClient {
         BigDecimal pctChange = resp.percent_change() != null ? resp.percent_change() : BigDecimal.ZERO;
         BigDecimal prev = resp.previous_close() != null ? resp.previous_close() : BigDecimal.ZERO;
         long timestamp = resp.timestamp() != null ? resp.timestamp() : Instant.now().getEpochSecond();
+        OffsetDateTime updatedAt = OffsetDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC);
+        MarketStatus status = MarketStatusResolver.resolve();
         return new Quote(
                 symbol,
                 resp.close(),
@@ -89,7 +93,9 @@ public class TwelveDataClient {
                 resp.open() != null ? resp.open() : resp.close(),
                 prev,
                 resp.volume() != null ? resp.volume() : 0L,
-                OffsetDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC)
+                updatedAt,
+                status,
+                MarketStatusResolver.priceLabel(status, updatedAt)
         );
     }
 
