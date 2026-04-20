@@ -16,7 +16,7 @@ import type { AiAccuracyWindow } from '@/types/ai-accuracy';
  *   - 로딩 / 에러 / 샘플 미달(sampleSizeSufficient=false) → 렌더하지 않음 (silent hide)
  *   - 정상: "{window}일 방향 일치율 {pct}% · 샘플 {n}건" 배지 + hover/focus 시 bySignal tooltip
  *
- * 용어 정책 (§7.1 / AGENTS.md CI 금지어): "정확도/예측/적중" 금지 → "정합도/방향 일치율".
+ * 용어 정책 (design §10.2 / CI 금지어): 확정적 지표 용어 금지 → "정합도/방향 일치율".
  */
 export function AiAccuracyBadge({
   window = 30,

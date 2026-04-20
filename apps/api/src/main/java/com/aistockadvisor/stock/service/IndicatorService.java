@@ -52,7 +52,7 @@ public class IndicatorService {
     private IndicatorSnapshot doCompute(String ticker) {
         List<Candle> candles = candleService.getCandles(ticker, SOURCE);
         if (candles.size() < 60) {
-            // MA60 안정성 확보 못함 → 산정 자체를 거부 (참고지표는 정확도가 핵심).
+            // MA60 안정성 확보 못함 → 산정 자체를 거부 (참고지표는 신뢰도가 핵심).
             throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE,
                     "지표 계산에 필요한 봉 수가 부족합니다.");
         }

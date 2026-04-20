@@ -417,8 +417,14 @@ StockDetailPage 로드
 
 ### 10.2 Forbidden Terms (신규 추가)
 
-`.github/workflows/forbidden-terms.yml` 에 추가:
+`.github/workflows/forbidden-terms.yml` 에 **CI 전용 2차 패스**로 추가:
 - 정확도, 예측, 적중, 적중률, 승률
+
+**결정: `forbidden-terms.json` 에는 포함하지 않음.** 이 JSON 은 런타임 `LegalGuardFilter`
+가 모든 `/api/v1/**` 응답을 스캔할 때 사용되는데, "예측" 같은 단어는 뉴스 번역이나
+분석가 코멘트에서 중립적 맥락으로 자주 등장해 오탐 위험이 크다. 따라서 AI 출력 런타임
+차단은 "투자 자문 유도" 계열(v1.1 기준 54종)로 유지하고, 이 5종은 **소스 코드 정적
+스캔 전용**으로만 운영한다 (CI pass 2).
 
 `disclaimer-footer` 수준의 기본 면책은 유지. 단 **`legal/` 디렉토리 예외**는 이미 적용됨.
 

@@ -11,7 +11,7 @@ import type {
  *
  * 참조: docs/02-design/features/signal-accuracy.design.md §5.3
  *
- * 설계 원칙: "정확도/예측/적중" 용어 금지. "방향 일치율" 로 표현.
+ * 설계 원칙: 확정적 표현(§10.2 금지어) 사용 금지. "방향 일치율"로 표현.
  */
 export function AiAccuracyTooltip({ data }: { data: AiAccuracySummary }) {
   const entries = Object.entries(data.bySignal) as [
