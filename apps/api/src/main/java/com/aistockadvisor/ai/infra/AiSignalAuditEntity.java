@@ -121,4 +121,8 @@ public class AiSignalAuditEntity {
     public UUID getId() { return id; }
     public UUID getRequestId() { return requestId; }
     public boolean isFallback() { return fallback; }
+    public String getTicker() { return ticker; }
+    public Signal getSignal() { return signal; }
+    public Instant getGeneratedAt() { return generatedAt; }
+    public Map<String, Object> getContextPayload() { return contextPayload; }
 }
