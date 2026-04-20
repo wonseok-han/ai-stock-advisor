@@ -45,13 +45,18 @@ public class YahooFinanceClient {
     private final WebClient webClient;
 
     public YahooFinanceClient() {
+        this(BASE_URL);
+    }
+
+    /** 테스트 전용: MockWebServer URL 주입 경로. */
+    YahooFinanceClient(String baseUrl) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
                         new ReadTimeoutHandler(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)))
                 .responseTimeout(TIMEOUT);
         this.webClient = WebClient.builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(baseUrl)
                 .defaultHeader("User-Agent", "Mozilla/5.0 (compatible; AIStockAdvisor/1.0)")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
