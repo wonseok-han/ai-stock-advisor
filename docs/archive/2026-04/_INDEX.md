@@ -13,6 +13,20 @@
 | [phase4.5-improvements](phase4.5-improvements/) | Phase 4.5 | 96.4% | 2026-04-17 | 2026-04-17 | plan, design, analysis, report |
 | [notification-dedup](notification-dedup/) | Phase 4.5.1 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [notification-ui-cleanup](notification-ui-cleanup/) | Phase 4.5.2 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [notification-news](notification-news/) | Phase 4.5.3 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+
+## notification-news — Phase 4.5.3 뉴스 알림 부활 (watermark 기반 dedup)
+
+Phase 4.5.2 에서 보존한 `onNewNews` 토글을 실제 동작하는 뉴스 알림으로 부활. `last_news_published_at` watermark 기반 3-way 정책(BASELINE/SEND/NOOP)으로 이산 이벤트(뉴스 기사) 중복 억제, 첫 사이클 baseline fail-safe, publishedAt null 방어, `/stocks/{ticker}` 딥링크 지원. Match Rate 100%, iteration 0회.
+
+- **범위**: Flyway V12(`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) + `NotificationSettingEntity.lastNewsPublishedAt` + `markNewsNotified()` + 순수 함수 `NotificationNewsDedupPolicy`(3 Action, decide 메서드) + `NotificationCheckService.checkNewNews()` + `PushService.sendToUser(4-arg)` 오버로드 + FR-10 가격 알림 딥링크 추가
+- **결과**: +1018/-12, 신규 테스트 13건(N1~N6 + U6~U7 + P1~P5). `./gradlew check` 38초 BUILD SUCCESSFUL, 기존 T1~T9 / U1~U5 회귀 0
+- **PR**: #14 squash-merged (`5a87e21`)
+- **핵심 개선**: 뉴스 5건 중 newer 다건 시 target=최신 + `newerCount` 에 "외 N-1건" 합성 · watermark=null 첫 사이클 발송 대신 최신 시점 BASELINE 으로 전진 · publishedAt null 필터링 후 모두 null 이면 NOOP · sw.js 기존 `data.url` 처리 로직 재사용 → **FE 변경 0건**
+- **Key Decisions**: watermark vs hysteresis (이산 이벤트는 watermark 가 더 자연스러움) · 순수 함수 분리(I/O 없음, 테스트 용이) · PushService 3-arg 오버로드 유지(레거시 호환) · Report 수준 범위 확장(FR-10 가격 알림 딥링크, Design 외 추가)
+- **Follow-up**: `newerCount` 를 body 대신 badge 로 표현(다국어 대응) · 종목별 watermark 지원 시 `notification_settings` 정규화 검토
+
+**링크**: [plan](notification-news/notification-news.plan.md) · [design](notification-news/notification-news.design.md) · [analysis](notification-news/notification-news.analysis.md) · [report](notification-news/notification-news.report.md)
 
 ## notification-ui-cleanup — Phase 4.5.2 아이콘 전용 버튼 + 활성 상태 + 죽은 토글 제거
 
