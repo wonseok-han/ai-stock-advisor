@@ -14,6 +14,22 @@
 | [notification-dedup](notification-dedup/) | Phase 4.5.1 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [notification-ui-cleanup](notification-ui-cleanup/) | Phase 4.5.2 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [notification-news](notification-news/) | Phase 4.5.3 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [password-reset](password-reset/) | Phase 4.5.4 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+
+## password-reset — Phase 4.5.4 비밀번호 재설정 플로우 (FE 전용, BE 무변경)
+
+이메일/비밀번호 가입자의 계정 복구 경로 완성. Supabase Auth 표준 PKCE 플로우(`resetPasswordForEmail` + `updateUser`)를 FE 2개 페이지 + 2개 폼으로 구현. 기존 `/auth/callback` 의 `next` 쿼리 재사용으로 백엔드 변경 0. Match Rate 99%, iteration 0회.
+
+- **범위**: FE 5개 파일 (`app/auth/forgot-password/page.tsx` + `features/auth/forgot-password-form.tsx` + `app/auth/reset-password/page.tsx` + `features/auth/reset-password-form.tsx` + `app/auth/login/page.tsx` 링크 추가), BE 0파일
+- **결과**: +1214 lines (docs 포함), `make web-check` 0 errors, 새 route 2개 Static 등록. FR 9/10 (FR-10 "이미 로그인된 사용자 리다이렉트"는 Plan/Design 에서 선택 생략)
+- **PR**: #22 squash-merged (`3511481`)
+- **상태 머신**: forgot `idle → loading → sent / error`, reset `checking → invalid | ready → loading → error / 성공(홈 이동)`
+- **보안**: 이메일 존재 여부 비공개(enumeration 방지), `getUser()` 세션 가드, PKCE/CSRF/rate-limit 는 Supabase SDK 내장
+- **에러 매핑**: `mapErrorMessage` 헬퍼로 rate limit / invalid email / 6자 미만 / old password 동일 / invalid·expired·jwt 5케이스 한국어 매핑 — Design §4.1 에러 테이블의 런타임 실체화
+- **불변 영역**: `/auth/callback/route.ts`, `login-form.tsx`, `signup-form.tsx`, `auth-provider.tsx`, `@/lib/supabase/*` 전부 미변경
+- **Lessons**: 기존 `/auth/callback` 의 `next` 쿼리 처리가 이미 존재하여 BE/route 재사용만으로 완결. Supabase Auth SDK 가 PKCE/CSRF/rate-limit 을 내장 처리해 FE 로직은 호출·상태머신·에러 매핑에만 집중 가능
+
+**링크**: [plan](password-reset/password-reset.plan.md) · [design](password-reset/password-reset.design.md) · [analysis](password-reset/password-reset.analysis.md) · [report](password-reset/password-reset.report.md)
 
 ## notification-news — Phase 4.5.3 뉴스 알림 부활 (watermark 기반 dedup)
 
