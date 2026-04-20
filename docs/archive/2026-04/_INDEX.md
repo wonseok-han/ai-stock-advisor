@@ -15,6 +15,22 @@
 | [notification-ui-cleanup](notification-ui-cleanup/) | Phase 4.5.2 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [notification-news](notification-news/) | Phase 4.5.3 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [password-reset](password-reset/) | Phase 4.5.4 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [feedback](feedback/) | Phase 4.5.5 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+
+## feedback — Phase 4.5.5 베타 피드백 채널 (/feedback + Supabase 테이블)
+
+베타 단계 버그·문의·제안 수집 공식 창구 확보. `/feedback` 페이지에서 Supabase `public.feedback` 테이블에 직접 INSERT. RLS 로 INSERT 공개·SELECT 서비스 롤 전용. 스팸 방어 3중(허니팟 + 60s 쿨다운 + 길이 제한). 관리자 UI 미구현, Supabase Dashboard 로 갈음. Match Rate 99%, iteration 0회.
+
+- **범위**: FE 4파일 (`app/feedback/page.tsx`, `features/feedback/feedback-form.tsx`, `features/feedback/types.ts`, `components/legal/disclaimer-footer.tsx` 수정) + Flyway V14 SQL 1파일. BE Java 0 변경
+- **결과**: +1198 lines, `make web-check`/`web-build` 통과, `/feedback` Static route 등록
+- **PR**: #23 squash-merged (`e1d15d3`)
+- **스팸 방어 3중**: 허니팟 `name="company"` sr-only (봇 무음 차단) · 60초 쿨다운 (localStorage) · 길이 제한 (subject 1~100, body 10~2000)
+- **Key Decisions**: Supabase 직접 INSERT (Spring 엔드포인트 X) · Flyway V14 (Plan "BE 변경 0" 에서 스키마 일관성 우선으로 완화) · 관리자 UI 미구현 (Dashboard 재사용) · hCaptcha 미채택 (베타 트래픽 기준 과도)
+- **개선형 편차 1건**: `useState + useEffect` 동기화 → 파생 상태 `const email = user?.email ?? emailInput` 전환 — React 19 린트 규칙 `react-hooks/set-state-in-effect` 대응, 설계 의도 동일 유지
+- **Lessons**: React 19 에서 `useEffect` 내 setState 가 린트 차단됨 → 파생 상태가 기본 패턴 · Flyway 단일 소스가 Supabase native 마이그레이션 분리보다 스키마 일관성 유리 · 베타 단계에서 관리자 UI 는 Dashboard 로 충분, 개발 리소스 절약
+- **Follow-up**: hCaptcha / Turnstile 통합 (트래픽 증가 시) · 확인 메일 자동 발송 · Slack/Discord 웹훅 실시간 알림 · 첨부 파일 업로드 (Supabase Storage)
+
+**링크**: [plan](feedback/feedback.plan.md) · [design](feedback/feedback.design.md) · [analysis](feedback/feedback.analysis.md) · [report](feedback/feedback.report.md)
 
 ## password-reset — Phase 4.5.4 비밀번호 재설정 플로우 (FE 전용, BE 무변경)
 
