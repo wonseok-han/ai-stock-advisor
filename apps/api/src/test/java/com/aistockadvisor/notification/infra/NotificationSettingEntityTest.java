@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -81,5 +82,35 @@ class NotificationSettingEntityTest {
 
         assertThat(e.isLastTriggeredAbove()).isTrue();
         assertThat(e.getLastNotifiedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    @DisplayName("U6: markNewsNotified 는 lastNewsPublishedAt 만 설정한다")
+    void u6_markNewsNotifiedSetsWatermark() {
+        NotificationSettingEntity e = new NotificationSettingEntity(UUID.randomUUID(), "AAPL");
+        Instant t0 = Instant.parse("2026-04-20T09:30:00Z");
+        assertThat(e.getLastNewsPublishedAt()).isNull();
+
+        e.markNewsNotified(t0);
+
+        assertThat(e.getLastNewsPublishedAt()).isEqualTo(t0);
+    }
+
+    @Test
+    @DisplayName("U7: update() 는 lastNewsPublishedAt 을 건드리지 않는다 (가격 상태와 독립)")
+    void u7_updatePreservesNewsWatermark() {
+        NotificationSettingEntity e = entityWithState();
+        Instant newsAt = Instant.parse("2026-04-20T09:30:00Z");
+        e.markNewsNotified(newsAt);
+
+        // 임계값 변경 (가격 상태는 리셋되지만 뉴스 watermark 는 유지)
+        e.update(new BigDecimal("7"), false, true);
+        assertThat(e.isLastTriggeredAbove()).isFalse();
+        assertThat(e.getLastNotifiedAt()).isNull();
+        assertThat(e.getLastNewsPublishedAt()).isEqualTo(newsAt);
+
+        // 동일 임계값 재저장 (가격 상태 유지, 뉴스 watermark 유지)
+        e.update(new BigDecimal("7"), true, false);
+        assertThat(e.getLastNewsPublishedAt()).isEqualTo(newsAt);
     }
 }

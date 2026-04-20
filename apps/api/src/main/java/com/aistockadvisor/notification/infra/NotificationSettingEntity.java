@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -40,6 +41,9 @@ public class NotificationSettingEntity {
     @Column(name = "last_triggered_above", nullable = false)
     private boolean lastTriggeredAbove = false;
 
+    @Column(name = "last_news_published_at")
+    private Instant lastNewsPublishedAt;
+
     protected NotificationSettingEntity() {
     }
 
@@ -56,6 +60,7 @@ public class NotificationSettingEntity {
     public boolean isEnabled() { return enabled; }
     public OffsetDateTime getLastNotifiedAt() { return lastNotifiedAt; }
     public boolean isLastTriggeredAbove() { return lastTriggeredAbove; }
+    public Instant getLastNewsPublishedAt() { return lastNewsPublishedAt; }
 
     /**
      * 사용자 설정 업데이트. 임계값이 변경되면 발송 상태를 리셋하여
@@ -81,5 +86,13 @@ public class NotificationSettingEntity {
     /** 리셋 임계값 아래로 내려갔을 때 호출. 쿨다운 타이머는 유지. */
     public void resetTrigger() {
         this.lastTriggeredAbove = false;
+    }
+
+    /**
+     * 뉴스 알림 watermark 전진. 푸시 발송 성공 또는 baseline 세팅 시 호출.
+     * @param publishedAt 최신 뉴스의 published_at
+     */
+    public void markNewsNotified(Instant publishedAt) {
+        this.lastNewsPublishedAt = publishedAt;
     }
 }
