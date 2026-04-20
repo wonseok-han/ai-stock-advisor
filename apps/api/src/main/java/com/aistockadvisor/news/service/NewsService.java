@@ -10,6 +10,7 @@ import com.aistockadvisor.news.infra.NewsRawRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +25,8 @@ import java.util.UUID;
  * 뉴스 조회 서비스.
  * 참조: docs/02-design/features/phase2-rag-pipeline.design.md §4 (GET /news), §5
  *
- * <p>캐시 전략: Postgres {@code news_raw} 24h (translated_at).<br>
+ * <p>캐시 전략: Postgres {@code news_raw} 24h (translated_at) 는 Finnhub 호출 생략 여부 결정용.
+ * 응답은 번역된 행 중 published_at 역순 최신 N 건 — 오래된 번역본도 발행일 기준 최신이면 노출.<br>
  * Miss → Finnhub 호출 → upsert → LLM 번역 → 응답. LLM 실패 시 영문 원문 유지 + 영문 disclaimer.
  */
 @Service
@@ -70,15 +72,18 @@ public class NewsService {
             for (NewsRawEntity entity : toTranslate) {
                 translateAndApply(entity, fetched);
             }
-            // 재조회 (translated_at 이 채워진 최신 상태 반영).
-            return repository.findFreshTranslated(ticker, since).stream()
-                    .limit(take)
+            // 재조회: published_at 역순 상위 N. 24h 필터는 캐시 결정용이라 응답 단계엔 적용 안 함.
+            return repository.findLatestTranslatedByTicker(ticker, PageRequest.of(0, take))
+                    .stream()
                     .map(this::toDto)
                     .toList();
         } catch (Exception ex) {
-            log.warn("news fetch failed ticker={} reason={} — returning stale {} items",
-                    ticker, ex.getMessage(), fresh.size());
-            return fresh.stream().limit(take).map(this::toDto).toList();
+            log.warn("news fetch failed ticker={} reason={} — returning latest stale items",
+                    ticker, ex.getMessage());
+            return repository.findLatestTranslatedByTicker(ticker, PageRequest.of(0, take))
+                    .stream()
+                    .map(this::toDto)
+                    .toList();
         }
     }
 
