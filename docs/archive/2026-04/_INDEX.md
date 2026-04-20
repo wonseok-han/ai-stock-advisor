@@ -12,6 +12,20 @@
 | [auth](auth/) | Phase 4 | 95% | 2026-04-16 | 2026-04-17 | plan, design, analysis, report |
 | [phase4.5-improvements](phase4.5-improvements/) | Phase 4.5 | 96.4% | 2026-04-17 | 2026-04-17 | plan, design, analysis, report |
 | [notification-dedup](notification-dedup/) | Phase 4.5.1 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [notification-ui-cleanup](notification-ui-cleanup/) | Phase 4.5.2 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+
+## notification-ui-cleanup — Phase 4.5.2 아이콘 전용 버튼 + 활성 상태 + 죽은 토글 제거
+
+종목 상세 북마크/알림 버튼을 아이콘 전용으로 정리, 알림 활성 상태를 색(blue)으로 피드백. 죽은 토글 `onSignalChange`를 FE 타입 → 모달/섹션/리스트 UI → BE DTO/Entity/Service/EntityTest → DB(Flyway V11 DROP) 풀 스택에서 완전 제거. Match Rate 100%, iteration 0회, net -8 lines (순 감소).
+
+- **범위**: FE 6 파일(bookmark-button, notification-button, notification-setting-modal, notification-settings, my-page/notification-section, types/notification) + BE 5 파일(Entity/Request/Response/Service/EntityTest) + Flyway V11 DROP COLUMN
+- **결과**: 12 파일, +40/-48 (net -8). 기존 테스트 회귀 0 (Entity U1~U5 3-arg 전환, DedupPolicy T1~T9 불변)
+- **PR**: #13 squash-merged (`{예정}`)
+- **핵심 UX 개선**: 아이콘 전용 + hover tooltip (title 속성) · 북마크(노랑) vs 알림(파랑) 색 구분 · 활성 시 종 fill="currentColor" · 죽은 옵션 제거로 모달 노이즈 감소
+- **YAGNI 판단**: AI 시그널 알림 구현 시 LLM 배치 호출(~600+/day) 토큰 비용이 "참고용 분석 도구" 포지셔닝 대비 과함 → 구현 대신 **삭제** 선택. 재도입 시 `notification-signal` 신규 feature 로
+- **보존**: `onNewNews` 는 유지 (추후 `notification-news` feature 에서 RSS 기반 구현 예정), `NotificationCheckService`/`NotificationDedupPolicy`/`PushService` 불변
+
+**링크**: [plan](notification-ui-cleanup/notification-ui-cleanup.plan.md) · [design](notification-ui-cleanup/notification-ui-cleanup.design.md) · [analysis](notification-ui-cleanup/notification-ui-cleanup.analysis.md) · [report](notification-ui-cleanup/notification-ui-cleanup.report.md)
 
 ## notification-dedup — Phase 4.5.1 Web Push 중복 억제 (히스테리시스 + 쿨다운)
 

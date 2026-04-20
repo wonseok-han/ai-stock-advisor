@@ -31,7 +31,7 @@ public class NotificationSettingService {
         String upper = ticker.toUpperCase();
         NotificationSettingEntity entity = settingRepo.findByUserIdAndTicker(userId, upper)
                 .orElseGet(() -> settingRepo.save(new NotificationSettingEntity(userId, upper)));
-        entity.update(req.priceChangeThreshold(), req.onNewNews(), req.onSignalChange(), req.enabled());
+        entity.update(req.priceChangeThreshold(), req.onNewNews(), req.enabled());
         settingRepo.save(entity);
         return toResponse(entity);
     }
@@ -45,6 +45,6 @@ public class NotificationSettingService {
     private NotificationSettingResponse toResponse(NotificationSettingEntity e) {
         return new NotificationSettingResponse(
                 e.getTicker(), e.getPriceChangeThreshold(),
-                e.isOnNewNews(), e.isOnSignalChange(), e.isEnabled());
+                e.isOnNewNews(), e.isEnabled());
     }
 }

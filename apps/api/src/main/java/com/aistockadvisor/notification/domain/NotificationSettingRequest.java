@@ -5,7 +5,6 @@ import java.math.BigDecimal;
 public record NotificationSettingRequest(
         BigDecimal priceChangeThreshold,
         boolean onNewNews,
-        boolean onSignalChange,
         boolean enabled
 ) {
 }

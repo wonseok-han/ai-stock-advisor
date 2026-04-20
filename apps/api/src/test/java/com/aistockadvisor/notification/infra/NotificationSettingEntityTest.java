@@ -17,7 +17,7 @@ class NotificationSettingEntityTest {
 
     private NotificationSettingEntity entityWithState() {
         NotificationSettingEntity e = new NotificationSettingEntity(UUID.randomUUID(), "AAPL");
-        e.update(new BigDecimal("5"), false, false, true);
+        e.update(new BigDecimal("5"), false, true);
         e.markNotified(NOW);
         return e;
     }
@@ -29,7 +29,7 @@ class NotificationSettingEntityTest {
         assertThat(e.isLastTriggeredAbove()).isTrue();
         assertThat(e.getLastNotifiedAt()).isNotNull();
 
-        e.update(new BigDecimal("7"), false, false, true);
+        e.update(new BigDecimal("7"), false, true);
 
         assertThat(e.isLastTriggeredAbove()).isFalse();
         assertThat(e.getLastNotifiedAt()).isNull();
@@ -40,12 +40,11 @@ class NotificationSettingEntityTest {
     void u2_sameThresholdPreservesState() {
         NotificationSettingEntity e = entityWithState();
 
-        e.update(new BigDecimal("5"), true, true, true);
+        e.update(new BigDecimal("5"), true, true);
 
         assertThat(e.isLastTriggeredAbove()).isTrue();
         assertThat(e.getLastNotifiedAt()).isEqualTo(NOW);
         assertThat(e.isOnNewNews()).isTrue();
-        assertThat(e.isOnSignalChange()).isTrue();
     }
 
     @Test
@@ -53,7 +52,7 @@ class NotificationSettingEntityTest {
     void u3_otherFieldsPreserveState() {
         NotificationSettingEntity e = entityWithState();
 
-        e.update(new BigDecimal("5"), false, false, false);
+        e.update(new BigDecimal("5"), false, false);
 
         assertThat(e.isLastTriggeredAbove()).isTrue();
         assertThat(e.getLastNotifiedAt()).isEqualTo(NOW);
@@ -75,7 +74,7 @@ class NotificationSettingEntityTest {
     @DisplayName("U5: markNotified 는 타임스탬프 + lastTriggeredAbove 를 함께 설정한다")
     void u5_markNotifiedSetsBoth() {
         NotificationSettingEntity e = new NotificationSettingEntity(UUID.randomUUID(), "AAPL");
-        e.update(new BigDecimal("5"), false, false, true);
+        e.update(new BigDecimal("5"), false, true);
         assertThat(e.isLastTriggeredAbove()).isFalse();
 
         e.markNotified(NOW);
