@@ -9,11 +9,11 @@ import java.util.Set;
  */
 public record EvaluationWindow(int days) {
 
-    public static final EvaluationWindow W7 = new EvaluationWindow(7);
-    public static final EvaluationWindow W30 = new EvaluationWindow(30);
-
     /** API·설정에서 허용되는 윈도우 화이트리스트. */
     public static final Set<Integer> ALLOWED = Set.of(7, 30);
+
+    public static final EvaluationWindow W7 = new EvaluationWindow(7);
+    public static final EvaluationWindow W30 = new EvaluationWindow(30);
 
     public static final List<EvaluationWindow> DEFAULTS = List.of(W7, W30);
 

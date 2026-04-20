@@ -21,7 +21,7 @@ public interface AiSignalAuditRepository extends JpaRepository<AiSignalAuditEnti
             SELECT a FROM AiSignalAuditEntity a
             WHERE a.fallback = FALSE
               AND a.generatedAt <= :maxGeneratedAt
-              AND (:sinceOrNull IS NULL OR a.generatedAt >= :sinceOrNull)
+              AND a.generatedAt >= COALESCE(:sinceOrNull, a.generatedAt)
               AND NOT EXISTS (
                     SELECT 1 FROM AiSignalEvaluationEntity e
                     WHERE e.auditId = a.id AND e.windowDays = :windowDays
@@ -35,12 +35,16 @@ public interface AiSignalAuditRepository extends JpaRepository<AiSignalAuditEnti
 
     /**
      * 백필 대상 총 건수 (admin 엔드포인트 응답용).
+     *
+     * <p>{@code COALESCE(:sinceOrNull, a.generatedAt)} 은 since 가 null 이면 자기 자신과
+     * 비교되어 항상 참이 되고, Postgres 가 컬럼 타입에서 파라미터 타입을 추론하게 해
+     * "could not determine data type of parameter" 오류를 회피한다.
      */
     @Query("""
             SELECT COUNT(a) FROM AiSignalAuditEntity a
             WHERE a.fallback = FALSE
               AND a.generatedAt <= :maxGeneratedAt
-              AND (:sinceOrNull IS NULL OR a.generatedAt >= :sinceOrNull)
+              AND a.generatedAt >= COALESCE(:sinceOrNull, a.generatedAt)
               AND NOT EXISTS (
                     SELECT 1 FROM AiSignalEvaluationEntity e
                     WHERE e.auditId = a.id AND e.windowDays = :windowDays
