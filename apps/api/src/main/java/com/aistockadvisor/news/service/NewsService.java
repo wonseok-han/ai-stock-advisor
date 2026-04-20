@@ -3,6 +3,7 @@ package com.aistockadvisor.news.service;
 import com.aistockadvisor.common.util.Hashing;
 import com.aistockadvisor.legal.Disclaimers;
 import com.aistockadvisor.news.domain.NewsItem;
+import com.aistockadvisor.news.domain.NewsItem.Sentiment;
 import com.aistockadvisor.news.infra.FinnhubNewsClient;
 import com.aistockadvisor.news.infra.FinnhubNewsClient.CompanyNews;
 import com.aistockadvisor.news.infra.NewsRawEntity;
@@ -113,6 +114,13 @@ public class NewsService {
         }
         NewsTranslator.Translation tr = translator.translate(source);
         if (tr == null) {
+            // 번역 실패(LLM 에러 · JSON 파싱 실패 · 금지어 차단) 시 영문 원문 fallback.
+            // translated_at 을 now 로 확정해 동일 기사를 매 요청마다 재번역하지 않도록 하고,
+            // findFreshTranslated 쿼리가 행을 포함하도록 한다. FE 는 title_ko == null 이면
+            // title_en 으로 렌더(news-panel.tsx, market-news.tsx 참조).
+            log.info("news-translator fallback-to-english id={} url={}", source.id(), source.url());
+            entity.applyTranslation(null, null, Sentiment.NEUTRAL, Instant.now());
+            repository.saveAndFlush(entity);
             return;
         }
         entity.applyTranslation(tr.titleKo(), tr.summaryKo(), tr.sentiment(), Instant.now());
