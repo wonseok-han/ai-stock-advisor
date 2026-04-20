@@ -24,6 +24,15 @@ export default function LoginPage() {
 
         <LoginForm />
 
+        <p className="text-center text-sm">
+          <Link
+            href="/auth/forgot-password"
+            className="text-zinc-500 hover:text-zinc-700 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </p>
+
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-zinc-200 dark:border-zinc-700" />
