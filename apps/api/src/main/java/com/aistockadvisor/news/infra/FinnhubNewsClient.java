@@ -35,7 +35,9 @@ public class FinnhubNewsClient {
     private static final Logger log = LoggerFactory.getLogger(FinnhubNewsClient.class);
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ISO_LOCAL_DATE;
-    private static final int LOOKBACK_DAYS = 3;
+    // 과거 3일 제한은 저유동성 종목에서 "뉴스 없음" 빈발 원인이었음.
+    // 날짜 범위는 넓게 잡고 datetime 역순 + MAX_ITEMS 로 "최신 5건" 의미를 유지.
+    private static final int LOOKBACK_DAYS = 365;
     private static final int MAX_ITEMS = 5;
 
     private final WebClient webClient;
@@ -54,7 +56,10 @@ public class FinnhubNewsClient {
                 .build();
     }
 
-    /** 최근 3일 뉴스 최대 5건. 시간 역순 정렬 후 반환. */
+    /**
+     * 최신 뉴스 최대 {@value #MAX_ITEMS} 건 반환. 시간 역순 정렬.
+     * Finnhub /company-news 는 from/to 가 필수라 최근 1년 윈도우 조회 후 상위 N 건만 사용.
+     */
     public List<CompanyNews> fetchRecent(String ticker) {
         LocalDate to = LocalDate.now(ZoneOffset.UTC);
         LocalDate from = to.minusDays(LOOKBACK_DAYS);
