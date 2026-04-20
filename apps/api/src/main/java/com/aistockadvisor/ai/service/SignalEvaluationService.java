@@ -13,8 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +59,7 @@ public class SignalEvaluationService {
     private final SignalOutcomeEvaluator evaluator;
     private final int batchSize;
     private final Clock clock;
+    private final ApplicationContext ctx;
 
     @Autowired
     public SignalEvaluationService(AiSignalAuditRepository auditRepo,
@@ -65,9 +68,10 @@ public class SignalEvaluationService {
                                    @Value("${app.ai.evaluation.flat-threshold-pct:2.0}")
                                    BigDecimal flatThresholdPct,
                                    @Value("${app.ai.evaluation.batch-size:500}")
-                                   int batchSize) {
+                                   int batchSize,
+                                   ApplicationContext ctx) {
         this(auditRepo, evalRepo, candleRepo,
-                new SignalOutcomeEvaluator(flatThresholdPct), batchSize, Clock.systemUTC());
+                new SignalOutcomeEvaluator(flatThresholdPct), batchSize, Clock.systemUTC(), ctx);
     }
 
     // Test-only ctor
@@ -77,12 +81,23 @@ public class SignalEvaluationService {
                             SignalOutcomeEvaluator evaluator,
                             int batchSize,
                             Clock clock) {
+        this(auditRepo, evalRepo, candleRepo, evaluator, batchSize, clock, null);
+    }
+
+    SignalEvaluationService(AiSignalAuditRepository auditRepo,
+                            AiSignalEvaluationRepository evalRepo,
+                            CandleRepository candleRepo,
+                            SignalOutcomeEvaluator evaluator,
+                            int batchSize,
+                            Clock clock,
+                            ApplicationContext ctx) {
         this.auditRepo = auditRepo;
         this.evalRepo = evalRepo;
         this.candleRepo = candleRepo;
         this.evaluator = evaluator;
         this.batchSize = batchSize;
         this.clock = clock;
+        this.ctx = ctx;
     }
 
     /**
@@ -125,6 +140,39 @@ public class SignalEvaluationService {
         log.info("signal-evaluation window={} processed={} skippedNoPrice={} skippedDuplicate={}",
                 windowDays, processed, skippedNoPrice, skippedDuplicate);
         return new EvaluationStats(windowDays, processed, skippedNoPrice, skippedDuplicate);
+    }
+
+    /**
+     * 관리자 백필용 비동기 트리거. 응답을 즉시 반환하기 위해 virtual-thread 에서 실행.
+     *
+     * @param window 평가 윈도우
+     * @param since  이 시각 이후 audit 만 대상 (null 이면 전체)
+     */
+    @Async
+    public void evaluateWindowAsync(EvaluationWindow window, Instant since) {
+        try {
+            // self-proxy 로 호출해 @Transactional 적용 보장 (self-invocation 시 AOP 우회 방지)
+            SignalEvaluationService self = (ctx != null)
+                    ? ctx.getBean(SignalEvaluationService.class)
+                    : this;
+            self.evaluateWindow(window, since);
+        } catch (Exception ex) {
+            log.error("backfill evaluation failed window={} reason={}",
+                    window.days(), ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * 백필 대상 건수 조회 (admin 응답 메타데이터용).
+     */
+    public long countUnevaluated(EvaluationWindow window, Instant since) {
+        Instant maxGeneratedAt = Instant.now(clock)
+                .minus(window.days(), ChronoUnit.DAYS);
+        return auditRepo.countUnevaluated(maxGeneratedAt, since, window.asShort());
+    }
+
+    public int batchSize() {
+        return batchSize;
     }
 
     private OneResult tryEvaluateOne(AiSignalAuditEntity audit, EvaluationWindow window) {
