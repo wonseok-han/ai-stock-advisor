@@ -67,26 +67,55 @@ public class PushService {
         subscriptionRepo.deleteByUserIdAndEndpoint(userId, endpoint);
     }
 
-    public void sendToUser(UUID userId, String title, String body) {
+    /** url 없는 기존 시그니처 — 내부적으로 4-arg 에 null 위임. */
+    public boolean sendToUser(UUID userId, String title, String body) {
+        return sendToUser(userId, title, body, null);
+    }
+
+    /**
+     * 사용자의 모든 구독 endpoint로 푸시 발송 시도.
+     *
+     * @param url 클릭 시 이동할 경로 (예: "/stocks/AAPL"). null/빈 문자열이면 sw 에서 "/" 기본.
+     * @return true 면 1개 이상 endpoint 에 발송 성공. false 면 발송된 게 없음
+     *         (webpush 미초기화 / 구독자 0명 / 모든 시도 실패).
+     *         호출측은 이 값을 기준으로 "발송 성공" 상태를 저장해야 한다.
+     */
+    public boolean sendToUser(UUID userId, String title, String body, String url) {
         if (webPushService == null) {
             log.debug("Push disabled — skipping notification for user {}", userId);
-            return;
+            return false;
         }
         List<PushSubscriptionEntity> subs = subscriptionRepo.findByUserId(userId);
-        String payload = """
-                {"title":"%s","body":"%s","icon":"/icon.svg"}""".formatted(
-                title.replace("\"", "\\\""),
-                body.replace("\"", "\\\""));
+        if (subs.isEmpty()) {
+            return false;
+        }
+        String payload = buildPayload(title, body, url);
 
+        int success = 0;
         for (PushSubscriptionEntity sub : subs) {
             try {
                 Notification notification = new Notification(
                         sub.getEndpoint(), sub.getP256dh(), sub.getAuth(), payload);
                 webPushService.send(notification);
+                success++;
             } catch (Exception e) {
                 log.warn("Push send failed for endpoint {}: {}", sub.getEndpoint(), e.getMessage());
             }
         }
+        return success > 0;
+    }
+
+    /** Web Push JSON payload 빌드. 테스트 가시성을 위해 package-private. */
+    static String buildPayload(String title, String body, String url) {
+        String escapedTitle = title.replace("\"", "\\\"");
+        String escapedBody = body.replace("\"", "\\\"");
+        if (url == null || url.isBlank()) {
+            return "{\"title\":\"%s\",\"body\":\"%s\",\"icon\":\"/icon.svg\"}"
+                    .formatted(escapedTitle, escapedBody);
+        }
+        String escapedUrl = url.replace("\"", "\\\"");
+        return "{\"title\":\"%s\",\"body\":\"%s\",\"icon\":\"/icon.svg\",\"url\":\"%s\"}"
+                .formatted(escapedTitle, escapedBody, escapedUrl);
     }
 
     public boolean isEnabled() {

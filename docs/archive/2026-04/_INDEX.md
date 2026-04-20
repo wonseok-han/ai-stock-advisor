@@ -11,6 +11,79 @@
 | [market-dashboard](market-dashboard/) | Phase 3 | 95% | 2026-04-16 | 2026-04-16 | plan, design, report |
 | [auth](auth/) | Phase 4 | 95% | 2026-04-16 | 2026-04-17 | plan, design, analysis, report |
 | [phase4.5-improvements](phase4.5-improvements/) | Phase 4.5 | 96.4% | 2026-04-17 | 2026-04-17 | plan, design, analysis, report |
+| [notification-dedup](notification-dedup/) | Phase 4.5.1 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [notification-ui-cleanup](notification-ui-cleanup/) | Phase 4.5.2 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [notification-news](notification-news/) | Phase 4.5.3 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [password-reset](password-reset/) | Phase 4.5.4 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [feedback](feedback/) | Phase 4.5.5 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+
+## feedback — Phase 4.5.5 베타 피드백 채널 (/feedback + Supabase 테이블)
+
+베타 단계 버그·문의·제안 수집 공식 창구 확보. `/feedback` 페이지에서 Supabase `public.feedback` 테이블에 직접 INSERT. RLS 로 INSERT 공개·SELECT 서비스 롤 전용. 스팸 방어 3중(허니팟 + 60s 쿨다운 + 길이 제한). 관리자 UI 미구현, Supabase Dashboard 로 갈음. Match Rate 99%, iteration 0회.
+
+- **범위**: FE 4파일 (`app/feedback/page.tsx`, `features/feedback/feedback-form.tsx`, `features/feedback/types.ts`, `components/legal/disclaimer-footer.tsx` 수정) + Flyway V14 SQL 1파일. BE Java 0 변경
+- **결과**: +1198 lines, `make web-check`/`web-build` 통과, `/feedback` Static route 등록
+- **PR**: #23 squash-merged (`e1d15d3`)
+- **스팸 방어 3중**: 허니팟 `name="company"` sr-only (봇 무음 차단) · 60초 쿨다운 (localStorage) · 길이 제한 (subject 1~100, body 10~2000)
+- **Key Decisions**: Supabase 직접 INSERT (Spring 엔드포인트 X) · Flyway V14 (Plan "BE 변경 0" 에서 스키마 일관성 우선으로 완화) · 관리자 UI 미구현 (Dashboard 재사용) · hCaptcha 미채택 (베타 트래픽 기준 과도)
+- **개선형 편차 1건**: `useState + useEffect` 동기화 → 파생 상태 `const email = user?.email ?? emailInput` 전환 — React 19 린트 규칙 `react-hooks/set-state-in-effect` 대응, 설계 의도 동일 유지
+- **Lessons**: React 19 에서 `useEffect` 내 setState 가 린트 차단됨 → 파생 상태가 기본 패턴 · Flyway 단일 소스가 Supabase native 마이그레이션 분리보다 스키마 일관성 유리 · 베타 단계에서 관리자 UI 는 Dashboard 로 충분, 개발 리소스 절약
+- **Follow-up**: hCaptcha / Turnstile 통합 (트래픽 증가 시) · 확인 메일 자동 발송 · Slack/Discord 웹훅 실시간 알림 · 첨부 파일 업로드 (Supabase Storage)
+
+**링크**: [plan](feedback/feedback.plan.md) · [design](feedback/feedback.design.md) · [analysis](feedback/feedback.analysis.md) · [report](feedback/feedback.report.md)
+
+## password-reset — Phase 4.5.4 비밀번호 재설정 플로우 (FE 전용, BE 무변경)
+
+이메일/비밀번호 가입자의 계정 복구 경로 완성. Supabase Auth 표준 PKCE 플로우(`resetPasswordForEmail` + `updateUser`)를 FE 2개 페이지 + 2개 폼으로 구현. 기존 `/auth/callback` 의 `next` 쿼리 재사용으로 백엔드 변경 0. Match Rate 99%, iteration 0회.
+
+- **범위**: FE 5개 파일 (`app/auth/forgot-password/page.tsx` + `features/auth/forgot-password-form.tsx` + `app/auth/reset-password/page.tsx` + `features/auth/reset-password-form.tsx` + `app/auth/login/page.tsx` 링크 추가), BE 0파일
+- **결과**: +1214 lines (docs 포함), `make web-check` 0 errors, 새 route 2개 Static 등록. FR 9/10 (FR-10 "이미 로그인된 사용자 리다이렉트"는 Plan/Design 에서 선택 생략)
+- **PR**: #22 squash-merged (`3511481`)
+- **상태 머신**: forgot `idle → loading → sent / error`, reset `checking → invalid | ready → loading → error / 성공(홈 이동)`
+- **보안**: 이메일 존재 여부 비공개(enumeration 방지), `getUser()` 세션 가드, PKCE/CSRF/rate-limit 는 Supabase SDK 내장
+- **에러 매핑**: `mapErrorMessage` 헬퍼로 rate limit / invalid email / 6자 미만 / old password 동일 / invalid·expired·jwt 5케이스 한국어 매핑 — Design §4.1 에러 테이블의 런타임 실체화
+- **불변 영역**: `/auth/callback/route.ts`, `login-form.tsx`, `signup-form.tsx`, `auth-provider.tsx`, `@/lib/supabase/*` 전부 미변경
+- **Lessons**: 기존 `/auth/callback` 의 `next` 쿼리 처리가 이미 존재하여 BE/route 재사용만으로 완결. Supabase Auth SDK 가 PKCE/CSRF/rate-limit 을 내장 처리해 FE 로직은 호출·상태머신·에러 매핑에만 집중 가능
+
+**링크**: [plan](password-reset/password-reset.plan.md) · [design](password-reset/password-reset.design.md) · [analysis](password-reset/password-reset.analysis.md) · [report](password-reset/password-reset.report.md)
+
+## notification-news — Phase 4.5.3 뉴스 알림 부활 (watermark 기반 dedup)
+
+Phase 4.5.2 에서 보존한 `onNewNews` 토글을 실제 동작하는 뉴스 알림으로 부활. `last_news_published_at` watermark 기반 3-way 정책(BASELINE/SEND/NOOP)으로 이산 이벤트(뉴스 기사) 중복 억제, 첫 사이클 baseline fail-safe, publishedAt null 방어, `/stocks/{ticker}` 딥링크 지원. Match Rate 100%, iteration 0회.
+
+- **범위**: Flyway V12(`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) + `NotificationSettingEntity.lastNewsPublishedAt` + `markNewsNotified()` + 순수 함수 `NotificationNewsDedupPolicy`(3 Action, decide 메서드) + `NotificationCheckService.checkNewNews()` + `PushService.sendToUser(4-arg)` 오버로드 + FR-10 가격 알림 딥링크 추가
+- **결과**: +1018/-12, 신규 테스트 13건(N1~N6 + U6~U7 + P1~P5). `./gradlew check` 38초 BUILD SUCCESSFUL, 기존 T1~T9 / U1~U5 회귀 0
+- **PR**: #14 squash-merged (`5a87e21`)
+- **핵심 개선**: 뉴스 5건 중 newer 다건 시 target=최신 + `newerCount` 에 "외 N-1건" 합성 · watermark=null 첫 사이클 발송 대신 최신 시점 BASELINE 으로 전진 · publishedAt null 필터링 후 모두 null 이면 NOOP · sw.js 기존 `data.url` 처리 로직 재사용 → **FE 변경 0건**
+- **Key Decisions**: watermark vs hysteresis (이산 이벤트는 watermark 가 더 자연스러움) · 순수 함수 분리(I/O 없음, 테스트 용이) · PushService 3-arg 오버로드 유지(레거시 호환) · Report 수준 범위 확장(FR-10 가격 알림 딥링크, Design 외 추가)
+- **Follow-up**: `newerCount` 를 body 대신 badge 로 표현(다국어 대응) · 종목별 watermark 지원 시 `notification_settings` 정규화 검토
+
+**링크**: [plan](notification-news/notification-news.plan.md) · [design](notification-news/notification-news.design.md) · [analysis](notification-news/notification-news.analysis.md) · [report](notification-news/notification-news.report.md)
+
+## notification-ui-cleanup — Phase 4.5.2 아이콘 전용 버튼 + 활성 상태 + 죽은 토글 제거
+
+종목 상세 북마크/알림 버튼을 아이콘 전용으로 정리, 알림 활성 상태를 색(blue)으로 피드백. 죽은 토글 `onSignalChange`를 FE 타입 → 모달/섹션/리스트 UI → BE DTO/Entity/Service/EntityTest → DB(Flyway V11 DROP) 풀 스택에서 완전 제거. Match Rate 100%, iteration 0회, net -8 lines (순 감소).
+
+- **범위**: FE 6 파일(bookmark-button, notification-button, notification-setting-modal, notification-settings, my-page/notification-section, types/notification) + BE 5 파일(Entity/Request/Response/Service/EntityTest) + Flyway V11 DROP COLUMN
+- **결과**: 12 파일, +40/-48 (net -8). 기존 테스트 회귀 0 (Entity U1~U5 3-arg 전환, DedupPolicy T1~T9 불변)
+- **PR**: #13 squash-merged (`{예정}`)
+- **핵심 UX 개선**: 아이콘 전용 + hover tooltip (title 속성) · 북마크(노랑) vs 알림(파랑) 색 구분 · 활성 시 종 fill="currentColor" · 죽은 옵션 제거로 모달 노이즈 감소
+- **YAGNI 판단**: AI 시그널 알림 구현 시 LLM 배치 호출(~600+/day) 토큰 비용이 "참고용 분석 도구" 포지셔닝 대비 과함 → 구현 대신 **삭제** 선택. 재도입 시 `notification-signal` 신규 feature 로
+- **보존**: `onNewNews` 는 유지 (추후 `notification-news` feature 에서 RSS 기반 구현 예정), `NotificationCheckService`/`NotificationDedupPolicy`/`PushService` 불변
+
+**링크**: [plan](notification-ui-cleanup/notification-ui-cleanup.plan.md) · [design](notification-ui-cleanup/notification-ui-cleanup.design.md) · [analysis](notification-ui-cleanup/notification-ui-cleanup.analysis.md) · [report](notification-ui-cleanup/notification-ui-cleanup.report.md)
+
+## notification-dedup — Phase 4.5.1 Web Push 중복 억제 (히스테리시스 + 쿨다운)
+
+15분 주기 스케줄러가 임계값 초과 상태에서 매 사이클 동일 알림을 발송하던 스팸 버그를 제거. 상태 전이 게이트 + 히스테리시스(리셋=임계×0.6) + 4h 쿨다운 + 푸시 성공 시에만 상태 전진하는 fail-safe. Match Rate 100%, iteration 0회.
+
+- **범위**: `NotificationDedupPolicy` 순수 함수(5 Action) + `NotificationDedupProperties`(`app.notification.dedup.*`) + `NotificationSettingEntity` 필드 2개(`lastNotifiedAt`, `lastTriggeredAbove`) + Flyway V10 + `PushService.sendToUser` void→boolean + `NotificationCheckService` 리팩터
+- **결과**: 14 unit tests (Policy 9 + Entity 5), `./gradlew check` BUILD SUCCESSFUL, 빌드 경고 0
+- **PR**: #12 squash-merged (`{예정}`)
+- **핵심 UX 개선**: 첫 돌파 1회만 발송 · 경계 진동(4.9%↔5.1%) 차단 · 리셋 후 재돌파도 4h 쿨다운 · 시계 역전 fail-safe(SKIP_COOLDOWN)
+- **Non-gap 조정 5건**: V8→V10(슬롯 점유), `NotificationCheckServiceIntegrationTest` 의도적 연기(Design optional), 나머지 3건은 인프라 재사용/Design 정정 반영
+
+**링크**: [plan](notification-dedup/notification-dedup.plan.md) · [design](notification-dedup/notification-dedup.design.md) · [analysis](notification-dedup/notification-dedup.analysis.md) · [report](notification-dedup/notification-dedup.report.md)
 
 ## phase4.5-improvements — Phase 4.5 캔들 DB + 마이페이지 + 알림 UX + Rate Limiter
 

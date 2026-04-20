@@ -1,5 +1,8 @@
 package com.aistockadvisor.stock.infra.client;
 
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
+import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.infra.CandleEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.channel.ChannelOption;
@@ -16,6 +19,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,16 +45,88 @@ public class YahooFinanceClient {
     private final WebClient webClient;
 
     public YahooFinanceClient() {
+        this(BASE_URL);
+    }
+
+    /** 테스트 전용: MockWebServer URL 주입 경로. */
+    YahooFinanceClient(String baseUrl) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
                         new ReadTimeoutHandler(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)))
                 .responseTimeout(TIMEOUT);
         this.webClient = WebClient.builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(baseUrl)
                 .defaultHeader("User-Agent", "Mozilla/5.0 (compatible; AIStockAdvisor/1.0)")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
+    }
+
+    /**
+     * 현재가 스냅샷. v8/finance/chart meta 필드에서 추출.
+     * regularMarketPrice 가 null 이거나 0 이면 null 반환.
+     */
+    public Quote quote(String ticker) {
+        try {
+            JsonNode root = webClient.get()
+                    .uri(b -> b.path("/v8/finance/chart/{symbol}")
+                            .queryParam("interval", "1m")
+                            .queryParam("range", "1d")
+                            .build(ticker))
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(TIMEOUT);
+
+            if (root == null) return null;
+            JsonNode result = root.path("chart").path("result");
+            if (!result.isArray() || result.isEmpty()) return null;
+
+            JsonNode meta = result.get(0).path("meta");
+            BigDecimal price = tobd(meta.path("regularMarketPrice"));
+            if (price == null || price.signum() == 0) return null;
+
+            BigDecimal prevClose = tobd(meta.path("chartPreviousClose"));
+            if (prevClose == null) prevClose = tobd(meta.path("previousClose"));
+            BigDecimal change = prevClose != null && prevClose.signum() > 0
+                    ? price.subtract(prevClose) : BigDecimal.ZERO;
+            BigDecimal changePct = prevClose != null && prevClose.signum() > 0
+                    ? change.divide(prevClose, 6, RoundingMode.HALF_UP)
+                            .multiply(BigDecimal.valueOf(100))
+                    : BigDecimal.ZERO;
+
+            long ts = meta.path("regularMarketTime").asLong(0);
+            OffsetDateTime updatedAt = ts > 0
+                    ? OffsetDateTime.ofInstant(Instant.ofEpochSecond(ts), ZoneOffset.UTC)
+                    : OffsetDateTime.now(ZoneOffset.UTC);
+
+            long regularStart = meta.path("currentTradingPeriod").path("regular").path("start").asLong(0);
+            long regularEnd   = meta.path("currentTradingPeriod").path("regular").path("end").asLong(0);
+            MarketStatus status = MarketStatusResolver.resolveByPeriod(regularStart, regularEnd);
+
+            return new Quote(
+                    ticker,
+                    price,
+                    change,
+                    changePct,
+                    tobd(meta.path("regularMarketDayHigh")),
+                    tobd(meta.path("regularMarketDayLow")),
+                    tobd(meta.path("regularMarketOpen")),
+                    prevClose,
+                    meta.path("regularMarketVolume").asLong(0),
+                    updatedAt,
+                    status,
+                    MarketStatusResolver.priceLabel(status, updatedAt)
+            );
+        } catch (Exception ex) {
+            log.warn("yahoo finance quote {} failed: {}", ticker, ex.getMessage());
+            return null;
+        }
+    }
+
+    private static BigDecimal tobd(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) return null;
+        double v = node.asDouble(0);
+        return v == 0 ? null : BigDecimal.valueOf(v).setScale(4, RoundingMode.HALF_UP);
     }
 
     /**

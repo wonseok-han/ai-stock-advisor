@@ -17,6 +17,8 @@ public record Quote(
         BigDecimal open,
         BigDecimal previousClose,
         long volume,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        MarketStatus marketStatus,
+        String priceLabel
 ) {
 }

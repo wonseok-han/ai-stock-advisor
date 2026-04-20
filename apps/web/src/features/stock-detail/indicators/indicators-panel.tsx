@@ -71,16 +71,41 @@ function Card({
     <div className="rounded-md border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-medium text-zinc-500">{title}</span>
-        <span
-          className="cursor-help text-xs text-zinc-400"
-          title={tooltip}
-          aria-label={tooltip}
-        >
-          ⓘ
-        </span>
+        <InfoTooltip text={tooltip} />
       </div>
       <div className="mt-2 space-y-1 text-sm tabular-nums">{children}</div>
     </div>
+  );
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label={text}
+        className="cursor-help rounded-full p-0.5 text-zinc-400 outline-none hover:text-zinc-600 focus-visible:ring-2 focus-visible:ring-zinc-400 dark:hover:text-zinc-200"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          className="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <circle cx="8" cy="8" r="6.5" />
+          <path d="M8 7.25v3.5" strokeLinecap="round" />
+          <circle cx="8" cy="5.25" r="0.6" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-72 max-w-[calc(100vw-2rem)] whitespace-normal break-keep rounded-md border border-zinc-200 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-700 opacity-0 shadow-lg transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+      >
+        {text}
+      </span>
+    </span>
   );
 }
 
@@ -135,7 +160,7 @@ function BollingerCard({
       <Row label="Upper" value={bollinger.upper.toFixed(2)} />
       <Row label="Middle" value={bollinger.middle.toFixed(2)} />
       <Row label="Lower" value={bollinger.lower.toFixed(2)} />
-      <Row label="%B" value={bollinger.percentB.toFixed(2)} />
+      <Row label="밴드 위치" value={bollinger.percentB.toFixed(2)} />
     </Card>
   );
 }

@@ -23,13 +23,12 @@ export function NotificationSettings() {
     );
   }
 
-  function handleToggle(setting: NotificationSetting, field: 'onNewNews' | 'onSignalChange' | 'enabled') {
+  function handleToggle(setting: NotificationSetting, field: 'onNewNews' | 'enabled') {
     upsertMutation.mutate({
       ticker: setting.ticker,
       req: {
         priceChangeThreshold: setting.priceChangeThreshold,
         onNewNews: field === 'onNewNews' ? !setting.onNewNews : setting.onNewNews,
-        onSignalChange: field === 'onSignalChange' ? !setting.onSignalChange : setting.onSignalChange,
         enabled: field === 'enabled' ? !setting.enabled : setting.enabled,
       },
     });
@@ -53,11 +52,6 @@ export function NotificationSettings() {
               label="뉴스"
               active={s.onNewNews}
               onClick={() => handleToggle(s, 'onNewNews')}
-            />
-            <ToggleChip
-              label="시그널"
-              active={s.onSignalChange}
-              onClick={() => handleToggle(s, 'onSignalChange')}
             />
             <ToggleChip
               label="활성"

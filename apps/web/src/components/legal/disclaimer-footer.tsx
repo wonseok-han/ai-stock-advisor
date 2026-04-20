@@ -14,7 +14,7 @@ export function DisclaimerFooter() {
           책임은 사용자 본인에게 있습니다. 과거 성과는 미래 수익을 보장하지
           않습니다.
         </p>
-        <nav className="flex flex-wrap gap-4" aria-label="법적 고지">
+        <nav className="flex flex-wrap gap-4" aria-label="법적 고지 및 피드백">
           <Link href="/legal/disclaimer" className="hover:underline">
             면책 고지
           </Link>
@@ -23,6 +23,9 @@ export function DisclaimerFooter() {
           </Link>
           <Link href="/legal/privacy" className="hover:underline">
             개인정보 처리방침
+          </Link>
+          <Link href="/feedback" className="hover:underline">
+            피드백 보내기
           </Link>
         </nav>
         <p className="mt-4 text-[11px] text-zinc-400">

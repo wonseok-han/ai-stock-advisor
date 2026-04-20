@@ -1,5 +1,6 @@
 package com.aistockadvisor.news.infra;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -55,4 +56,19 @@ public interface NewsRawRepository extends JpaRepository<NewsRawEntity, UUID> {
            ORDER BY n.publishedAt DESC
            """)
     List<NewsRawEntity> findUntranslatedByTicker(@Param("ticker") String ticker);
+
+    /**
+     * 번역 완료된 뉴스를 {@code published_at} 역순으로.
+     * 24h 캐시 필터는 "Finnhub 호출 생략 여부" 결정용이며, 최종 응답은 언제 번역됐든
+     * 발행일이 가장 최근인 N 건을 보여준다 (저유동성 종목 빈 화면 방지).
+     */
+    @Query("""
+           SELECT n FROM NewsRawEntity n
+           WHERE n.ticker = :ticker
+             AND n.translatedAt IS NOT NULL
+           ORDER BY n.publishedAt DESC
+           """)
+    List<NewsRawEntity> findLatestTranslatedByTicker(
+            @Param("ticker") String ticker,
+            Pageable pageable);
 }

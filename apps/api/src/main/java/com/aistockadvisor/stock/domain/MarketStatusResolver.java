@@ -1,0 +1,49 @@
+package com.aistockadvisor.stock.domain;
+
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
+public final class MarketStatusResolver {
+
+    private static final ZoneId ET = ZoneId.of("America/New_York");
+    private static final LocalTime OPEN  = LocalTime.of(9, 30);
+    private static final LocalTime CLOSE = LocalTime.of(16, 0);
+    private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("M/d");
+
+    private MarketStatusResolver() {}
+
+    public static MarketStatus resolve() {
+        ZonedDateTime now = ZonedDateTime.now(ET);
+        DayOfWeek dow = now.getDayOfWeek();
+        if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
+            return MarketStatus.CLOSED;
+        }
+        LocalTime t = now.toLocalTime();
+        return (t.compareTo(OPEN) >= 0 && t.compareTo(CLOSE) < 0)
+                ? MarketStatus.OPEN : MarketStatus.CLOSED;
+    }
+
+    public static String priceLabel(MarketStatus status, OffsetDateTime updatedAt) {
+        if (status == MarketStatus.OPEN) {
+            return "실시간 (약 1~2분 지연)";
+        }
+        if (updatedAt != null) {
+            String date = updatedAt.atZoneSameInstant(ET).format(LABEL_FMT);
+            return date + " 정규장 종가";
+        }
+        return "정규장 종가";
+    }
+
+    /** Yahoo currentTradingPeriod.regular 로 판단 (epoch 초 기준). */
+    public static MarketStatus resolveByPeriod(long regularStart, long regularEnd) {
+        if (regularStart <= 0 || regularEnd <= 0) return resolve();
+        long now = Instant.now().getEpochSecond();
+        return (now >= regularStart && now < regularEnd)
+                ? MarketStatus.OPEN : MarketStatus.CLOSED;
+    }
+}

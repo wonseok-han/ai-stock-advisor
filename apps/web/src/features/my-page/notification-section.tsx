@@ -60,11 +60,6 @@ export function NotificationSection() {
                       뉴스
                     </span>
                   )}
-                  {s.onSignalChange && (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      시그널
-                    </span>
-                  )}
                   {!s.enabled && (
                     <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
                       비활성

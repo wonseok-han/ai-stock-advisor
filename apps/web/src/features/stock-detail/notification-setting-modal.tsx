@@ -22,12 +22,10 @@ function NotificationSettingModalInner({
   isExisting,
   initialThreshold,
   initialOnNewNews,
-  initialOnSignalChange,
 }: Props & {
   isExisting: boolean;
   initialThreshold: number;
   initialOnNewNews: boolean;
-  initialOnSignalChange: boolean;
 }) {
   const { data: bookmarkCheck } = useBookmarkCheck(ticker);
   const upsertMutation = useUpsertNotificationSetting();
@@ -36,7 +34,6 @@ function NotificationSettingModalInner({
 
   const [threshold, setThreshold] = useState<number>(initialThreshold);
   const [onNewNews, setOnNewNews] = useState(initialOnNewNews);
-  const [onSignalChange, setOnSignalChange] = useState(initialOnSignalChange);
 
   function handleSave() {
     // 미북마크 종목이면 자동 북마크 추가
@@ -50,7 +47,6 @@ function NotificationSettingModalInner({
         req: {
           priceChangeThreshold: threshold,
           onNewNews,
-          onSignalChange,
           enabled: true,
         },
       },
@@ -100,11 +96,6 @@ function NotificationSettingModalInner({
             label="새 뉴스 발생 시"
             checked={onNewNews}
             onChange={setOnNewNews}
-          />
-          <ToggleRow
-            label="AI 시그널 변화 시"
-            checked={onSignalChange}
-            onChange={setOnSignalChange}
           />
         </div>
 
@@ -162,7 +153,6 @@ export function NotificationSettingModal({ ticker, onClose }: Props) {
       isExisting={!!existing}
       initialThreshold={existing?.priceChangeThreshold ?? 5}
       initialOnNewNews={existing?.onNewNews ?? true}
-      initialOnSignalChange={existing?.onSignalChange ?? true}
     />
   );
 }
