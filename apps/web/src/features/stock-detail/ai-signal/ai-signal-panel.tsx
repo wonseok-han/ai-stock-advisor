@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { useAuth } from '@/features/auth/auth-provider';
 import { useAiSignal } from '@/features/stock-detail/ai-signal/hooks/use-ai-signal';
+import { AiAccuracyBadge } from '@/features/stock-detail/components/ai-accuracy-badge';
 import { cn } from '@/lib/cn';
 
 import type { AiSignal, AiSignalClass } from '@/types/ai-signal';
@@ -123,6 +124,10 @@ function AiSignalContent({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
       <p className="mt-1 text-[11px] text-zinc-400">
         모델: {data.modelName} · 생성: {new Date(data.generatedAt).toLocaleString('ko-KR')}
       </p>
+
+      <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <AiAccuracyBadge window={30} />
+      </div>
     </section>
   );
 }

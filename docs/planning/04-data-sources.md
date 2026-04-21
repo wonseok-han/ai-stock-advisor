@@ -4,7 +4,7 @@
 
 | 용도 | 1순위 (주) | 2순위 (fallback) | 비용 |
 |---|---|---|---|
-| 실시간 시세(15분 지연) | **Finnhub** `/quote` | Yahoo (yfinance) | 무료 |
+| 실시간 시세(15분 지연) | **Yahoo** `v8/finance/chart/{symbol}`*2 | Finnhub `/quote` | 무료 |
 | 종목 검색 | **Finnhub** `/search` | — | 무료 |
 | 기업 프로필 | **Finnhub** `/stock/profile2` | — | 무료 |
 | OHLCV 캔들 | **Twelve Data** `/time_series`*1 | Alpha Vantage `TIME_SERIES_DAILY` | 무료 |
@@ -20,7 +20,9 @@
 
 > *1 **확정 (2026-04-14)**: Finnhub `/stock/candle`은 무료 플랜에서 **403 Forbidden** (유료 $49.99/mo 이상만 허용). 확인 로그:
 > `{"error":"You don't have access to this resource."}`. 이에 따라 OHLCV 캔들 1순위를 **Twelve Data `/time_series`** 로 교체. 무료 800 req/day, 8 req/min — Redis 캐시로 한도 내 운영 가능.
-> 검색/프로필/시세/뉴스는 Finnhub 무료 그대로 유지 (hybrid provider 전략).
+> 검색/프로필/뉴스는 Finnhub 무료 그대로 유지 (hybrid provider 전략).
+>
+> *2 **확정 (Phase 4.5, 2026-04)**: 시세 primary 를 Finnhub `/quote` → **Yahoo `v8/finance/chart/{symbol}`** 로 교체. 이유: Finnhub 무료 플랜 `/quote` 에서 비정기 지연·미일관성 사례 관측, Yahoo 는 장중/장외/휴장 상태도 같이 제공. Finnhub 는 fallback 으로 유지. 구현: `YahooFinanceClient`, `MarketStatusResolver`.
 
 ## 4.2 Rate Limit 및 대응
 
