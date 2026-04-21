@@ -3,6 +3,10 @@
 import Link from 'next/link';
 
 import { useAuth } from '@/features/auth/auth-provider';
+import { BeginnerExplanation } from '@/features/stock-detail/ai-signal/components/beginner-explanation';
+import { IndicatorInterpretation } from '@/features/stock-detail/ai-signal/components/indicator-interpretation';
+import { NewsImpact } from '@/features/stock-detail/ai-signal/components/news-impact';
+import { WhatToWatch } from '@/features/stock-detail/ai-signal/components/what-to-watch';
 import { useAiSignal } from '@/features/stock-detail/ai-signal/hooks/use-ai-signal';
 import { AiAccuracyBadge } from '@/features/stock-detail/components/ai-accuracy-badge';
 import { cn } from '@/lib/cn';
@@ -115,9 +119,18 @@ function AiSignalContent({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
         {data.summaryKo}
       </p>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <List title="근거" items={data.rationale} tone="neutral" />
-        <List title="리스크" items={data.risks} tone="warning" />
+      <div className="mt-4 flex flex-col gap-3">
+        {/* v2 확장 섹션 — 데이터가 있을 때만 렌더링 (graceful degrade) */}
+        <BeginnerExplanation text={data.beginnerExplanation} />
+        <IndicatorInterpretation items={data.indicatorInterpretation} />
+        <NewsImpact items={data.newsImpact} />
+        <WhatToWatch items={data.whatToWatch} />
+
+        {/* 근거/리스크는 항상 노출 */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <List title="근거" items={data.rationale} tone="neutral" />
+          <List title="리스크" items={data.risks} tone="warning" />
+        </div>
       </div>
 
       <p className="mt-3 text-xs text-zinc-500">{data.disclaimer}</p>
