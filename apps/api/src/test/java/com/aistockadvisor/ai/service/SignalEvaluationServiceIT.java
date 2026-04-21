@@ -149,7 +149,7 @@ class SignalEvaluationServiceIT {
                 "test summary",
                 "gemini-2.5-flash",
                 Map.of("quote", Map.of("price", price)),
-                null, null, false, 100, 100, 50,
+                null, null, null, false, 100, 100, 50,
                 generatedAt
         );
         auditRepo.save(audit);
@@ -161,7 +161,7 @@ class SignalEvaluationServiceIT {
                 Signal.NEUTRAL, new BigDecimal("0.50"), Timeframe.MID,
                 List.of("fb"), List.of("fb"), "fb",
                 "gemini-2.5-flash",
-                Map.of(), null, null, true, 0, null, null,
+                Map.of(), null, null, null, true, 0, null, null,
                 generatedAt
         );
         auditRepo.save(audit);

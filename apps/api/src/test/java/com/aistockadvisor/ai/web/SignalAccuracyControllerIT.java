@@ -113,7 +113,7 @@ class SignalAccuracyControllerIT {
                 new BigDecimal("0.60"), Timeframe.SHORT,
                 List.of("r"), List.of("rk"), "s", "gemini",
                 Map.of("quote", Map.of("price", 100.0)),
-                null, null, false, 100, 100, 50,
+                null, null, null, false, 100, 100, 50,
                 generatedAt));
         return id;
     }
