@@ -72,6 +72,15 @@ public class AiSignalAuditEntity {
     @Column(name = "forbidden_detected", columnDefinition = "jsonb")
     private List<String> forbiddenDetected;
 
+    /**
+     * v2 확장 응답 (beginnerExplanation·indicatorInterpretation·newsImpact·whatToWatch) 원본 JSON.
+     * 기존 rationale/risks/summary_ko 와 분리 저장해 하위 호환 유지.
+     * 참조: docs/02-design/features/ai-analysis-deepening.design.md §3.2
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extended_response", columnDefinition = "jsonb")
+    private Map<String, Object> extendedResponse;
+
     @Column(name = "fallback", nullable = false)
     private boolean fallback;
 
@@ -96,6 +105,7 @@ public class AiSignalAuditEntity {
                                String summaryKo, String modelName,
                                Map<String, Object> contextPayload,
                                Map<String, Object> rawResponse, List<String> forbiddenDetected,
+                               Map<String, Object> extendedResponse,
                                boolean fallback, int latencyMs, Integer tokensIn, Integer tokensOut,
                                Instant generatedAt) {
         this.id = id;
@@ -111,6 +121,7 @@ public class AiSignalAuditEntity {
         this.contextPayload = contextPayload;
         this.rawResponse = rawResponse;
         this.forbiddenDetected = forbiddenDetected;
+        this.extendedResponse = extendedResponse;
         this.fallback = fallback;
         this.latencyMs = latencyMs;
         this.tokensIn = tokensIn;
@@ -125,4 +136,5 @@ public class AiSignalAuditEntity {
     public Signal getSignal() { return signal; }
     public Instant getGeneratedAt() { return generatedAt; }
     public Map<String, Object> getContextPayload() { return contextPayload; }
+    public Map<String, Object> getExtendedResponse() { return extendedResponse; }
 }
