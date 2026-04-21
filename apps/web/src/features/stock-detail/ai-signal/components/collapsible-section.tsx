@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
 /**
  * AI 분석 섹션 공용 접이식 래퍼.
+ * grid-template-rows 트릭으로 콘텐츠 높이 독립적인 부드러운 전개/수축.
+ * motion-reduce 사용자는 애니메이션 비활성화.
  * 참조: docs/02-design/features/ai-analysis-deepening.design.md §5, §10.3
  */
 export function CollapsibleSection({
@@ -18,24 +20,44 @@ export function CollapsibleSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
   return (
     <section className="rounded-md border border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-zinc-600 hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-zinc-300 dark:hover:bg-zinc-900"
       >
         <span>{title}</span>
         <span
           aria-hidden="true"
           className={cn(
-            'inline-block h-2 w-2 border-b border-r border-zinc-500 transition-transform dark:border-zinc-400',
+            'inline-block h-2 w-2 border-b border-r border-zinc-500 transition-transform duration-200 ease-out motion-reduce:transition-none dark:border-zinc-400',
             open ? 'rotate-45' : '-rotate-45',
           )}
         />
       </button>
-      {open ? <div className="border-t border-zinc-100 p-3 dark:border-zinc-800">{children}</div> : null}
+      <div
+        id={panelId}
+        className={cn(
+          'grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none',
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={cn(
+              'border-t border-zinc-100 p-3 transition-opacity duration-200 ease-out motion-reduce:transition-none dark:border-zinc-800',
+              open ? 'opacity-100' : 'opacity-0',
+            )}
+            aria-hidden={!open}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

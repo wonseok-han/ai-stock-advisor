@@ -83,7 +83,11 @@ function AiSignalContent({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
   const { data, isLoading, error } = useAiSignal(ticker, tf);
 
   if (isLoading) {
-    return <PanelShell>AI 분석 생성 중… (최대 5초 소요)</PanelShell>;
+    return (
+      <PanelShell>
+        AI 분석 생성 중… 시장 데이터와 뉴스를 종합 분석하고 있어요 (최소 10초 소요)
+      </PanelShell>
+    );
   }
   if (error || !data) {
     return (
@@ -123,7 +127,7 @@ function AiSignalContent({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
         {/* v2 확장 섹션 — 데이터가 있을 때만 렌더링 (graceful degrade) */}
         <BeginnerExplanation text={data.beginnerExplanation} />
         <IndicatorInterpretation items={data.indicatorInterpretation} />
-        <NewsImpact items={data.newsImpact} />
+        <NewsImpact items={data.newsImpact} generatedAt={data.generatedAt} />
         <WhatToWatch items={data.whatToWatch} />
 
         {/* 근거/리스크는 항상 노출 */}

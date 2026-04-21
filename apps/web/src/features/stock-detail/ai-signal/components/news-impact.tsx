@@ -7,10 +7,16 @@ import type { ImpactDirection, NewsImpact as NewsImpactItem } from '@/types/ai-s
 
 /**
  * AI 참고 분석 — 뉴스 영향 요약 리스트.
- * hoursAgo 기반으로 FreshnessBadge 를 부착.
+ * hoursAgo 기반으로 FreshnessBadge + generatedAt 역산한 발행 일시를 표기.
  * 참조: docs/02-design/features/ai-analysis-deepening.design.md §5
  */
-export function NewsImpact({ items }: { items?: NewsImpactItem[] | null }) {
+export function NewsImpact({
+  items,
+  generatedAt,
+}: {
+  items?: NewsImpactItem[] | null;
+  generatedAt?: string;
+}) {
   if (!items || items.length === 0) return null;
   return (
     <CollapsibleSection title="최근 뉴스가 미친 영향">
@@ -30,11 +36,60 @@ export function NewsImpact({ items }: { items?: NewsImpactItem[] | null }) {
               </div>
             </div>
             <p className="mt-1 text-zinc-700 dark:text-zinc-300">{it.reasonKo}</p>
+            <PublishedAt hoursAgo={it.hoursAgo ?? null} generatedAt={generatedAt} />
           </li>
         ))}
       </ul>
     </CollapsibleSection>
   );
+}
+
+function PublishedAt({
+  hoursAgo,
+  generatedAt,
+}: {
+  hoursAgo: number | null;
+  generatedAt?: string;
+}) {
+  if (hoursAgo == null || !generatedAt) return null;
+  const base = new Date(generatedAt);
+  if (Number.isNaN(base.getTime())) return null;
+  const published = new Date(base.getTime() - Math.max(0, hoursAgo) * 3600 * 1000);
+  const label = formatPublished(published, hoursAgo);
+  return (
+    <time
+      dateTime={published.toISOString()}
+      className="mt-1.5 block text-[10px] text-zinc-400 dark:text-zinc-500"
+    >
+      {label}
+    </time>
+  );
+}
+
+function formatPublished(published: Date, hoursAgo: number): string {
+  if (hoursAgo < 24) {
+    // 24시간 내: "오늘 14:30"
+    const time = published.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    return `오늘 ${time}`;
+  }
+  if (hoursAgo < 24 * 7) {
+    // 일주일 내: "4월 19일 (월)"
+    return published.toLocaleDateString('ko-KR', {
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short',
+    });
+  }
+  // 그 이상: "2026년 4월 15일"
+  return published.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 function FreshnessBadge({ hoursAgo }: { hoursAgo: number | null }) {
