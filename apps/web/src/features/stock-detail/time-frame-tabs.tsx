@@ -24,10 +24,7 @@ export function TimeFrameTabs({ value, onChange, className }: Props) {
     <div
       role="tablist"
       aria-label="기간 선택"
-      className={cn(
-        'inline-flex gap-1 rounded-lg border border-border bg-bg-surface p-1 text-sm',
-        className,
-      )}
+      className={cn('inline-flex gap-0.5 rounded-xl bg-bg-muted p-1 text-sm', className)}
     >
       {FRAMES.map((f) => {
         const active = f.value === value;
@@ -39,10 +36,10 @@ export function TimeFrameTabs({ value, onChange, className }: Props) {
             aria-selected={active}
             onClick={() => onChange(f.value)}
             className={cn(
-              'cursor-pointer rounded-md px-3 py-1 transition-colors',
+              'cursor-pointer rounded-lg px-3 py-1.5 font-medium transition-all',
               active
-                ? 'bg-fg text-bg'
-                : 'text-fg-secondary hover:bg-bg-muted',
+                ? 'bg-primary text-primary-fg shadow-sm'
+                : 'text-fg-muted hover:text-fg',
             )}
           >
             {f.label}

@@ -44,10 +44,10 @@ export function BookmarkCard({ bookmark }: { bookmark: Bookmark }) {
         <button
           onClick={() => removeMutation.mutate(bookmark.ticker)}
           disabled={removeMutation.isPending}
-          className="ml-2 shrink-0 cursor-pointer rounded p-1 text-fg-muted transition-colors hover:bg-red-50 hover:text-danger disabled:opacity-50 dark:hover:bg-red-900/20"
+          className="ml-2 inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-fg-muted transition-colors hover:bg-red-500/10 hover:text-danger disabled:opacity-50"
           aria-label={`${bookmark.ticker} 북마크 해제`}
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>

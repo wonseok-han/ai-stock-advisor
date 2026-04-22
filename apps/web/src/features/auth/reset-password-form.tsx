@@ -69,7 +69,7 @@ export function ResetPasswordForm() {
 
   if (status === 'checking') {
     return (
-      <div className="rounded-md border border-border bg-bg p-4 text-center">
+      <div className="rounded-xl bg-bg-muted p-4 text-center">
         <p className="text-sm text-fg-secondary">세션 확인 중...</p>
       </div>
     );
@@ -78,17 +78,17 @@ export function ResetPasswordForm() {
   if (status === 'invalid') {
     return (
       <div className="space-y-4">
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-center dark:border-red-800 dark:bg-red-950">
-          <p className="text-sm font-medium text-red-800 dark:text-red-200">
+        <div className="rounded-xl bg-red-500/10 p-4 text-center">
+          <p className="text-sm font-medium text-danger">
             링크가 만료되었거나 유효하지 않습니다.
           </p>
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+          <p className="mt-1 text-xs text-fg-secondary">
             재설정 메일을 다시 요청해 주세요.
           </p>
         </div>
         <Link
           href="/auth/forgot-password"
-          className="block w-full rounded-md bg-primary px-4 py-2 text-center text-sm font-medium text-primary-fg hover:bg-primary-hover"
+          className="block w-full rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-fg hover:bg-primary-hover"
         >
           재설정 메일 다시 요청하기
         </Link>
@@ -112,7 +112,7 @@ export function ResetPasswordForm() {
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="6자 이상 입력해주세요."
         />
       </div>
@@ -131,7 +131,7 @@ export function ResetPasswordForm() {
           minLength={6}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="비밀번호 재입력"
         />
       </div>
@@ -143,7 +143,7 @@ export function ResetPasswordForm() {
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="w-full cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover disabled:opacity-50"
+        className="w-full cursor-pointer rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg hover:bg-primary-hover disabled:opacity-50"
       >
         {status === 'loading' ? '변경 중...' : '비밀번호 변경'}
       </button>

@@ -8,7 +8,6 @@ import { ProfileSection } from '@/features/my-page/profile-section';
 import { BookmarkGrid } from '@/features/my-page/bookmark-grid';
 import { NotificationSection } from '@/features/my-page/notification-section';
 import { AccountSection } from '@/features/my-page/account-section';
-import { ThemeSwitcher } from '@/components/theme/theme-switcher';
 
 export default function MyPage() {
   const { user, isLoading, signOut } = useAuth();
@@ -25,30 +24,19 @@ export default function MyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 py-6">
-      <h1 className="text-xl font-semibold text-fg">마이페이지</h1>
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6">
+      <h1 className="text-lg font-semibold text-fg">마이페이지</h1>
 
       <ProfileSection user={user} onSignOut={signOut} />
 
       <section>
-        <h2 className="mb-3 text-base font-medium text-fg">
-          내 북마크
-        </h2>
+        <h2 className="mb-3 text-sm font-medium text-fg">내 북마크</h2>
         <BookmarkGrid />
       </section>
 
       <section>
-        <h2 className="mb-3 text-base font-medium text-fg">
-          알림 설정
-        </h2>
+        <h2 className="mb-3 text-sm font-medium text-fg">알림 설정</h2>
         <NotificationSection />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-base font-medium text-fg">
-          테마 설정
-        </h2>
-        <ThemeSwitcher />
       </section>
 
       <AccountSection />

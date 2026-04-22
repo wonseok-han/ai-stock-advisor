@@ -18,7 +18,7 @@ export default function SignupPage() {
             회원가입
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            계정을 만들어 북마크와 알림 기능을 이용하세요.
+            AI 분석 시그널과 북마크, 알림 기능을 이용하세요.
           </p>
         </div>
 

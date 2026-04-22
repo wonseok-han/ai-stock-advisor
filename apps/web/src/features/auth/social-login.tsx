@@ -21,7 +21,7 @@ export function SocialLogin() {
     <button
       type="button"
       onClick={handleGoogleLogin}
-      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-bg-surface px-4 py-2 text-sm font-medium text-fg-secondary shadow-sm hover:bg-bg-muted"
+      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-bg-surface px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-muted"
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
         <path

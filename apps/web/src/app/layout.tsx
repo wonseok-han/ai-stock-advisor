@@ -40,15 +40,15 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(!t)t='brand';document.documentElement.setAttribute('data-theme',t);if(t==='dark'||t==='brand')document.documentElement.classList.add('dark')}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light')t='dark';document.documentElement.setAttribute('data-theme',t);if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-bg">
         <Providers>
           <SiteHeader />
-          <DisclaimerBanner />
           <div className="flex flex-1 flex-col">{children}</div>
+          <DisclaimerBanner />
           <DisclaimerFooter />
         </Providers>
         <SwRegister />

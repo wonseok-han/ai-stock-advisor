@@ -42,7 +42,7 @@ export function AiAccuracyBadge({
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-sm border border-border bg-bg-muted px-2 py-0.5 text-[11px] text-fg-secondary transition hover:bg-bg-muted"
+        className="inline-flex items-center gap-1 rounded-md bg-bg-muted px-2 py-0.5 text-[11px] text-fg-secondary transition hover:bg-bg-surface"
       >
         <span className="font-medium">{data.window}일 방향 일치율</span>
         <span className="font-semibold text-fg">

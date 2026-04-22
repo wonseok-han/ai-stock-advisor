@@ -41,11 +41,11 @@ export function ForgotPasswordForm() {
 
   if (status === 'sent') {
     return (
-      <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
-        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+      <div className="rounded-xl bg-emerald-500/10 p-4 text-center">
+        <p className="text-sm font-medium text-success">
           재설정 메일을 발송했습니다.
         </p>
-        <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+        <p className="mt-1 text-xs text-fg-secondary">
           이메일의 링크를 클릭해 새 비밀번호를 설정해 주세요. 링크는 1시간 후 만료됩니다.
         </p>
       </div>
@@ -67,7 +67,7 @@ export function ForgotPasswordForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="you@example.com"
         />
       </div>
@@ -79,7 +79,7 @@ export function ForgotPasswordForm() {
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="w-full cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover disabled:opacity-50"
+        className="w-full cursor-pointer rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {status === 'loading' ? '처리 중...' : '재설정 메일 보내기'}
       </button>

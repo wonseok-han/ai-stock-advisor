@@ -26,11 +26,7 @@ export default async function StockDetailPage({ params }: Props) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <p className="text-xs text-fg-muted">
-        참고용 정보이며 투자 자문이 아닙니다. 투자 판단과 책임은 사용자 본인에게
-        있습니다.
-      </p>
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <StockDetailView ticker={ticker} />
     </main>
   );

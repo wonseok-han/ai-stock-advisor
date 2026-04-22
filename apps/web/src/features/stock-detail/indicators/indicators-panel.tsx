@@ -5,11 +5,6 @@ import { cn } from '@/lib/cn';
 
 import type { IndicatorSnapshot } from '@/types/stock';
 
-/**
- * 참고 지표 패널 (design §4.2, §3.5).
- * - RSI(14), MACD(12,26,9), Bollinger(20, 2σ), MA(5/20/60)
- * - 각 지표 툴팁(BE tooltipsKo) 노출. 투자 신호로 해석하지 않도록 참고 문구 강조.
- */
 export function IndicatorsPanel({ ticker }: { ticker: string }) {
   const { data, isLoading, error } = useIndicators(ticker);
 
@@ -27,23 +22,15 @@ export function IndicatorsPanel({ ticker }: { ticker: string }) {
   }
 
   return (
-    <section
-      aria-label="참고 지표"
-      className="rounded-lg border border-border bg-bg-surface p-4"
-    >
-      <h2 className="mb-3 text-sm font-semibold text-fg-secondary">
-        참고 지표
-      </h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section aria-label="참고 지표" className="card p-5">
+      <h2 className="text-sm font-semibold text-fg">참고 지표</h2>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <RsiCard value={data.rsi14} tooltip={data.tooltipsKo.rsi14} />
         <MacdCard macd={data.macd} tooltip={data.tooltipsKo.macd} />
-        <BollingerCard
-          bollinger={data.bollinger}
-          tooltip={data.tooltipsKo.bollinger}
-        />
+        <BollingerCard bollinger={data.bollinger} tooltip={data.tooltipsKo.bollinger} />
         <MaCard ma={data.movingAverage} tooltip={data.tooltipsKo.ma} />
       </div>
-      <p className="mt-3 text-xs text-fg-muted">
+      <p className="mt-4 text-[11px] text-fg-muted">
         참고용 기술 지표이며, 단독 사용 시 투자 신호로 해석하지 마세요.
       </p>
     </section>
@@ -52,9 +39,7 @@ export function IndicatorsPanel({ ticker }: { ticker: string }) {
 
 function PanelShell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-bg-surface p-4 text-sm text-fg-muted">
-      {children}
-    </section>
+    <section className="card p-5 text-sm text-fg-muted">{children}</section>
   );
 }
 
@@ -68,7 +53,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-border bg-bg-muted p-3">
+    <div className="rounded-xl bg-bg-muted p-3">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-medium text-fg-muted">{title}</span>
         <InfoTooltip text={tooltip} />
@@ -84,7 +69,7 @@ function InfoTooltip({ text }: { text: string }) {
       <button
         type="button"
         aria-label={text}
-        className="cursor-help rounded-full p-0.5 text-fg-muted outline-none hover:text-fg-secondary focus-visible:ring-2 focus-visible:ring-border"
+        className="cursor-help rounded-full p-0.5 text-fg-muted outline-none hover:text-fg-secondary focus-visible:ring-2 focus-visible:ring-primary"
       >
         <svg
           aria-hidden="true"
@@ -101,7 +86,7 @@ function InfoTooltip({ text }: { text: string }) {
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-72 max-w-[calc(100vw-2rem)] whitespace-normal break-keep rounded-md border border-border bg-bg-surface px-3 py-2 text-xs leading-relaxed text-fg-secondary opacity-0 shadow-lg transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+        className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-72 max-w-[calc(100vw-2rem)] whitespace-normal break-keep rounded-xl border border-border bg-bg-surface px-3 py-2 text-xs leading-relaxed text-fg-secondary opacity-0 shadow-lg transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
       >
         {text}
       </span>
@@ -118,9 +103,7 @@ function RsiCard({ value, tooltip }: { value: number; tooltip: string }) {
         : { label: '중립', cls: 'text-fg-muted' };
   return (
     <Card title="RSI (14)" tooltip={tooltip}>
-      <div className="text-xl font-semibold text-fg">
-        {value.toFixed(1)}
-      </div>
+      <div className="text-xl font-bold text-fg">{value.toFixed(1)}</div>
       <div className={cn('text-xs', zone.cls)}>{zone.label}</div>
     </Card>
   );
@@ -134,11 +117,7 @@ function MacdCard({
   tooltip: string;
 }) {
   const histColor =
-    macd.histogram > 0
-      ? 'text-success'
-      : macd.histogram < 0
-        ? 'text-danger'
-        : 'text-fg-muted';
+    macd.histogram > 0 ? 'text-success' : macd.histogram < 0 ? 'text-danger' : 'text-fg-muted';
   return (
     <Card title="MACD (12/26/9)" tooltip={tooltip}>
       <Row label="MACD" value={macd.macd.toFixed(2)} />
@@ -193,9 +172,7 @@ function Row({
   return (
     <div className="flex items-baseline justify-between gap-2">
       <span className="text-xs text-fg-muted">{label}</span>
-      <span className={cn('text-sm text-fg', valueClass)}>
-        {value}
-      </span>
+      <span className={cn('text-sm text-fg', valueClass)}>{value}</span>
     </div>
   );
 }

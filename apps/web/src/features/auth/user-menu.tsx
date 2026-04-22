@@ -23,7 +23,7 @@ export function UserMenu() {
     return (
       <Link
         href="/auth/login"
-        className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-xs font-medium text-fg-secondary hover:bg-bg-muted"
+        className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-muted"
       >
         로그인
       </Link>
@@ -46,7 +46,7 @@ export function UserMenu() {
       </Link>
       <button
         onClick={handleSignOut}
-        className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-xs font-medium text-fg-secondary hover:bg-bg-muted"
+        className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-muted"
       >
         로그아웃
       </button>

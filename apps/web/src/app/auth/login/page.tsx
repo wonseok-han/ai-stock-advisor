@@ -18,7 +18,7 @@ export default function LoginPage() {
             로그인
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            북마크와 알림 기능을 사용하려면 로그인하세요.
+            AI 분석 시그널과 북마크, 알림 기능을 이용하려면 로그인하세요.
           </p>
         </div>
 
