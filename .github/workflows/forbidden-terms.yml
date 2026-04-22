@@ -60,4 +60,28 @@ jobs:
             echo "::error::Forbidden terms detected in source. See phase2-rag-pipeline.design.md §7 (4-level guard)."
             exit 1
           fi
+
+          # signal-accuracy (design §10.2): 정합도 지표 주변에서 확정적 통계 표현 금지.
+          # 런타임 LegalGuardFilter 오탐 가능성(뉴스 번역의 '분석가 예측' 등) 때문에
+          # forbidden-terms.json 에는 포함하지 않고 CI 전용 가드로만 운영한다.
+          ACCURACY_TERMS=("정확도" "예측" "적중" "적중률" "승률")
+          accuracy_failed=0
+          for term in "${ACCURACY_TERMS[@]}"; do
+            hits=$(grep -rIn --include="*.java" --include="*.ts" --include="*.tsx" --include="*.kt" \
+                       --exclude-dir=docs --exclude-dir=archive --exclude-dir=node_modules \
+                       --exclude-dir=build --exclude-dir=dist --exclude-dir=.next \
+                       --exclude-dir=legal \
+                       -i -F "$term" $SCAN_PATHS || true)
+            hits=$(printf '%s\n' "$hits" | grep -v "forbidden-terms.json" | grep -v "RedTeam" | grep -v "red-team" || true)
+            if [ -n "$hits" ]; then
+              echo "::error::Accuracy forbidden term found: '$term' (use '정합도/방향 일치율' instead)"
+              echo "$hits"
+              accuracy_failed=1
+            fi
+          done
+          if [ "$accuracy_failed" -ne 0 ]; then
+            echo "::error::Accuracy-domain forbidden terms detected. See signal-accuracy.design.md §10.2."
+            exit 1
+          fi
+
           echo "OK — no forbidden terms in source."

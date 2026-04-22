@@ -100,6 +100,13 @@ app:
   ai:
     signal:
       rate-limit-rpm: ${AI_SIGNAL_RATE_LIMIT_RPM:15}
+    evaluation:
+      cron: ${AI_EVALUATION_CRON:0 0 23 * * *}
+      flat-threshold-pct: ${AI_EVALUATION_FLAT_THRESHOLD_PCT:2.0}
+      batch-size: ${AI_EVALUATION_BATCH_SIZE:500}
+  admin:
+    username: ${ADMIN_USERNAME:admin}
+    password: ${ADMIN_PASSWORD:}
 
 logging:
   level:

@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
     INVALID_TICKER(HttpStatus.BAD_REQUEST, "올바른 티커를 입력해주세요."),
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다."),
     TICKER_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 종목을 찾을 수 없습니다."),
     UPSTREAM_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "외부 데이터 제공자 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
     UPSTREAM_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "외부 데이터 제공자 응답이 지연되어 일부 정보를 표시하지 못했습니다."),

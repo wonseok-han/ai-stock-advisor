@@ -16,6 +16,22 @@
 | [notification-news](notification-news/) | Phase 4.5.3 | 100% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [password-reset](password-reset/) | Phase 4.5.4 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [feedback](feedback/) | Phase 4.5.5 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
+| [ai-analysis-deepening](ai-analysis-deepening/) | Phase 4.5.6 | 93% | 2026-04-21 | 2026-04-21 | plan, design, analysis, report |
+
+## ai-analysis-deepening — Phase 4.5.6 AI 참고 분석 v2 고도화 (초보자 친화 + 뉴스 신선도)
+
+로그인 유저 전용 AI 참고 분석을 초보자 눈높이로 고도화. 프롬프트 스키마에 초보자 해설·지표 해석·뉴스 영향·관전 포인트 4 필드(옵셔널)를 추가하고, 뉴스 컨텍스트를 3→5건으로 확대 + `hours_ago` / `freshness(FRESH<24h / RECENT<72h / STALE)` 메타 주입. FE 는 섹션 분리 접이식 + grid-template-rows 애니메이션 + 뉴스 발행 일시 라벨. Match Rate 93%, iteration 0회.
+
+- **범위**: BE 7 파일 (`AiSignal`/`IndicatorInterpretation`/`NewsImpact`/`ImpactDirection` + V16 `extended_response JSONB` + `ContextAssembler`/`ResponseValidator`/`AiSignalService` + `AiSignalAuditEntity` + 프롬프트 v2) + FE 8 파일 (타입·컴포넌트 5개·패널·`use-ai-signal` 영향 없음)
+- **결과**: 23 파일, +2,153 lines. 기존 IT 생성자 시그니처 업데이트 2곳, `./gradlew check` 그린, `tsc --noEmit` / ESLint 0 errors
+- **PR**: #26 squash-merged (`4fb2053`)
+- **핵심 UX 개선**: 로그인 콘텐츠의 "빈약 체감" 해소 — 신호/신뢰도 외 설명형 4섹션으로 정보 밀도 강화 · 뉴스 한국어 freshness 배지 + 발행 일시(`오늘 HH:mm` / `M월 D일 (요일)` / 전체 날짜) 이중 표기 · Collapse 애니메이션 (grid-rows 0fr↔1fr + opacity fade, motion-reduce 대응) · 로딩 문구 "최대 5초" → "최소 10초" 현실화 (Gemini 8s × 재시도 2회 반영)
+- **Positive Added 5건**: V16 `WHERE extended_response IS NOT NULL` 부분 인덱스 · `hoursAgo<0` 미래 시각 방어 · NewsImpact 부분 item drop 정책 (전체 응답 유지) · FreshnessBadge 한국어 라벨 · `buildExtendedResponse` 전체 null → DB NULL 저장
+- **Key Decisions**: 필드 추가 (옵셔널) vs 버전 API 분기 → 추가 · JSONB 단일 컬럼 vs 컬럼 분리 → JSONB 단일 (스키마 flux) · BE ContextAssembler 에서 freshness 계산 (AI 도 활용) · 캐시 키 v1 → v2 bump (schema 불일치 차단)
+- **Lessons**: 옵셔널 필드 + nullable FE 타입 + item drop 조합이 "부분 LLM 성공 수용" 패턴으로 최적 · grid-template-rows 트릭이 framer-motion 없이도 콘텐츠 높이 독립적 애니메이션 제공 · "최대 N초" 보다 "최소 N초" 가 under-promise over-deliver UX 원칙에 부합
+- **Follow-up**: M-1 ResponseValidator v2 단위 테스트 / M-2 ContextAssembler freshness 경계값 단위 테스트 (93% → 96%+) · Step 10 프롬프트 dry-run (AAPL/TSLA/NVDA 실 Gemini 호출, 토큰·비용 스냅샷) · 모바일 기본 접힘 `defaultOpenMobile?` prop · timeframe 별 freshness 기준 차등 (SHORT=12h / LONG=1주일)
+
+**링크**: [plan](ai-analysis-deepening/ai-analysis-deepening.plan.md) · [design](ai-analysis-deepening/ai-analysis-deepening.design.md) · [analysis](ai-analysis-deepening/ai-analysis-deepening.analysis.md) · [report](ai-analysis-deepening/ai-analysis-deepening.report.md)
 
 ## feedback — Phase 4.5.5 베타 피드백 채널 (/feedback + Supabase 테이블)
 

@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -69,7 +70,8 @@ public class AiSignalService {
     }
 
     public AiSignal getSignal(String ticker, TimeFrame timeframe) {
-        String cacheKey = "ai:" + ticker + ":" + (timeframe == null ? "1D" : timeframe.code()) + ":v1";
+        // v2: 응답 스키마 확장(초보자 해설·지표 해석·뉴스 영향·관전 포인트) — 구버전 캐시 무효화 필요.
+        String cacheKey = "ai:" + ticker + ":" + (timeframe == null ? "1D" : timeframe.code()) + ":v2";
         AiSignal cached = cache.get(cacheKey, CACHE_TYPE);
         if (cached != null) {
             return cached;
@@ -94,7 +96,7 @@ public class AiSignalService {
                         ticker, validated.reason(), validated.forbiddenDetected());
                 result = fallback(ticker);
                 saveAudit(requestId, ticker, result, ctx, validated.rawMap(),
-                        validated.forbiddenDetected(), true,
+                        validated.forbiddenDetected(), null, true,
                         (int) (System.currentTimeMillis() - started),
                         raw.tokensIn(), raw.tokensOut());
             } else {
@@ -106,20 +108,24 @@ public class AiSignalService {
                         validated.rationale(),
                         validated.risks(),
                         validated.summaryKo(),
+                        validated.beginnerExplanation(),
+                        validated.indicatorInterpretation(),
+                        validated.newsImpact(),
+                        validated.whatToWatch(),
                         Instant.now(),
                         raw.modelName(),
                         Disclaimers.AI_SIGNAL,
                         false
                 );
                 saveAudit(requestId, ticker, result, ctx, validated.rawMap(),
-                        List.of(), false,
+                        List.of(), buildExtendedResponse(result), false,
                         (int) (System.currentTimeMillis() - started),
                         raw.tokensIn(), raw.tokensOut());
             }
         } catch (Exception ex) {
             log.warn("ai-signal upstream failure ticker={} reason={}", ticker, ex.getMessage());
             result = fallback(ticker);
-            saveAudit(requestId, ticker, result, ctx, null, List.of(), true,
+            saveAudit(requestId, ticker, result, ctx, null, List.of(), null, true,
                     (int) (System.currentTimeMillis() - started), null, null);
         }
 
@@ -138,6 +144,10 @@ public class AiSignalService {
                 List.of("시장 변동성에 따라 단기 가격 방향이 크게 바뀔 수 있습니다.",
                         "외부 데이터/AI 응답이 일시적으로 제한되어 신뢰도가 낮습니다."),
                 "일시적으로 AI 분석이 제한되어 중립(NEUTRAL) 관점으로 제공됩니다. 투자 판단 시 참고용으로만 활용해주세요.",
+                null,
+                null,
+                null,
+                null,
                 Instant.now(),
                 modelName,
                 Disclaimers.AI_SIGNAL,
@@ -147,7 +157,8 @@ public class AiSignalService {
 
     private void saveAudit(UUID requestId, String ticker, AiSignal signal,
                            Map<String, Object> ctx, Map<String, Object> rawResponse,
-                           List<String> forbidden, boolean fallback,
+                           List<String> forbidden, Map<String, Object> extendedResponse,
+                           boolean fallback,
                            int latencyMs, Integer tokensIn, Integer tokensOut) {
         try {
             AiSignalAuditEntity audit = new AiSignalAuditEntity(
@@ -164,6 +175,7 @@ public class AiSignalService {
                     ctx == null ? Map.of() : ctx,
                     rawResponse,
                     forbidden == null || forbidden.isEmpty() ? null : forbidden,
+                    extendedResponse,
                     fallback,
                     latencyMs,
                     tokensIn,
@@ -174,5 +186,32 @@ public class AiSignalService {
         } catch (Exception ex) {
             log.warn("audit persist failed ticker={} reason={}", ticker, ex.getMessage());
         }
+    }
+
+    /**
+     * v2 확장 필드만 모아 audit 에 저장할 Map 을 만든다.
+     * 모든 필드가 null 이면 null 반환 → DB NULL 저장 (하위 호환).
+     */
+    private Map<String, Object> buildExtendedResponse(AiSignal signal) {
+        if (signal.beginnerExplanation() == null
+                && signal.indicatorInterpretation() == null
+                && signal.newsImpact() == null
+                && signal.whatToWatch() == null) {
+            return null;
+        }
+        Map<String, Object> extended = new LinkedHashMap<>();
+        if (signal.beginnerExplanation() != null) {
+            extended.put("beginner_explanation", signal.beginnerExplanation());
+        }
+        if (signal.indicatorInterpretation() != null) {
+            extended.put("indicator_interpretation", signal.indicatorInterpretation());
+        }
+        if (signal.newsImpact() != null) {
+            extended.put("news_impact", signal.newsImpact());
+        }
+        if (signal.whatToWatch() != null) {
+            extended.put("what_to_watch", signal.whatToWatch());
+        }
+        return extended;
     }
 }
