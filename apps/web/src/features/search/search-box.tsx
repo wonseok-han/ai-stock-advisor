@@ -34,26 +34,26 @@ export function SearchBox({ className }: { className?: string }) {
           placeholder="종목 검색 (예: AAPL, Tesla)"
           maxLength={20}
           aria-label="종목 검색"
-          className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-black shadow-sm outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-700"
+          className="w-full rounded-lg border border-border bg-bg-surface px-4 py-3 text-base text-fg shadow-sm outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:focus:border-zinc-400 dark:focus:ring-zinc-700"
         />
       </form>
 
       {trimmed.length > 0 && (
         <div
-          className="mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          className="mt-2 overflow-hidden rounded-lg border border-border bg-bg-surface shadow-sm"
           role="listbox"
           aria-label="검색 결과"
         >
           {isFetching && (
-            <div className="px-4 py-2 text-sm text-zinc-500">검색 중…</div>
+            <div className="px-4 py-2 text-sm text-fg-muted">검색 중…</div>
           )}
           {!isFetching && error && (
-            <div className="px-4 py-2 text-sm text-red-600">
+            <div className="px-4 py-2 text-sm text-danger">
               검색을 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.
             </div>
           )}
           {!isFetching && !error && hits.length === 0 && (
-            <div className="px-4 py-2 text-sm text-zinc-500">
+            <div className="px-4 py-2 text-sm text-fg-muted">
               결과가 없습니다.
             </div>
           )}
@@ -61,17 +61,17 @@ export function SearchBox({ className }: { className?: string }) {
             <Link
               key={hit.ticker}
               href={`/stock/${hit.ticker}`}
-              className="flex items-baseline justify-between gap-4 px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="flex items-baseline justify-between gap-4 px-4 py-2 hover:bg-bg-muted"
               role="option"
               aria-selected="false"
             >
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+              <span className="font-semibold text-fg">
                 {hit.ticker}
               </span>
-              <span className="truncate text-sm text-zinc-600 dark:text-zinc-400">
+              <span className="truncate text-sm text-fg-secondary">
                 {hit.name}
               </span>
-              <span className="shrink-0 text-xs text-zinc-400">
+              <span className="shrink-0 text-xs text-fg-muted">
                 {hit.exchange}
               </span>
             </Link>

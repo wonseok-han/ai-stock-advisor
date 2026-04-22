@@ -21,20 +21,20 @@ export function StockHeader({ ticker }: { ticker: string }) {
   const up = change > 0;
   const down = change < 0;
   const colorClass = up
-    ? 'text-green-600 dark:text-green-500'
+    ? 'text-success'
     : down
-      ? 'text-red-600 dark:text-red-500'
-      : 'text-zinc-500';
+      ? 'text-danger'
+      : 'text-fg-muted';
 
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold text-fg">
             {ticker}
           </h1>
           {profile?.exchange && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+            <span className="rounded-full bg-bg-muted px-2 py-0.5 text-xs text-fg-secondary">
               {profile.exchange}
             </span>
           )}
@@ -42,12 +42,12 @@ export function StockHeader({ ticker }: { ticker: string }) {
           <NotificationButton ticker={ticker} />
         </div>
         {profile?.name && (
-          <p className="mt-1 text-sm text-zinc-500">{profile.name}</p>
+          <p className="mt-1 text-sm text-fg-muted">{profile.name}</p>
         )}
       </div>
       <div className="text-right">
         <div className="flex items-center justify-end gap-2">
-          <div className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+          <div className="text-2xl font-semibold tabular-nums text-fg">
             {formatUsd(quote?.price)}
           </div>
           {quote?.marketStatus === 'OPEN' && (
@@ -60,7 +60,7 @@ export function StockHeader({ ticker }: { ticker: string }) {
           {formatSignedNumber(quote?.change)}{' '}
           ({formatPercentChange(quote?.changePercent)})
         </div>
-        <div className="mt-1 text-xs text-zinc-400">
+        <div className="mt-1 text-xs text-fg-muted">
           {quote?.priceLabel ?? `업데이트: ${formatKst(quote?.updatedAt)}`}
           {quoteFetching && ' · 새로고침 중'}
         </div>

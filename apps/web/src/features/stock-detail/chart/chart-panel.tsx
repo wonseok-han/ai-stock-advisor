@@ -114,15 +114,15 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
   }, [data]);
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-lg border border-border bg-bg-surface p-4">
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        <h2 className="text-sm font-semibold text-fg-secondary">
           차트 ({tf})
         </h2>
-        {isLoading && <span className="text-xs text-zinc-500">불러오는 중…</span>}
+        {isLoading && <span className="text-xs text-fg-muted">불러오는 중…</span>}
       </div>
       {error ? (
-        <div className="py-8 text-center text-sm text-red-600">
+        <div className="py-8 text-center text-sm text-danger">
           차트 데이터를 불러오지 못했습니다.
         </div>
       ) : (

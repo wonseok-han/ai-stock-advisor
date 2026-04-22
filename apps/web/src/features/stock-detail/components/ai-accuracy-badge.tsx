@@ -42,17 +42,17 @@ export function AiAccuracyBadge({
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-sm border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+        className="inline-flex items-center gap-1 rounded-sm border border-border bg-bg-muted px-2 py-0.5 text-[11px] text-fg-secondary transition hover:bg-bg-muted"
       >
         <span className="font-medium">{data.window}일 방향 일치율</span>
-        <span className="font-semibold text-zinc-800 dark:text-zinc-100">
+        <span className="font-semibold text-fg">
           {pct}%
         </span>
-        <span className="text-zinc-400 dark:text-zinc-500">·</span>
-        <span className="text-zinc-500 dark:text-zinc-400">
+        <span className="text-fg-muted">·</span>
+        <span className="text-fg-muted">
           샘플 {data.sampleSize}건
         </span>
-        <span aria-hidden="true" className="text-zinc-400">
+        <span aria-hidden="true" className="text-fg-muted">
           ⓘ
         </span>
       </button>

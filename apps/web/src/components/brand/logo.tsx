@@ -19,7 +19,7 @@ export function Logo({ size = 'default', className, showTagline = false }: LogoP
         className={`${sizeConfig[size]} w-auto`}
       />
       {showTagline && (
-        <span className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <span className="mt-1 text-sm text-fg-muted">
           AI가 읽어주는 미국 주식 시그널
         </span>
       )}

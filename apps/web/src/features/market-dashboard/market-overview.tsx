@@ -22,24 +22,24 @@ export function MarketOverview() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
+              className="h-24 animate-pulse rounded-lg bg-bg-muted"
             />
           ))}
         </div>
-        <div className="h-8 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+        <div className="h-8 animate-pulse rounded-lg bg-bg-muted" />
       </section>
     );
   }
 
   if (error || !data) {
     return (
-      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-sm text-red-600">
+      <section className="rounded-lg border border-border bg-bg-surface p-4">
+        <p className="text-sm text-danger">
           시장 데이터를 불러올 수 없습니다.
         </p>
         <button
           onClick={() => refetch()}
-          className="mt-2 cursor-pointer text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="mt-2 cursor-pointer text-xs text-primary hover:underline"
         >
           다시 시도
         </button>
@@ -55,9 +55,9 @@ export function MarketOverview() {
         ))}
       </div>
       {data.usdKrw != null && (
-        <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <span className="text-zinc-500">USD/KRW</span>
-          <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-surface px-4 py-2 text-sm">
+          <span className="text-fg-muted">USD/KRW</span>
+          <span className="font-medium tabular-nums text-fg">
             {data.usdKrw.toLocaleString('ko-KR', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
@@ -68,8 +68,8 @@ export function MarketOverview() {
               className={cn(
                 'text-xs tabular-nums font-medium',
                 data.usdKrwChange > 0
-                  ? 'text-green-600 dark:text-green-500'
-                  : 'text-red-600 dark:text-red-500',
+                  ? 'text-success'
+                  : 'text-danger',
               )}
             >
               {formatSignedNumber(data.usdKrwChange)}
@@ -87,27 +87,27 @@ function IndexCard({ index }: { index: MarketIndex }) {
   const isVix = index.name === 'VIX';
 
   const changeColor = up
-    ? 'text-green-600 dark:text-green-500'
+    ? 'text-success'
     : down
-      ? 'text-red-600 dark:text-red-500'
-      : 'text-zinc-500';
+      ? 'text-danger'
+      : 'text-fg-muted';
 
   const vixLevel =
     isVix && index.price >= 30
       ? 'border-red-300 dark:border-red-700'
       : isVix && index.price >= 20
         ? 'border-amber-300 dark:border-amber-700'
-        : 'border-zinc-200 dark:border-zinc-800';
+        : 'border-border';
 
   return (
     <div
       className={cn(
-        'rounded-lg border bg-white p-3 dark:bg-zinc-900',
+        'rounded-lg border bg-bg-surface p-3',
         vixLevel,
       )}
     >
-      <div className="text-xs text-zinc-500">{index.name}</div>
-      <div className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+      <div className="text-xs text-fg-muted">{index.name}</div>
+      <div className="mt-1 text-lg font-semibold tabular-nums text-fg">
         {index.price.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,

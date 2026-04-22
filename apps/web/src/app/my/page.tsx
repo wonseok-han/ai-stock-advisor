@@ -8,6 +8,7 @@ import { ProfileSection } from '@/features/my-page/profile-section';
 import { BookmarkGrid } from '@/features/my-page/bookmark-grid';
 import { NotificationSection } from '@/features/my-page/notification-section';
 import { AccountSection } from '@/features/my-page/account-section';
+import { ThemeSwitcher } from '@/components/theme/theme-switcher';
 
 export default function MyPage() {
   const { user, isLoading, signOut } = useAuth();
@@ -20,27 +21,34 @@ export default function MyPage() {
   }, [isLoading, user, router]);
 
   if (isLoading || !user) {
-    return <div className="py-12 text-center text-sm text-zinc-500">로딩 중...</div>;
+    return <div className="py-12 text-center text-sm text-fg-muted">로딩 중...</div>;
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-6">
-      <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">마이페이지</h1>
+      <h1 className="text-xl font-semibold text-fg">마이페이지</h1>
 
       <ProfileSection user={user} onSignOut={signOut} />
 
       <section>
-        <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
+        <h2 className="mb-3 text-base font-medium text-fg">
           내 북마크
         </h2>
         <BookmarkGrid />
       </section>
 
       <section>
-        <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
+        <h2 className="mb-3 text-base font-medium text-fg">
           알림 설정
         </h2>
         <NotificationSection />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-base font-medium text-fg">
+          테마 설정
+        </h2>
+        <ThemeSwitcher />
       </section>
 
       <AccountSection />

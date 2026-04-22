@@ -23,7 +23,7 @@ export function AccountSection() {
       <div className="flex items-center justify-center py-2">
         <button
           onClick={() => setShowDeleteModal(true)}
-          className="cursor-pointer text-sm text-zinc-400 underline-offset-2 transition-colors hover:text-red-500 hover:underline dark:text-zinc-500 dark:hover:text-red-400"
+          className="cursor-pointer text-sm text-fg-muted underline-offset-2 transition-colors hover:text-danger hover:underline"
         >
           회원 탈퇴
         </button>

@@ -6,7 +6,7 @@ import Link from 'next/link';
  */
 export function DisclaimerFooter() {
   return (
-    <footer className="mt-auto border-t border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+    <footer className="mt-auto border-t border-border bg-bg-surface text-fg-secondary">
       <div className="mx-auto w-full max-w-5xl px-4 py-6 text-xs leading-relaxed sm:px-6">
         <p className="mb-3">
           본 서비스에서 제공되는 모든 정보는 <strong>투자 참고용</strong>이며,
@@ -28,7 +28,7 @@ export function DisclaimerFooter() {
             피드백 보내기
           </Link>
         </nav>
-        <p className="mt-4 text-[11px] text-zinc-400">
+        <p className="mt-4 text-[11px] text-fg-muted">
           © {new Date().getFullYear()} 지금이니?! 시세: Finnhub · Twelve
           Data · FMP · AI: Google Gemini · 차트: TradingView Lightweight Charts.
         </p>

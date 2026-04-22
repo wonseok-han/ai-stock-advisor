@@ -24,10 +24,10 @@ export function NewsImpact({
         {items.map((it, idx) => (
           <li
             key={`${idx}-${it.titleKo}`}
-            className="rounded-sm border border-zinc-100 bg-white px-2.5 py-2 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-sm border border-border bg-bg-surface px-2.5 py-2 text-xs"
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="font-semibold text-zinc-700 dark:text-zinc-200">
+              <span className="font-semibold text-fg-secondary">
                 {it.titleKo}
               </span>
               <div className="flex shrink-0 items-center gap-1">
@@ -35,7 +35,7 @@ export function NewsImpact({
                 <ImpactBadge impact={it.impact} />
               </div>
             </div>
-            <p className="mt-1 text-zinc-700 dark:text-zinc-300">{it.reasonKo}</p>
+            <p className="mt-1 text-fg-secondary">{it.reasonKo}</p>
             <PublishedAt hoursAgo={it.hoursAgo ?? null} generatedAt={generatedAt} />
           </li>
         ))}
@@ -59,7 +59,7 @@ function PublishedAt({
   return (
     <time
       dateTime={published.toISOString()}
-      className="mt-1.5 block text-[10px] text-zinc-400 dark:text-zinc-500"
+      className="mt-1.5 block text-[10px] text-fg-muted"
     >
       {label}
     </time>
@@ -118,7 +118,7 @@ function freshnessOf(hoursAgo: number): { label: string; cls: string } {
   if (hoursAgo < 72) {
     return {
       label: `${Math.round(hoursAgo / 24)}일 전`,
-      cls: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200',
+      cls: 'bg-bg-muted text-fg-secondary',
     };
   }
   return {
@@ -154,7 +154,7 @@ function impactStyle(impact: ImpactDirection): { label: string; cls: string } {
     case 'NEUTRAL':
       return {
         label: '중립',
-        cls: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200',
+        cls: 'bg-bg-muted text-fg-secondary',
       };
   }
 }

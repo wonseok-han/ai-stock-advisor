@@ -69,8 +69,8 @@ export function ResetPasswordForm() {
 
   if (status === 'checking') {
     return (
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-center dark:border-zinc-700 dark:bg-zinc-900">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">세션 확인 중...</p>
+      <div className="rounded-md border border-border bg-bg p-4 text-center">
+        <p className="text-sm text-fg-secondary">세션 확인 중...</p>
       </div>
     );
   }
@@ -88,7 +88,7 @@ export function ResetPasswordForm() {
         </div>
         <Link
           href="/auth/forgot-password"
-          className="block w-full rounded-md bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className="block w-full rounded-md bg-primary px-4 py-2 text-center text-sm font-medium text-primary-fg hover:bg-primary-hover"
         >
           재설정 메일 다시 요청하기
         </Link>
@@ -101,7 +101,7 @@ export function ResetPasswordForm() {
       <div>
         <label
           htmlFor="reset-password"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           새 비밀번호
         </label>
@@ -112,7 +112,7 @@ export function ResetPasswordForm() {
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           placeholder="6자 이상 입력해주세요."
         />
       </div>
@@ -120,7 +120,7 @@ export function ResetPasswordForm() {
       <div>
         <label
           htmlFor="reset-confirm"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           비밀번호 확인
         </label>
@@ -131,19 +131,19 @@ export function ResetPasswordForm() {
           minLength={6}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           placeholder="비밀번호 재입력"
         />
       </div>
 
       {errorMessage && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+        <p className="text-sm text-danger">{errorMessage}</p>
       )}
 
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="w-full cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+        className="w-full cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover disabled:opacity-50"
       >
         {status === 'loading' ? '변경 중...' : '비밀번호 변경'}
       </button>

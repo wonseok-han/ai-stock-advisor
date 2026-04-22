@@ -17,14 +17,14 @@ export function DeleteAccountModal({ open, onClose, onConfirm, isLoading }: Dele
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="mx-4 w-full max-w-md rounded-xl bg-white p-6 dark:bg-zinc-900"
+        className="mx-4 w-full max-w-md rounded-xl bg-bg-surface p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+        <h2 className="text-lg font-semibold text-fg">
           회원 탈퇴
         </h2>
 
-        <div className="mt-3 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="mt-3 space-y-2 text-sm text-fg-secondary">
           <p>정말 탈퇴하시겠습니까?</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>북마크, 알림 설정 등 모든 데이터가 삭제됩니다.</li>
@@ -34,7 +34,7 @@ export function DeleteAccountModal({ open, onClose, onConfirm, isLoading }: Dele
         </div>
 
         <div className="mt-4">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <label className="block text-sm font-medium text-fg-secondary">
             탈퇴 사유 (선택)
           </label>
           <textarea
@@ -43,7 +43,7 @@ export function DeleteAccountModal({ open, onClose, onConfirm, isLoading }: Dele
             maxLength={100}
             rows={2}
             placeholder="서비스 개선에 참고하겠습니다."
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+            className="mt-1 w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
           />
         </div>
 
@@ -51,7 +51,7 @@ export function DeleteAccountModal({ open, onClose, onConfirm, isLoading }: Dele
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="cursor-pointer rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="cursor-pointer rounded-md border border-border px-4 py-2 text-sm text-fg-secondary transition-colors hover:bg-bg-muted"
           >
             취소
           </button>

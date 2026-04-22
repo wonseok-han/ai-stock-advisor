@@ -9,14 +9,14 @@ export default function Home() {
         <h1>
           <Logo size="lg" showTagline />
         </h1>
-        <p className="text-base text-zinc-600 dark:text-zinc-400">
+        <p className="text-base text-fg-secondary">
           미국 주식 참고/분석 도구. 투자 자문이 아닌 <strong>참고용 정보</strong>를
           제공합니다.
         </p>
       </div>
       <SearchBox />
       <MarketDashboard />
-      <p className="text-center text-xs leading-relaxed text-zinc-500">
+      <p className="text-center text-xs leading-relaxed text-fg-muted">
         본 서비스의 데이터와 분석은 참고용이며, 모든 투자 판단과 책임은 사용자
         본인에게 있습니다.
       </p>

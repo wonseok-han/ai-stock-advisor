@@ -20,7 +20,7 @@ export function NewsPanel({ ticker }: { ticker: string }) {
   if (error) {
     return (
       <PanelShell>
-        <span className="text-red-600">
+        <span className="text-danger">
           뉴스를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.
         </span>
       </PanelShell>
@@ -35,18 +35,18 @@ export function NewsPanel({ ticker }: { ticker: string }) {
   return (
     <section
       aria-label="최근 뉴스"
-      className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      className="rounded-lg border border-border bg-bg-surface p-4"
     >
-      <h2 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+      <h2 className="mb-3 text-sm font-semibold text-fg-secondary">
         최근 뉴스 (참고용)
       </h2>
-      <ul className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
+      <ul className="flex flex-col divide-y divide-border">
         {data.map((item) => (
           <NewsRow key={item.articleUrlHash} item={item} />
         ))}
       </ul>
       {disclaimer ? (
-        <p className="mt-3 text-xs text-zinc-500">{disclaimer}</p>
+        <p className="mt-3 text-xs text-fg-muted">{disclaimer}</p>
       ) : null}
     </section>
   );
@@ -54,7 +54,7 @@ export function NewsPanel({ ticker }: { ticker: string }) {
 
 function PanelShell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-lg border border-border bg-bg-surface p-4 text-sm text-fg-muted">
       {children}
     </section>
   );
@@ -69,16 +69,16 @@ function NewsRow({ item }: { item: NewsItem }) {
           href={item.sourceUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-100"
+          className="text-sm font-medium text-fg hover:underline"
         >
           {title}
         </a>
         <SentimentBadge sentiment={item.sentiment} />
       </div>
       {item.summaryKo ? (
-        <p className="text-xs text-zinc-600 dark:text-zinc-400">{item.summaryKo}</p>
+        <p className="text-xs text-fg-secondary">{item.summaryKo}</p>
       ) : null}
-      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+      <div className="flex items-center gap-2 text-[11px] text-fg-muted">
         <span>{item.source}</span>
         <span aria-hidden="true">·</span>
         <time dateTime={item.publishedAt}>
@@ -92,7 +92,7 @@ function NewsRow({ item }: { item: NewsItem }) {
 function SentimentBadge({ sentiment }: { sentiment: NewsSentiment | null }) {
   if (!sentiment) {
     return (
-      <span className="rounded-sm bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800">
+      <span className="rounded-sm bg-bg-muted px-1.5 py-0.5 text-[10px] text-fg-muted">
         -
       </span>
     );
@@ -104,7 +104,7 @@ function SentimentBadge({ sentiment }: { sentiment: NewsSentiment | null }) {
     },
     NEUTRAL: {
       label: '중립',
-      cls: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+      cls: 'bg-bg-muted text-fg-secondary',
     },
     NEGATIVE: {
       label: '부정',

@@ -5,7 +5,7 @@ import { UserMenu } from '@/features/auth/user-menu';
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <header className="border-b border-border bg-bg-surface">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           <Link href="/" className="hover:opacity-80 transition-opacity">
