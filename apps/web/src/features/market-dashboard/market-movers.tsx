@@ -9,27 +9,16 @@ import { formatPercentChange } from '@/lib/format/percent';
 
 import type { MarketMover } from '@/types/market';
 
-/**
- * 급등/급락 종목 2-column 테이블.
- * 종목 행 클릭 → /stock/[ticker] 이동.
- * design §7.3
- */
 export function MarketMovers() {
   const { data, isLoading, error, refetch } = useMarketMovers();
 
   if (isLoading) {
     return (
-      <section
-        aria-label="급등/급락 종목"
-        className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-      >
-        <div className="h-4 w-32 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
-        <div className="mt-3 space-y-2">
+      <section aria-label="급등/급락 종목" className="card p-5">
+        <div className="h-4 w-32 animate-pulse rounded bg-bg-muted" />
+        <div className="mt-4 space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-8 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800"
-            />
+            <div key={i} className="h-8 animate-pulse rounded bg-bg-muted" />
           ))}
         </div>
       </section>
@@ -38,13 +27,11 @@ export function MarketMovers() {
 
   if (error || !data) {
     return (
-      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-sm text-red-600">
-          급등/급락 데이터를 불러올 수 없습니다.
-        </p>
+      <section className="card p-5">
+        <p className="text-sm text-danger">급등/급락 데이터를 불러올 수 없습니다.</p>
         <button
           onClick={() => refetch()}
-          className="mt-2 cursor-pointer text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="mt-2 cursor-pointer text-xs text-primary hover:underline"
         >
           다시 시도
         </button>
@@ -53,18 +40,13 @@ export function MarketMovers() {
   }
 
   return (
-    <section
-      aria-label="급등/급락 종목"
-      className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-    >
-      <h2 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-        급등/급락 종목
-      </h2>
-      <div className="space-y-4">
+    <section aria-label="급등/급락 종목" className="card p-5">
+      <h2 className="text-sm font-semibold text-fg">급등/급락 종목</h2>
+      <div className="mt-4 space-y-5">
         <MoverList title="급등" movers={data.gainers} variant="gain" />
         <MoverList title="급락" movers={data.losers} variant="loss" />
       </div>
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-4 text-[11px] text-fg-muted">
         인기 종목 {data.poolSize}개 기준 · {data.disclaimer}
       </p>
     </section>
@@ -81,52 +63,43 @@ function MoverList({
   variant: 'gain' | 'loss';
 }) {
   const router = useRouter();
-  const titleColor =
-    variant === 'gain'
-      ? 'text-green-600 dark:text-green-500'
-      : 'text-red-600 dark:text-red-500';
+  const isGain = variant === 'gain';
 
   if (movers.length === 0) {
     return (
       <div>
-        <h3 className={cn('mb-2 text-xs font-medium', titleColor)}>
+        <h3 className={cn('mb-2 text-xs font-medium', isGain ? 'text-success' : 'text-danger')}>
           {title}
         </h3>
-        <p className="text-xs text-zinc-400">데이터 없음</p>
+        <p className="text-xs text-fg-muted">데이터 없음</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h3 className={cn('mb-2 text-xs font-medium', titleColor)}>{title}</h3>
-      <ul className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
+      <h3 className={cn('mb-2 text-xs font-medium', isGain ? 'text-success' : 'text-danger')}>
+        {title}
+      </h3>
+      <ul className="space-y-0.5">
         {movers.map((m) => (
           <li key={m.ticker}>
             <button
               onClick={() => router.push(`/stock/${m.ticker}`)}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 py-1.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-bg-muted"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="shrink-0 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {m.ticker}
-                  </span>
-                  <span className="truncate text-xs text-zinc-500">
-                    {m.name}
-                  </span>
+                  <span className="shrink-0 text-sm font-medium text-fg">{m.ticker}</span>
+                  <span className="truncate text-xs text-fg-muted">{m.name}</span>
                 </div>
               </div>
-              <div className="flex shrink-0 items-baseline gap-1.5 text-right">
-                <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-400">
-                  {formatUsd(m.price)}
-                </span>
+              <div className="flex shrink-0 items-baseline gap-2 text-right">
+                <span className="text-xs tabular-nums text-fg-secondary">{formatUsd(m.price)}</span>
                 <span
                   className={cn(
-                    'min-w-[4.5rem] text-right text-xs tabular-nums font-medium',
-                    variant === 'gain'
-                      ? 'text-green-600 dark:text-green-500'
-                      : 'text-red-600 dark:text-red-500',
+                    'min-w-[4rem] rounded-md px-1.5 py-0.5 text-right text-xs tabular-nums font-semibold',
+                    isGain ? 'bg-emerald-500/10 text-success' : 'bg-red-500/10 text-danger',
                   )}
                 >
                   {formatPercentChange(m.changePercent)}

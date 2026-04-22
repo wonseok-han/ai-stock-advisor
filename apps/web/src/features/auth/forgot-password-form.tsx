@@ -41,11 +41,11 @@ export function ForgotPasswordForm() {
 
   if (status === 'sent') {
     return (
-      <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
-        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+      <div className="rounded-xl bg-emerald-500/10 p-4 text-center">
+        <p className="text-sm font-medium text-success">
           재설정 메일을 발송했습니다.
         </p>
-        <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+        <p className="mt-1 text-xs text-fg-secondary">
           이메일의 링크를 클릭해 새 비밀번호를 설정해 주세요. 링크는 1시간 후 만료됩니다.
         </p>
       </div>
@@ -57,7 +57,7 @@ export function ForgotPasswordForm() {
       <div>
         <label
           htmlFor="forgot-email"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           이메일
         </label>
@@ -67,19 +67,19 @@ export function ForgotPasswordForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="you@example.com"
         />
       </div>
 
       {errorMessage && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+        <p className="text-sm text-danger">{errorMessage}</p>
       )}
 
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="w-full cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+        className="w-full cursor-pointer rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {status === 'loading' ? '처리 중...' : '재설정 메일 보내기'}
       </button>

@@ -1,34 +1,34 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '이용약관 · AI Stock Advisor',
-  description: 'AI Stock Advisor 서비스 이용약관.',
+  title: '이용약관 · 지금이니?!',
+  description: '지금이니?! 서비스 이용약관.',
 };
 
 export default function TermsPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="text-2xl font-semibold text-fg">
         이용약관 (Terms of Service)
       </h1>
 
-      <section className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-        <p className="text-xs text-zinc-500">
+      <section className="mt-6 space-y-4 text-sm leading-relaxed text-fg-secondary">
+        <p className="text-xs text-fg-muted">
           시행일: 2026년 4월 17일 · 정식 런칭 전 법률 검토를 거쳐 최종화됩니다.
         </p>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제1조 (서비스의 목적)
         </h2>
         <p>
-          본 서비스(&ldquo;AI Stock Advisor&rdquo;)는 미국 상장 주식에 대한
+          본 서비스(&ldquo;지금이니?!&rdquo;)는 미국 상장 주식에 대한
           공개된 시장 데이터, 기술 지표, 뉴스 요약 등의{' '}
           <strong>투자 참고용 정보</strong>를 제공하는 것을 목적으로 합니다.
           본 서비스는 특정 금융상품의 매수·매도를 권유하지 않으며, 자본시장법에
           따른 투자자문업·투자일임업을 영위하지 않습니다.
         </p>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제2조 (면책)
         </h2>
         <ul className="list-disc pl-6">
@@ -50,7 +50,7 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제3조 (금지 행위)
         </h2>
         <ul className="list-disc pl-6">
@@ -60,7 +60,7 @@ export default function TermsPage() {
           <li>타인의 계정·정보에 대한 무단 접근</li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제4조 (계정)
         </h2>
         <ul className="list-disc pl-6">
@@ -86,7 +86,7 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제5조 (알림 서비스)
         </h2>
         <ul className="list-disc pl-6">
@@ -104,7 +104,7 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제6조 (지적재산권)
         </h2>
         <ul className="list-disc pl-6">
@@ -124,7 +124,7 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제7조 (서비스 변경·중단)
         </h2>
         <p>
@@ -133,7 +133,7 @@ export default function TermsPage() {
           대해 책임을 지지 않습니다.
         </p>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제8조 (약관의 변경)
         </h2>
         <ul className="list-disc pl-6">
@@ -151,7 +151,7 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           제9조 (준거법)
         </h2>
         <p>본 약관의 해석과 분쟁 해결은 대한민국 법령을 준거법으로 합니다.</p>

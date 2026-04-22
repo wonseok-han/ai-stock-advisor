@@ -25,19 +25,19 @@ export function AiAccuracyTooltip({ data }: { data: AiAccuracySummary }) {
   return (
     <div
       role="tooltip"
-      className="absolute right-0 top-full z-10 mt-1 w-72 rounded-md border border-zinc-200 bg-white p-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+      className="absolute right-0 top-full z-10 mt-1 w-72 rounded-md border border-border bg-bg-surface p-3 shadow-lg"
     >
-      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+      <p className="text-xs font-semibold text-fg-secondary">
         {data.window}일 방향 일치율
       </p>
-      <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <p className="mt-0.5 text-[11px] text-fg-muted">
         샘플 {data.sampleSize}건 · 평가 기준일 {evaluatedThrough}
       </p>
 
       {entries.length > 0 ? (
         <table className="mt-2 w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-zinc-100 text-left text-[10px] text-zinc-500 dark:border-zinc-800">
+            <tr className="border-b border-border text-left text-[10px] text-fg-muted">
               <th className="py-1 font-medium">시그널</th>
               <th className="py-1 font-medium">샘플</th>
               <th className="py-1 text-right font-medium">일치율</th>
@@ -47,15 +47,15 @@ export function AiAccuracyTooltip({ data }: { data: AiAccuracySummary }) {
             {entries.map(([signal, stat]) => (
               <tr
                 key={signal}
-                className="border-b border-zinc-50 last:border-0 dark:border-zinc-800/50"
+                className="border-b border-border last:border-0"
               >
-                <td className="py-1 text-zinc-700 dark:text-zinc-300">
+                <td className="py-1 text-fg-secondary">
                   {signalLabel(signal)}
                 </td>
-                <td className="py-1 text-zinc-500 dark:text-zinc-400">
+                <td className="py-1 text-fg-muted">
                   {stat.count}
                 </td>
-                <td className="py-1 text-right text-zinc-700 dark:text-zinc-300">
+                <td className="py-1 text-right text-fg-secondary">
                   {formatRate(stat.hitRate)}
                 </td>
               </tr>
@@ -64,7 +64,7 @@ export function AiAccuracyTooltip({ data }: { data: AiAccuracySummary }) {
         </table>
       ) : null}
 
-      <p className="mt-2 text-[10px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+      <p className="mt-2 text-[10px] leading-relaxed text-fg-muted">
         {data.disclaimer}
       </p>
     </div>

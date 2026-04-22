@@ -410,4 +410,4 @@ None. Phase 4 is additive:
 
 ## License
 
-Proprietary - AI Stock Advisor
+Proprietary - 지금이니?! (Nowini)

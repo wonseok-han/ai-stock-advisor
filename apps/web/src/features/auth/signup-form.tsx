@@ -78,11 +78,11 @@ export function SignupForm() {
 
   if (result === 'reactivated') {
     return (
-      <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
-        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+      <div className="rounded-xl bg-emerald-500/10 p-4 text-center">
+        <p className="text-sm font-medium text-success">
           계정이 복구되었습니다.
         </p>
-        <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+        <p className="mt-1 text-xs text-fg-secondary">
           기존 이메일과 비밀번호로 로그인해 주세요.
         </p>
       </div>
@@ -91,11 +91,11 @@ export function SignupForm() {
 
   if (result === 'signup-success') {
     return (
-      <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
-        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+      <div className="rounded-xl bg-emerald-500/10 p-4 text-center">
+        <p className="text-sm font-medium text-success">
           인증 메일을 발송했습니다.
         </p>
-        <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+        <p className="mt-1 text-xs text-fg-secondary">
           이메일을 확인하고 인증 링크를 클릭해 주세요.
         </p>
       </div>
@@ -107,7 +107,7 @@ export function SignupForm() {
       <div>
         <label
           htmlFor="signup-email"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           이메일
         </label>
@@ -117,7 +117,7 @@ export function SignupForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="you@example.com"
         />
       </div>
@@ -125,7 +125,7 @@ export function SignupForm() {
       <div>
         <label
           htmlFor="signup-password"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           비밀번호
         </label>
@@ -136,7 +136,7 @@ export function SignupForm() {
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="6자 이상 입력해주세요."
         />
       </div>
@@ -144,7 +144,7 @@ export function SignupForm() {
       <div>
         <label
           htmlFor="signup-confirm"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           비밀번호 확인
         </label>
@@ -155,25 +155,25 @@ export function SignupForm() {
           minLength={6}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-xl border border-border bg-bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
           placeholder="비밀번호 재입력"
         />
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-sm text-danger">{error}</p>
       )}
 
       {showReactivate && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
+        <div className="rounded-xl bg-amber-500/10 p-3">
+          <p className="text-sm text-fg-secondary">
             이전에 탈퇴한 계정이 있을 수 있습니다.
           </p>
           <button
             type="button"
             onClick={handleReactivate}
             disabled={isLoading}
-            className="mt-2 w-full cursor-pointer rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            className="mt-2 w-full cursor-pointer rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
           >
             {isLoading ? "복구 중..." : "계정 복구하기"}
           </button>
@@ -183,7 +183,7 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+        className="w-full cursor-pointer rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {isLoading ? "처리 중..." : "회원가입"}
       </button>

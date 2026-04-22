@@ -14,11 +14,6 @@ import { getCandles } from '@/lib/api/stocks';
 
 import type { Candle, TimeFrame } from '@/types/stock';
 
-/**
- * TradingView Lightweight Charts 기반 캔들 차트 + 거래량 서브차트.
- * Phase 4.5: 거래량 히스토그램 추가, D1일 때만 시간 표시.
- * 참조: docs/02-design/features/phase4.5-improvements.design.md §6.3
- */
 export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -38,11 +33,11 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
       height: 400,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#71717a',
+        textColor: '#6b7280',
       },
       grid: {
-        vertLines: { color: 'rgba(228,228,231,0.4)' },
-        horzLines: { color: 'rgba(228,228,231,0.4)' },
+        vertLines: { color: 'rgba(255,255,255,0.04)' },
+        horzLines: { color: 'rgba(255,255,255,0.04)' },
       },
       rightPriceScale: { borderVisible: false },
       timeScale: {
@@ -52,11 +47,11 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
     });
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor: '#16a34a',
-      downColor: '#dc2626',
+      upColor: '#22c55e',
+      downColor: '#ef4444',
       borderVisible: false,
-      wickUpColor: '#16a34a',
-      wickDownColor: '#dc2626',
+      wickUpColor: '#22c55e',
+      wickDownColor: '#ef4444',
     });
 
     const volumeSeries = chart.addHistogramSeries({
@@ -106,7 +101,7 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
       data.map((c) => ({
         time: c.time as UTCTimestamp,
         value: c.volume,
-        color: c.close >= c.open ? 'rgba(22,163,74,0.3)' : 'rgba(220,38,38,0.3)',
+        color: c.close >= c.open ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
       })),
     );
 
@@ -114,19 +109,17 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
   }, [data]);
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-          차트 ({tf})
-        </h2>
-        {isLoading && <span className="text-xs text-zinc-500">불러오는 중…</span>}
+    <div className="card overflow-hidden">
+      <div className="flex items-baseline justify-between px-5 pt-4 pb-2">
+        <h2 className="text-sm font-semibold text-fg">차트</h2>
+        {isLoading && <span className="text-xs text-fg-muted">불러오는 중…</span>}
       </div>
       {error ? (
-        <div className="py-8 text-center text-sm text-red-600">
+        <div className="py-8 text-center text-sm text-danger">
           차트 데이터를 불러오지 못했습니다.
         </div>
       ) : (
-        <div ref={containerRef} className="w-full" />
+        <div ref={containerRef} className="w-full px-2 pb-2" />
       )}
     </div>
   );

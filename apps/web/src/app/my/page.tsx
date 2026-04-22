@@ -20,26 +20,22 @@ export default function MyPage() {
   }, [isLoading, user, router]);
 
   if (isLoading || !user) {
-    return <div className="py-12 text-center text-sm text-zinc-500">로딩 중...</div>;
+    return <div className="py-12 text-center text-sm text-fg-muted">로딩 중...</div>;
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 py-6">
-      <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">마이페이지</h1>
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6">
+      <h1 className="text-lg font-semibold text-fg">마이페이지</h1>
 
       <ProfileSection user={user} onSignOut={signOut} />
 
       <section>
-        <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
-          내 북마크
-        </h2>
+        <h2 className="mb-3 text-sm font-medium text-fg">내 북마크</h2>
         <BookmarkGrid />
       </section>
 
       <section>
-        <h2 className="mb-3 text-base font-medium text-zinc-900 dark:text-white">
-          알림 설정
-        </h2>
+        <h2 className="mb-3 text-sm font-medium text-fg">알림 설정</h2>
         <NotificationSection />
       </section>
 

@@ -11,7 +11,7 @@ export function BeginnerExplanation({ text }: { text?: string | null }) {
   if (!text || text.trim().length === 0) return null;
   return (
     <CollapsibleSection title="쉽게 이해하기">
-      <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{text}</p>
+      <p className="text-sm leading-relaxed text-fg-secondary">{text}</p>
     </CollapsibleSection>
   );
 }

@@ -2,7 +2,7 @@
 
 > **Summary**: AI 시그널의 과거 방향 정합도(hit rate)를 측정·공개하여, 분석 신뢰도를 정량화하고 프롬프트/모델 튜닝의 기준선을 확보한다.
 >
-> **Project**: ai-stock-advisor
+> **Project**: nowini
 > **Version**: v0.1.1 (예정, Phase 5 첫 기능)
 > **Author**: wonseok-han
 > **Date**: 2026-04-20

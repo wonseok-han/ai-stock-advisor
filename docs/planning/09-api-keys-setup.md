@@ -133,7 +133,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 2. **Start your project** → GitHub 로그인
 3. **New Project** 생성
    - Organization 선택 (없으면 자동 생성)
-   - Project name: `ai-stock-advisor`
+   - Project name: `nowini`
    - Database password: **반드시 메모** (이후 변경 불가, 재생성만 가능)
    - Region: `Northeast Asia (ap-northeast)` 권장
 4. 프로젝트 생성 완료 (1~2분 소요)
@@ -165,11 +165,11 @@ FE의 "Google로 계속" 버튼이 동작하려면 Google Cloud Console + Supaba
 #### A. Google Cloud Console — OAuth 동의 화면
 
 1. https://console.cloud.google.com 접속 → Google 계정 로그인
-2. 프로젝트가 없으면 상단 프로젝트 선택 → **New Project** 생성 (예: `ai-stock-advisor`)
+2. 프로젝트가 없으면 상단 프로젝트 선택 → **New Project** 생성 (예: `nowini`)
 3. 좌측 메뉴 **APIs & Services** → **OAuth consent screen**
 4. User Type: **External** 선택 → **Create**
 5. 앱 정보 입력:
-   - App name: `AI Stock Advisor`
+   - App name: `지금이니?!`
    - User support email: 본인 이메일
    - Developer contact email: 본인 이메일
 6. **Scopes** → **Add or remove scopes** → `email`, `profile`, `openid` 선택 → **Save**
@@ -181,7 +181,7 @@ FE의 "Google로 계속" 버튼이 동작하려면 Google Cloud Console + Supaba
 1. 좌측 메뉴 **APIs & Services** → **Credentials**
 2. 상단 **+ CREATE CREDENTIALS** → **OAuth client ID**
 3. Application type: **Web application**
-4. Name: `AI Stock Advisor` (자유)
+4. Name: `지금이니?!` (자유)
 5. **Authorized JavaScript origins** 추가:
    - `http://localhost:3000` (로컬 개발)
    - `https://your-app.vercel.app` (배포 후 추가)
@@ -251,7 +251,7 @@ DATABASE_PASSWORD=dev
 1. https://console.upstash.com 접속
 2. GitHub 또는 Google 로그인
 3. **Create Database** 클릭
-   - Name: `ai-stock-advisor`
+   - Name: `nowini`
    - Type: `Regional`
    - Region: `ap-northeast-1` (Tokyo) 권장
    - TLS: Enabled (기본값)

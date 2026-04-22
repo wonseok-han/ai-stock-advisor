@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AI Stock Advisor',
+  title: '지금이니?!',
   description: '초보 투자자를 위한 미국 주식 참고/분석 도구 (투자 자문 아님).',
 };
 
@@ -35,12 +35,20 @@ export default function RootLayout({
     <html
       lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-black">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light')t='dark';document.documentElement.setAttribute('data-theme',t);if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-bg">
         <Providers>
           <SiteHeader />
-          <DisclaimerBanner />
           <div className="flex flex-1 flex-col">{children}</div>
+          <DisclaimerBanner />
           <DisclaimerFooter />
         </Providers>
         <SwRegister />

@@ -1,20 +1,20 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '면책 고지 · AI Stock Advisor',
+  title: '면책 고지 · 지금이니?!',
   description: '본 서비스의 정보 제공 성격 및 면책 사항 안내.',
 };
 
 export default function DisclaimerPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="text-2xl font-semibold text-fg">
         면책 고지 (Disclaimer)
       </h1>
 
-      <section className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+      <section className="mt-6 space-y-4 text-sm leading-relaxed text-fg-secondary">
         <p>
-          본 서비스(&lsquo;AI Stock Advisor&rsquo;, 이하 &ldquo;서비스&rdquo;)에서
+          본 서비스(&lsquo;지금이니?!&rsquo;, 이하 &ldquo;서비스&rdquo;)에서
           제공되는 모든 정보는 <strong>투자 참고용</strong>이며, 투자 자문이나
           특정 금융상품에 대한 매수·매도 권유가 아닙니다.
         </p>
@@ -35,7 +35,7 @@ export default function DisclaimerPage() {
           전문가 상담을 병행하시기 바랍니다.
         </p>
 
-        <h2 className="mt-6 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="mt-6 text-lg font-semibold text-fg">
           AI 분석 결과에 대한 추가 고지
         </h2>
         <p>
@@ -45,7 +45,7 @@ export default function DisclaimerPage() {
           통해 직접 확인하시기 바랍니다.
         </p>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-fg-muted">
           본 문구는 초안이며, 정식 런칭 전 법률 검토를 거쳐 최종화될 수 있습니다.
         </p>
       </section>

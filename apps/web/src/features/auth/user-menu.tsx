@@ -15,7 +15,7 @@ export function UserMenu() {
 
   if (isLoading) {
     return (
-      <div className="h-8 w-16 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+      <div className="h-8 w-16 animate-pulse rounded bg-bg-muted" />
     );
   }
 
@@ -23,7 +23,7 @@ export function UserMenu() {
     return (
       <Link
         href="/auth/login"
-        className="cursor-pointer rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-muted"
       >
         로그인
       </Link>
@@ -40,13 +40,13 @@ export function UserMenu() {
     <div className="flex items-center gap-2">
       <Link
         href="/my"
-        className="text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+        className="text-xs text-fg-secondary hover:text-fg"
       >
         마이페이지
       </Link>
       <button
         onClick={handleSignOut}
-        className="cursor-pointer rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-muted"
       >
         로그아웃
       </button>

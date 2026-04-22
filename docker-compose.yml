@@ -13,7 +13,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ai-stock-advisor-postgres
+    container_name: nowini-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: aistockadvisor
@@ -33,7 +33,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ai-stock-advisor-redis
+    container_name: nowini-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
@@ -48,6 +48,6 @@ services:
 
 volumes:
   postgres-data:
-    name: ai-stock-advisor-postgres-data
+    name: nowini-postgres-data
   redis-data:
-    name: ai-stock-advisor-redis-data
+    name: nowini-redis-data

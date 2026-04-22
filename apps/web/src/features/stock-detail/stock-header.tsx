@@ -9,10 +9,6 @@ import { formatKst } from '@/lib/format/date';
 import { formatUsd } from '@/lib/format/currency';
 import { formatPercentChange, formatSignedNumber } from '@/lib/format/percent';
 
-/**
- * 종목 헤더 (design §4.2). 티커/이름/거래소/현재가/등락.
- * Profile 은 24h 캐시, Quote 는 30s refetch.
- */
 export function StockHeader({ ticker }: { ticker: string }) {
   const { data: profile } = useProfile(ticker);
   const { data: quote, isFetching: quoteFetching } = useQuote(ticker);
@@ -20,47 +16,48 @@ export function StockHeader({ ticker }: { ticker: string }) {
   const change = quote?.change ?? 0;
   const up = change > 0;
   const down = change < 0;
-  const colorClass = up
-    ? 'text-green-600 dark:text-green-500'
+  const colorClass = up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted';
+  const changeBg = up
+    ? 'bg-emerald-500/10 text-success'
     : down
-      ? 'text-red-600 dark:text-red-500'
-      : 'text-zinc-500';
+      ? 'bg-red-500/10 text-danger'
+      : 'bg-bg-muted text-fg-muted';
 
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {ticker}
-          </h1>
+          <h1 className="text-2xl font-bold text-fg">{ticker}</h1>
           {profile?.exchange && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+            <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-fg-secondary">
               {profile.exchange}
             </span>
           )}
-          <BookmarkButton ticker={ticker} />
-          <NotificationButton ticker={ticker} />
-        </div>
-        {profile?.name && (
-          <p className="mt-1 text-sm text-zinc-500">{profile.name}</p>
-        )}
-      </div>
-      <div className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          <div className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-            {formatUsd(quote?.price)}
-          </div>
           {quote?.marketStatus === 'OPEN' && (
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-400">
+            <span className="flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-success">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
               LIVE
             </span>
           )}
         </div>
-        <div className={cn('text-sm tabular-nums', colorClass)}>
-          {formatSignedNumber(quote?.change)}{' '}
-          ({formatPercentChange(quote?.changePercent)})
+        {profile?.name && (
+          <p className="mt-1 text-sm text-fg-muted">{profile.name}</p>
+        )}
+        <div className="mt-1 flex items-center gap-2">
+          <BookmarkButton ticker={ticker} />
+          <NotificationButton ticker={ticker} />
         </div>
-        <div className="mt-1 text-xs text-zinc-400">
+      </div>
+      <div className="text-right">
+        <div className="text-3xl font-bold tabular-nums text-fg">
+          {formatUsd(quote?.price)}
+        </div>
+        <div className="mt-1 flex items-center justify-end gap-2">
+          <span className={cn('rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums', changeBg)}>
+            {formatSignedNumber(quote?.change)} ({formatPercentChange(quote?.changePercent)})
+          </span>
+        </div>
+        <div className="mt-1 text-xs text-fg-muted">
           {quote?.priceLabel ?? `업데이트: ${formatKst(quote?.updatedAt)}`}
           {quoteFetching && ' · 새로고침 중'}
         </div>
