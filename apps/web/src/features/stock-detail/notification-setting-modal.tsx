@@ -63,16 +63,16 @@ function NotificationSettingModalInner({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="mx-4 w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+        className="mx-4 w-full max-w-sm rounded-xl border border-border bg-bg-surface p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-fg">
           {ticker} 알림 설정
         </h3>
 
         <div className="mt-5 space-y-4">
           <div>
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="text-sm font-medium text-fg-secondary">
               가격 변동 임계치
             </label>
             <div className="mt-1.5 flex gap-2">
@@ -83,7 +83,7 @@ function NotificationSettingModalInner({
                   className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                     threshold === v
                       ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400'
+                      : 'bg-bg-muted text-fg-secondary hover:bg-bg-muted'
                   }`}
                 >
                   ±{v}%
@@ -100,7 +100,7 @@ function NotificationSettingModalInner({
         </div>
 
         {!bookmarkCheck?.bookmarked && (
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-fg-muted">
             알림 설정 시 자동으로 북마크에 추가됩니다.
           </p>
         )}
@@ -110,7 +110,7 @@ function NotificationSettingModalInner({
             <button
               onClick={handleDelete}
               disabled={isPending}
-              className="cursor-pointer rounded-lg px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm text-danger hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
             >
               알림 해제
             </button>
@@ -120,7 +120,7 @@ function NotificationSettingModalInner({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="cursor-pointer rounded-lg px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm text-fg-secondary hover:bg-bg-muted"
             >
               취소
             </button>
@@ -168,11 +168,11 @@ function ToggleRow({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+      <span className="text-sm text-fg-secondary">{label}</span>
       <button
         onClick={() => onChange(!checked)}
         className={`relative cursor-pointer h-6 w-11 rounded-full transition-colors ${
-          checked ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-600'
+          checked ? 'bg-blue-600' : 'bg-border'
         }`}
       >
         <span

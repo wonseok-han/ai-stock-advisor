@@ -1,4 +1,4 @@
-# apps/web — AI Stock Advisor Frontend
+# apps/web — 지금이니?! Frontend
 
 Next.js 16 (App Router, Turbopack) + React 19 + Tailwind 4 + TypeScript.
 

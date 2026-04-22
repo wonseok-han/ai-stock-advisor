@@ -3,7 +3,7 @@ import { ResetPasswordForm } from '@/features/auth/reset-password-form';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '새 비밀번호 설정 — AI Stock Advisor',
+  title: '새 비밀번호 설정 — 지금이니?!',
 };
 
 export default function ResetPasswordPage() {
@@ -11,10 +11,10 @@ export default function ResetPasswordPage() {
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-xl font-semibold text-fg">
             새 비밀번호 설정
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-fg-muted">
             새 비밀번호를 입력해 주세요.
           </p>
         </div>

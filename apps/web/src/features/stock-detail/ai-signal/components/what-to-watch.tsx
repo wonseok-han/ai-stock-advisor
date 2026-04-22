@@ -15,7 +15,7 @@ export function WhatToWatch({ items }: { items?: string[] | null }) {
         {clean.map((text, idx) => (
           <li
             key={`${idx}-${text.slice(0, 16)}`}
-            className="flex items-start gap-2 text-xs text-zinc-700 dark:text-zinc-300"
+            className="flex items-start gap-2 text-xs text-fg-secondary"
           >
             <span
               className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400"

@@ -9,14 +9,14 @@ export function NotificationSettings() {
   const upsertMutation = useUpsertNotificationSetting();
 
   if (isLoading) {
-    return <p className="text-sm text-gray-500">로딩 중...</p>;
+    return <p className="text-sm text-fg-muted">로딩 중...</p>;
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400">알림 설정이 없습니다.</p>
-        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+      <div className="rounded-lg border border-dashed border-border p-6 text-center">
+        <p className="text-sm text-fg-muted">알림 설정이 없습니다.</p>
+        <p className="mt-1 text-xs text-fg-muted">
           종목 상세에서 북마크 후 알림을 설정할 수 있습니다.
         </p>
       </div>
@@ -39,12 +39,12 @@ export function NotificationSettings() {
       {data.map((s) => (
         <div
           key={s.ticker}
-          className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
+          className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
         >
           <div>
-            <span className="font-semibold text-gray-900 dark:text-white">{s.ticker}</span>
+            <span className="font-semibold text-fg">{s.ticker}</span>
             {s.priceChangeThreshold != null && (
-              <span className="ml-2 text-xs text-gray-500">가격 ±{s.priceChangeThreshold}%</span>
+              <span className="ml-2 text-xs text-fg-muted">가격 ±{s.priceChangeThreshold}%</span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ function ToggleChip({ label, active, onClick }: { label: string; active: boolean
       className={`cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
         active
           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-          : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+          : 'bg-bg-muted text-fg-muted'
       }`}
     >
       {label}

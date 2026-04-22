@@ -6,19 +6,19 @@ import { useState } from 'react';
 import { useSearch } from '@/features/search/hooks/use-search';
 import { cn } from '@/lib/cn';
 
-/**
- * 종목 검색 + 자동완성 (design §4.1).
- * BE /api/v1/stocks/search 호출 (debounce 300ms).
- * Enter 시 첫 결과로 이동. 결과 클릭은 Link.
- */
-export function SearchBox({ className }: { className?: string }) {
+interface SearchBoxProps {
+  className?: string;
+  compact?: boolean;
+}
+
+export function SearchBox({ className, compact = false }: SearchBoxProps) {
   const [query, setQuery] = useState('');
   const { data, isFetching, error } = useSearch(query);
   const hits = data ?? [];
   const trimmed = query.trim();
 
   return (
-    <div className={cn('w-full max-w-xl', className)}>
+    <div className={cn('relative w-full', compact ? 'max-w-sm' : 'max-w-xl', className)}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -27,33 +27,51 @@ export function SearchBox({ className }: { className?: string }) {
           }
         }}
       >
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="종목 검색 (예: AAPL, Tesla)"
-          maxLength={20}
-          aria-label="종목 검색"
-          className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-black shadow-sm outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-700"
-        />
+        <div className={cn('search-glow relative rounded-xl transition-shadow', !compact && 'brand-glow-strong')}>
+          <svg
+            className={cn(
+              'pointer-events-none absolute top-1/2 -translate-y-1/2 text-fg-muted',
+              compact ? 'left-3 h-3.5 w-3.5' : 'left-4 h-4 w-4',
+            )}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={compact ? '종목 검색…' : '종목 검색 (예: AAPL, Tesla)'}
+            maxLength={20}
+            aria-label="종목 검색"
+            className={cn(
+              'w-full rounded-xl border border-border bg-bg-surface text-fg outline-none transition-colors placeholder:text-fg-muted',
+              'focus:border-primary focus:ring-1 focus:ring-primary',
+              compact ? 'py-1.5 pl-8 pr-3 text-sm' : 'py-3 pl-11 pr-4 text-base',
+            )}
+          />
+        </div>
       </form>
 
       {trimmed.length > 0 && (
         <div
-          className="mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-bg-surface shadow-lg"
           role="listbox"
           aria-label="검색 결과"
         >
           {isFetching && (
-            <div className="px-4 py-2 text-sm text-zinc-500">검색 중…</div>
+            <div className="px-4 py-2 text-sm text-fg-muted">검색 중…</div>
           )}
           {!isFetching && error && (
-            <div className="px-4 py-2 text-sm text-red-600">
-              검색을 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.
+            <div className="px-4 py-2 text-sm text-danger">
+              검색을 일시적으로 사용할 수 없습니다.
             </div>
           )}
           {!isFetching && !error && hits.length === 0 && (
-            <div className="px-4 py-2 text-sm text-zinc-500">
+            <div className="px-4 py-2 text-sm text-fg-muted">
               결과가 없습니다.
             </div>
           )}
@@ -61,19 +79,13 @@ export function SearchBox({ className }: { className?: string }) {
             <Link
               key={hit.ticker}
               href={`/stock/${hit.ticker}`}
-              className="flex items-baseline justify-between gap-4 px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="flex items-baseline justify-between gap-4 px-4 py-2.5 transition-colors hover:bg-bg-muted"
               role="option"
               aria-selected="false"
             >
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                {hit.ticker}
-              </span>
-              <span className="truncate text-sm text-zinc-600 dark:text-zinc-400">
-                {hit.name}
-              </span>
-              <span className="shrink-0 text-xs text-zinc-400">
-                {hit.exchange}
-              </span>
+              <span className="font-semibold text-fg">{hit.ticker}</span>
+              <span className="truncate text-sm text-fg-secondary">{hit.name}</span>
+              <span className="shrink-0 text-xs text-fg-muted">{hit.exchange}</span>
             </Link>
           ))}
         </div>

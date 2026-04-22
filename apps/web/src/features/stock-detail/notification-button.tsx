@@ -33,7 +33,7 @@ export function NotificationButton({ ticker }: { ticker: string }) {
         className={`inline-flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 transition-colors ${
           isActive
             ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
-            : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+            : 'bg-bg-muted text-fg-secondary hover:bg-bg-muted'
         }`}
         aria-label={isActive ? '알림 설정됨 (편집)' : '알림 설정'}
         title={isActive ? '알림 설정됨 (편집)' : '알림 설정'}

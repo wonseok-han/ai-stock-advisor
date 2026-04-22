@@ -1,4 +1,4 @@
-# AI Stock Advisor
+# 지금이니?! (Nowini)
 
 > 초보 투자자를 위한 AI 기반 미국 주식 참고/분석 웹서비스. 투자 자문이 아닌 **정보 제공 및 참고용 분석 도구**.
 
@@ -143,7 +143,7 @@ Import order: (1) 외부 라이브러리 → (2) `@/...` 절대경로 → (3) �
 ## Project Structure (계획)
 
 ```
-ai-stock-advisor/
+nowini/
 ├── apps/
 │   ├── web/               # Next.js 16 (FE) — Phase 1에서 생성
 │   └── api/               # Spring Boot 3 (BE) — Phase 1에서 생성
@@ -240,7 +240,7 @@ Claude:
 
 ---
 
-**Generated for**: AI Stock Advisor
+**Generated for**: 지금이니?! (Nowini)
 **bkit Version**: 1.6.1
 **Level**: Dynamic
 **Phase**: 0 (Planning)

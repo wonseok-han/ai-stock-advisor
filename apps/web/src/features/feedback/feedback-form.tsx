@@ -117,7 +117,7 @@ export function FeedbackForm() {
         </div>
         <Link
           href="/"
-          className="block w-full rounded-md bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className="block w-full rounded-md bg-primary px-4 py-2 text-center text-sm font-medium text-primary-fg hover:bg-primary-hover"
         >
           홈으로 돌아가기
         </Link>
@@ -140,7 +140,7 @@ export function FeedbackForm() {
       <div>
         <label
           htmlFor="feedback-type"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           유형
         </label>
@@ -148,7 +148,7 @@ export function FeedbackForm() {
           id="feedback-type"
           value={type}
           onChange={(e) => setType(e.target.value as FeedbackType)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
           <option value="bug">{FEEDBACK_TYPE_LABELS.bug}</option>
           <option value="question">{FEEDBACK_TYPE_LABELS.question}</option>
@@ -159,7 +159,7 @@ export function FeedbackForm() {
       <div>
         <label
           htmlFor="feedback-subject"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           제목
         </label>
@@ -170,7 +170,7 @@ export function FeedbackForm() {
           maxLength={FEEDBACK_LIMITS.SUBJECT_MAX}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           placeholder="한 줄 요약"
         />
       </div>
@@ -178,7 +178,7 @@ export function FeedbackForm() {
       <div>
         <label
           htmlFor="feedback-body"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           내용
         </label>
@@ -190,10 +190,10 @@ export function FeedbackForm() {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={8}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           placeholder={`재현 단계, 기대 동작, 실제 동작 등 구체적으로 작성해 주세요. (${FEEDBACK_LIMITS.BODY_MIN}~${FEEDBACK_LIMITS.BODY_MAX}자)`}
         />
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 text-xs text-fg-muted">
           {body.length} / {FEEDBACK_LIMITS.BODY_MAX}
         </p>
       </div>
@@ -201,7 +201,7 @@ export function FeedbackForm() {
       <div>
         <label
           htmlFor="feedback-email"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="block text-sm font-medium text-fg-secondary"
         >
           이메일 {user?.email ? '(로그인 계정)' : ''}
         </label>
@@ -212,19 +212,19 @@ export function FeedbackForm() {
           readOnly={!!user?.email}
           value={email}
           onChange={(e) => setEmailInput(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 read-only:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:read-only:bg-zinc-900"
+          className="mt-1 block w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary read-only:bg-bg-muted"
           placeholder="you@example.com"
         />
       </div>
 
       {errorMessage && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+        <p className="text-sm text-danger">{errorMessage}</p>
       )}
 
       <button
         type="submit"
         disabled={status === 'loading' || cooldownLeft > 0}
-        className="w-full cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+        className="w-full cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === 'loading'
           ? '전송 중...'
@@ -233,7 +233,7 @@ export function FeedbackForm() {
             : '피드백 보내기'}
       </button>
 
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-fg-muted">
         본 서비스는 투자 자문이 아닙니다. 투자 판단과 그에 따른 책임은 사용자 본인에게 있으며,
         개별 투자 자문 요청에는 응답하지 않습니다.
       </p>

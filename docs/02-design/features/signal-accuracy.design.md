@@ -2,7 +2,7 @@
 
 > **Summary**: AI 시그널 방향 정합도(hit rate) 측정 인프라. `ai_signal_audit` + `candles` 를 조합해 **배치 평가 → 집계 API → FE 배지** 를 구성한다.
 >
-> **Project**: ai-stock-advisor
+> **Project**: nowini
 > **Version**: v0.1.1
 > **Author**: wonseok-han
 > **Date**: 2026-04-20

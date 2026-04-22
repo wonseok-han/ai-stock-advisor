@@ -20,19 +20,19 @@ export function IndicatorInterpretation({
         {items.map((it, idx) => (
           <li
             key={`${it.indicator}-${idx}`}
-            className="rounded-sm border border-zinc-100 bg-white px-2.5 py-2 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-sm border border-border bg-bg-surface px-2.5 py-2 text-xs"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-zinc-700 dark:text-zinc-200">
+              <span className="font-semibold text-fg-secondary">
                 {it.indicator}
               </span>
               {it.value ? (
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                <span className="text-[11px] text-fg-muted">
                   {it.value}
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 text-zinc-700 dark:text-zinc-300">
+            <p className="mt-1 text-fg-secondary">
               {it.meaningKo}
             </p>
           </li>

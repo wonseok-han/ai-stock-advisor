@@ -4,42 +4,30 @@ import { useMarketOverview } from '@/features/market-dashboard/hooks/use-market-
 import { cn } from '@/lib/cn';
 import { formatPercentChange, formatSignedNumber } from '@/lib/format/percent';
 
-import type { MarketOverview } from '@/types/market';
-
 import type { MarketIndex } from '@/types/market';
 
-/**
- * 시장 개요: 지수 카드(S&P500, Nasdaq, Dow, VIX) + USD/KRW 환율.
- * design §7.2
- */
 export function MarketOverview() {
   const { data, isLoading, error, refetch } = useMarketOverview();
 
   if (isLoading) {
     return (
       <section aria-label="시장 개요" className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-24 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
-            />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-bg-muted" />
           ))}
         </div>
-        <div className="h-8 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
       </section>
     );
   }
 
   if (error || !data) {
     return (
-      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-sm text-red-600">
-          시장 데이터를 불러올 수 없습니다.
-        </p>
+      <section className="card p-4">
+        <p className="text-sm text-danger">시장 데이터를 불러올 수 없습니다.</p>
         <button
           onClick={() => refetch()}
-          className="mt-2 cursor-pointer text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="mt-2 cursor-pointer text-xs text-primary hover:underline"
         >
           다시 시도
         </button>
@@ -48,35 +36,15 @@ export function MarketOverview() {
   }
 
   return (
-    <section aria-label="시장 개요" className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <section aria-label="시장 개요">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         {data.indices.map((idx) => (
           <IndexCard key={idx.symbol} index={idx} />
         ))}
+        {data.usdKrw != null && (
+          <UsdKrwCard price={data.usdKrw} change={data.usdKrwChange} />
+        )}
       </div>
-      {data.usdKrw != null && (
-        <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <span className="text-zinc-500">USD/KRW</span>
-          <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
-            {data.usdKrw.toLocaleString('ko-KR', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
-          {data.usdKrwChange != null && data.usdKrwChange !== 0 && (
-            <span
-              className={cn(
-                'text-xs tabular-nums font-medium',
-                data.usdKrwChange > 0
-                  ? 'text-green-600 dark:text-green-500'
-                  : 'text-red-600 dark:text-red-500',
-              )}
-            >
-              {formatSignedNumber(data.usdKrwChange)}
-            </span>
-          )}
-        </div>
-      )}
     </section>
   );
 }
@@ -86,37 +54,67 @@ function IndexCard({ index }: { index: MarketIndex }) {
   const down = index.change < 0;
   const isVix = index.name === 'VIX';
 
-  const changeColor = up
-    ? 'text-green-600 dark:text-green-500'
+  const changeColor = up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted';
+  const changeBg = up
+    ? 'bg-emerald-500/10 text-success'
     : down
-      ? 'text-red-600 dark:text-red-500'
-      : 'text-zinc-500';
+      ? 'bg-red-500/10 text-danger'
+      : 'bg-bg-muted text-fg-muted';
 
-  const vixLevel =
+  const vixHighlight =
     isVix && index.price >= 30
-      ? 'border-red-300 dark:border-red-700'
+      ? 'ring-1 ring-red-500/30'
       : isVix && index.price >= 20
-        ? 'border-amber-300 dark:border-amber-700'
-        : 'border-zinc-200 dark:border-zinc-800';
+        ? 'ring-1 ring-amber-500/30'
+        : '';
 
   return (
-    <div
-      className={cn(
-        'rounded-lg border bg-white p-3 dark:bg-zinc-900',
-        vixLevel,
-      )}
-    >
-      <div className="text-xs text-zinc-500">{index.name}</div>
-      <div className="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+    <div className={cn('card p-3', vixHighlight)}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-fg-muted">{index.name}</span>
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
+          {formatPercentChange(index.changePercent)}
+        </span>
+      </div>
+      <div className="mt-1.5 text-lg font-semibold tabular-nums text-fg">
         {index.price.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
       </div>
       <div className={cn('text-xs tabular-nums', changeColor)}>
-        {formatSignedNumber(index.change)} (
-        {formatPercentChange(index.changePercent)})
+        {formatSignedNumber(index.change)}
       </div>
+    </div>
+  );
+}
+
+function UsdKrwCard({ price, change }: { price: number; change?: number | null }) {
+  const up = change != null && change > 0;
+  const down = change != null && change < 0;
+  const changeBg = up
+    ? 'bg-emerald-500/10 text-success'
+    : down
+      ? 'bg-red-500/10 text-danger'
+      : 'bg-bg-muted text-fg-muted';
+
+  return (
+    <div className="card p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-fg-muted">USD/KRW</span>
+        {change != null && change !== 0 && (
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
+            {formatSignedNumber(change)}
+          </span>
+        )}
+      </div>
+      <div className="mt-1.5 text-lg font-semibold tabular-nums text-fg">
+        {price.toLocaleString('ko-KR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </div>
+      <div className="text-xs text-fg-muted">원</div>
     </div>
   );
 }

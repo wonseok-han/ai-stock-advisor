@@ -1,23 +1,23 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '개인정보 처리방침 · AI Stock Advisor',
-  description: 'AI Stock Advisor 개인정보 수집·이용·보관에 대한 안내.',
+  title: '개인정보 처리방침 · 지금이니?!',
+  description: '지금이니?! 개인정보 수집·이용·보관에 대한 안내.',
 };
 
 export default function PrivacyPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="text-2xl font-semibold text-fg">
         개인정보 처리방침
       </h1>
 
-      <section className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-        <p className="text-xs text-zinc-500">
+      <section className="mt-6 space-y-4 text-sm leading-relaxed text-fg-secondary">
+        <p className="text-xs text-fg-muted">
           시행일: 2026년 4월 17일 · 정식 런칭 전 법률 검토를 거쳐 최종화됩니다.
         </p>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           1. 수집하는 개인정보 항목
         </h2>
         <p>
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           2. 이용 목적
         </h2>
         <ul className="list-disc pl-6">
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
           <li>서비스 품질 개선을 위한 비식별 통계 분석</li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           3. 보관 기간 및 파기
         </h2>
         <ul className="list-disc pl-6">
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           4. 제3자 제공
         </h2>
         <p>
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
           따라 협조할 수 있습니다.
         </p>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           5. 외부 서비스 이용
         </h2>
         <ul className="list-disc pl-6">
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           6. 회원 탈퇴 및 계정 복구
         </h2>
         <ul className="list-disc pl-6">
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-lg font-semibold text-fg">
           7. 권리 행사 방법
         </h2>
         <p>

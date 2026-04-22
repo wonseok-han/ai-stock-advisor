@@ -1,7 +1,7 @@
 # 06. 단계별 로드맵
 
 > 현재 단계: **v0.1.0 — Beta** (2026-04-20). Phase 0~4.5 완료, Phase 5+ 미확정.
-> 릴리스 노트: [GitHub Releases](https://github.com/wonseok-han/ai-stock-advisor/releases)
+> 릴리스 노트: [GitHub Releases](https://github.com/wonseok-han/nowini/releases)
 > 기능별 완료 기록: [`docs/archive/`](../archive/)
 
 ---
