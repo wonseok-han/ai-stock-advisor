@@ -2,7 +2,7 @@
 
 > **Summary**: AI 시그널 방향 정합도(hit rate) 측정 인프라 완성. Design 96% 매칭 달성, 차단성 gap 없음.
 >
-> **Project**: ai-stock-advisor
+> **Project**: nowini
 > **Feature**: signal-accuracy (v0.1.1)
 > **Owner**: wonseok-han
 > **Duration**: 2026-04-20 ~ 2026-04-21 (2일, 압축 PDCA)

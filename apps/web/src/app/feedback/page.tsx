@@ -3,7 +3,7 @@ import { FeedbackForm } from '@/features/feedback/feedback-form';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '피드백 보내기 — AI Stock Advisor',
+  title: '피드백 보내기 — 지금이니?!',
   description: '버그 신고, 문의, 제안을 보내주세요.',
 };
 

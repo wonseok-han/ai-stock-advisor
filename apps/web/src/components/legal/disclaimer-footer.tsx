@@ -29,7 +29,7 @@ export function DisclaimerFooter() {
           </Link>
         </nav>
         <p className="mt-4 text-[11px] text-zinc-400">
-          © {new Date().getFullYear()} AI Stock Advisor. 시세: Finnhub · Twelve
+          © {new Date().getFullYear()} 지금이니?! 시세: Finnhub · Twelve
           Data · FMP · AI: Google Gemini · 차트: TradingView Lightweight Charts.
         </p>
       </div>

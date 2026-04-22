@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AI Stock Advisor',
+  title: '지금이니?!',
   description: '초보 투자자를 위한 미국 주식 참고/분석 도구 (투자 자문 아님).',
 };
 

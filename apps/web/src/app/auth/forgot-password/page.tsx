@@ -5,7 +5,7 @@ import { ForgotPasswordForm } from '@/features/auth/forgot-password-form';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '비밀번호 재설정 — AI Stock Advisor',
+  title: '비밀번호 재설정 — 지금이니?!',
 };
 
 export default function ForgotPasswordPage() {

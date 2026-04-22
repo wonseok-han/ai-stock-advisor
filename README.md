@@ -1,4 +1,4 @@
-# AI Stock Advisor
+# 지금이니?! (Nowini)
 
 초보 투자자를 위한 AI 기반 미국 주식 참고·분석 웹서비스.
 
@@ -20,7 +20,7 @@
 Monorepo (pnpm workspace / turbo / nx 미도입, 단순 `apps/*` 네이티브 빌드).
 
 ```
-ai-stock-advisor/
+nowini/
 ├── apps/
 │   ├── web/          Next.js 16 (App Router) + React 19 + Tailwind 4
 │   └── api/          Spring Boot 3.5 (Java 21, 가상 스레드)

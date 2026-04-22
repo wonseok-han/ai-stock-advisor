@@ -13,7 +13,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ticker } = await params;
   return {
-    title: `${ticker} · AI Stock Advisor`,
+    title: `${ticker} · 지금이니?!`,
     description: `${ticker} 종목의 시세/차트/지표 참고 정보. 투자 자문이 아닙니다.`,
   };
 }

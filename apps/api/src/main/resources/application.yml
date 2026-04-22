@@ -53,7 +53,7 @@ management:
       access: read_only
   metrics:
     tags:
-      application: ai-stock-advisor
+      application: nowini
   prometheus:
     metrics:
       export:

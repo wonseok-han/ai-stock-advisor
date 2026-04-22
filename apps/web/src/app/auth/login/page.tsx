@@ -6,7 +6,7 @@ import { SocialLogin } from '@/features/auth/social-login';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '로그인 — AI Stock Advisor',
+  title: '로그인 — 지금이니?!',
 };
 
 export default function LoginPage() {

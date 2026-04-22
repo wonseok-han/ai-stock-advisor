@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '개인정보 처리방침 · AI Stock Advisor',
-  description: 'AI Stock Advisor 개인정보 수집·이용·보관에 대한 안내.',
+  title: '개인정보 처리방침 · 지금이니?!',
+  description: '지금이니?! 개인정보 수집·이용·보관에 대한 안내.',
 };
 
 export default function PrivacyPage() {

@@ -1,17 +1,15 @@
 import Link from 'next/link';
 
+import { Logo } from '@/components/brand/logo';
 import { UserMenu } from '@/features/auth/user-menu';
 
 export function SiteHeader() {
   return (
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-          >
-            AI Stock Advisor
+        <div className="flex items-center gap-3">
+          <Link href="/" className="hover:opacity-80 transition-opacity">
+            <Logo size="sm" />
           </Link>
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
             Beta

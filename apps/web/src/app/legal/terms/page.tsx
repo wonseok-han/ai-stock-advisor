@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '이용약관 · AI Stock Advisor',
-  description: 'AI Stock Advisor 서비스 이용약관.',
+  title: '이용약관 · 지금이니?!',
+  description: '지금이니?! 서비스 이용약관.',
 };
 
 export default function TermsPage() {
@@ -21,7 +21,7 @@ export default function TermsPage() {
           제1조 (서비스의 목적)
         </h2>
         <p>
-          본 서비스(&ldquo;AI Stock Advisor&rdquo;)는 미국 상장 주식에 대한
+          본 서비스(&ldquo;지금이니?!&rdquo;)는 미국 상장 주식에 대한
           공개된 시장 데이터, 기술 지표, 뉴스 요약 등의{' '}
           <strong>투자 참고용 정보</strong>를 제공하는 것을 목적으로 합니다.
           본 서비스는 특정 금융상품의 매수·매도를 권유하지 않으며, 자본시장법에

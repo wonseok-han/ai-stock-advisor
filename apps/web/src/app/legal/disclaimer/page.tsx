@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '면책 고지 · AI Stock Advisor',
+  title: '면책 고지 · 지금이니?!',
   description: '본 서비스의 정보 제공 성격 및 면책 사항 안내.',
 };
 
@@ -14,7 +14,7 @@ export default function DisclaimerPage() {
 
       <section className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
         <p>
-          본 서비스(&lsquo;AI Stock Advisor&rsquo;, 이하 &ldquo;서비스&rdquo;)에서
+          본 서비스(&lsquo;지금이니?!&rsquo;, 이하 &ldquo;서비스&rdquo;)에서
           제공되는 모든 정보는 <strong>투자 참고용</strong>이며, 투자 자문이나
           특정 금융상품에 대한 매수·매도 권유가 아닙니다.
         </p>

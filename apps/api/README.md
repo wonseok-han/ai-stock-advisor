@@ -1,4 +1,4 @@
-# apps/api — AI Stock Advisor Backend
+# apps/api — 지금이니?! Backend
 
 Spring Boot 3.5 / Java 21 / Gradle (Kotlin DSL). 가상 스레드 + WebFlux(외부 API 전용) 혼합.
 
