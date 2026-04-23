@@ -17,6 +17,20 @@
 | [password-reset](password-reset/) | Phase 4.5.4 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [feedback](feedback/) | Phase 4.5.5 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [ai-analysis-deepening](ai-analysis-deepening/) | Phase 4.5.6 | 93% | 2026-04-21 | 2026-04-21 | plan, design, analysis, report |
+| [yahoo-migration](yahoo-migration/) | Phase 4.5.7 | 100% | 2026-04-23 | 2026-04-23 | plan, design, report |
+
+## yahoo-migration — Phase 4.5.7 TwelveData → Yahoo Finance 마이그레이션
+
+TwelveData 무료 플랜(8 req/min, 800 req/day) 제한 해소를 위해 Yahoo Finance v8 chart API를 1차 데이터 소스로 전환. TwelveData는 최후 fallback으로 보존. Match Rate 100%, iteration 0회.
+
+- **범위**: BE 4 파일 (`YahooFinanceClient` +fetchIntradayCandles, `CandleService` +fetchIntradayWithFallback, `MarketOverviewService` 3-tier fallback, `TimeFrame` +yahooInterval)
+- **결과**: +122/-51 lines, 설계 37/37 항목 100% 일치, `./gradlew check` BUILD SUCCESSFUL
+- **PR**: #29 squash-merged (`1d13cb5`)
+- **핵심 변경**: 인트라데이 캔들(Yahoo 1차→TwelveData fallback), 시장 지수/환율(Finnhub→Yahoo→TwelveData 3단 fallback)
+- **Key Decisions**: TwelveData 완전 제거 아님 — 비상 fallback 보존 (사용자 명시적 요청)
+- **Follow-up**: Yahoo hit rate 모니터링, `YAHOO_API_ENABLED` 런타임 토글 검토, 전용 FX API로 USDKRW Finnhub fallback 대체
+
+**링크**: [plan](yahoo-migration/yahoo-migration.plan.md) · [design](yahoo-migration/yahoo-migration.design.md) · [report](yahoo-migration/yahoo-migration.report.md)
 
 ## ai-analysis-deepening — Phase 4.5.6 AI 참고 분석 v2 고도화 (초보자 친화 + 뉴스 신선도)
 
