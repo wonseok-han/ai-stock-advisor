@@ -5,7 +5,7 @@
 | 관점 | 요약 |
 |---|---|
 | **Problem** | 종목 상세에 펀더멘털(P/E, 52주 고저)은 있지만, 월가 애널리스트 컨센서스·목표가·분기 실적 정보가 없어 초보 투자자가 시장 기대치를 파악할 수 없음 |
-| **Solution** | Yahoo Finance quoteSummary 모듈 확장(financialData + recommendationTrend + earningsHistory) + FMP fallback으로 애널리스트 데이터 수집, Redis 24h 캐시 |
+| **Solution** | Yahoo Finance quoteSummary 모듈 확장(financialData + recommendationTrend + earningsHistory)으로 애널리스트 데이터 수집, curl 기반 TLS 우회 + Redis 24h 캐시 |
 | **Function UX Effect** | 종목 상세에 "애널리스트 컨센서스" 패널 추가 — 평점 게이지 + 목표가 레인지 바 + 분기 실적 Beat/Miss 히스토리 |
 | **Core Value** | "전문가들은 이 종목을 어떻게 보나?" 질문에 즉답 — 펀더멘털 → 시장 기대치로 판단 맥락 확장 |
 
@@ -98,6 +98,7 @@ GET /api/v1/stocks/{ticker}/analyst
 | `surprisePercent > 1.0` | BEAT |
 | `surprisePercent < -1.0` | MISS |
 | `-1.0 ≤ surprisePercent ≤ 1.0` | MEET |
+| 전망치만 존재 (실적 미발표) | EST |
 
 ---
 
@@ -105,12 +106,13 @@ GET /api/v1/stocks/{ticker}/analyst
 
 ### 2.1 Yahoo Finance quoteSummary (Primary)
 
-기존 `quoteSummary()` 메서드의 `SUMMARY_MODULES` 상수에 3개 모듈 추가:
+기존 `quoteSummary()` 메서드의 모듈 상수를 `ALL_MODULES`로 통합하여 6개 모듈을 한 번에 요청. CompanyOverview와 AnalystEstimates가 동일한 Redis 캐시(`yahoo:summary:{ticker}`, 24h TTL)를 공유.
 
 ```
-기존: summaryDetail,defaultKeyStatistics,assetProfile
-확장: summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory
+ALL_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory"
 ```
+
+> **TLS fingerprinting 대응**: Yahoo Finance는 Java HttpClient/WebClient의 TLS fingerprint를 감지하여 429 차단. `curl` ProcessBuilder로 우회하며, crumb/cookie 인증도 curl 기반으로 전환.
 
 #### financialData 파싱 경로
 
@@ -148,22 +150,23 @@ result[0].earningsHistory.history[0..3]   (최근 4분기)
   └── surprisePercent.raw    → earnings[].surprisePercent (×100)
 ```
 
-### 2.2 FMP (Fallback)
+### 2.2 FMP (Fallback — 무료 플랜 미지원)
 
-Yahoo 실패 시 3개 FMP 엔드포인트를 병렬 호출:
+> **참고**: FMP 무료 플랜에서 아래 3개 analyst 엔드포인트 모두 **HTTP 402** 반환 (유료 전용). FMP fallback은 제거하고 Yahoo 단일 소스로 운영. FmpClient에 메서드/DTO는 존재하나 AnalystEstimatesService에서 호출하지 않음.
 
-| FMP 엔드포인트 | 매핑 | 비고 |
-|---------------|------|------|
-| `GET /v3/analyst-stock-recommendations/{ticker}?apikey=KEY` | rating (최근 레코드에서 집계) | 개별 애널리스트 리스트 → 분포 집계 |
-| `GET /v4/price-target-consensus?symbol={ticker}&apikey=KEY` | priceTarget (직접 매핑) | targetHigh, targetLow, targetConsensus, targetMedian |
-| `GET /v3/earnings-surprises/{ticker}?apikey=KEY` | earnings (최근 4건) | actualEarningResult, estimatedEarning |
+| FMP 엔드포인트 | 상태 | 비고 |
+|---------------|:----:|------|
+| `GET /grades-consensus?symbol={ticker}` | 402 | 유료 전용 |
+| `GET /price-target-consensus?symbol={ticker}` | 402 | 유료 전용 |
+| `GET /analyst-estimates?symbol={ticker}` | 402 | 유료 전용 |
 
-### 2.3 Fallback 체인
+### 2.3 데이터 소스 (단일)
 
 ```
 Yahoo quoteSummary (financialData + recommendationTrend + earningsHistory)
-  ↓ null 또는 예외 시
-FMP (3개 엔드포인트 병렬)
+  ↓ Redis 24h 캐시 (yahoo:summary:{ticker})
+  ↓ null 시
+enrichCurrentPrice() — QuoteService에서 현재가 보강
   ↓ 모두 실패 시
 null → FE 패널 숨김
 ```
@@ -230,47 +233,40 @@ public record AnalystEstimates(
 public class AnalystEstimatesService {
 
     private final YahooFinanceClient yahooClient;
-    private final FmpClient fmpClient;
+    private final QuoteService quoteService;
     private final RedisCacheAdapter cache;
 
     private static final Duration CACHE_TTL = Duration.ofHours(24);
 
     public AnalystEstimates getEstimates(String ticker) {
-        return cache.getOrLoad(
-            "analyst:" + ticker,
-            AnalystEstimates.class,
-            CACHE_TTL,
-            () -> fetchEstimates(ticker)
+        AnalystEstimates raw = cache.getOrLoad(
+            "analyst:" + ticker, TYPE, CACHE_TTL,
+            () -> yahooClient.analystEstimates(ticker)
         );
+        return enrichCurrentPrice(raw, ticker);
     }
 
-    private AnalystEstimates fetchEstimates(String ticker) {
-        // 1. Yahoo primary
-        AnalystEstimates yahoo = yahooClient.analystEstimates(ticker);
-        if (yahoo != null) return yahoo;
-
-        // 2. FMP fallback
-        return fetchFromFmp(ticker);
-    }
+    // Yahoo financialData.currentPrice가 null인 경우
+    // QuoteService(v8/chart)에서 현재가를 보강하고 upsidePercent 재계산
+    private AnalystEstimates enrichCurrentPrice(AnalystEstimates data, String ticker) { ... }
 }
 ```
 
 ### 3.3 YahooFinanceClient 확장
 
-기존 `quoteSummary()` 메서드는 `CompanyOverview`를 반환. 새 메서드 `analystEstimates()`를 추가하여 확장 모듈을 요청.
+기존 `quoteSummary()` 메서드와 동일한 `fetchQuoteSummaryRaw(ticker)` 를 공유. Redis 캐시된 `JsonNode`에서 analyst 관련 모듈을 파싱.
 
 ```java
-private static final String ANALYST_MODULES =
-    "financialData,recommendationTrend,earningsHistory";
-
 public AnalystEstimates analystEstimates(String ticker) {
-    // ensureCrumb() → query2Client GET /v10/finance/quoteSummary
-    // modules = ANALYST_MODULES, crumb 인증
-    // parseAnalystData(result[0]) → AnalystEstimates
+    JsonNode data = fetchQuoteSummaryRaw(ticker);  // Redis 24h 캐시
+    return data != null ? parseAnalystData(data) : null;
 }
+
+// parseAnalystData → parseRating + parsePriceTarget + parseEarnings
+// numVal() 헬퍼: {raw: ...} 또는 direct number 모두 처리, 0도 유효값 취급
 ```
 
-기존 `quoteSummary()`의 crumb 인증/에러 핸들링 패턴을 동일하게 적용.
+curl 기반 fetch + crumb 인증. CompanyOverview와 동일한 캐시 키(`yahoo:summary:{ticker}`)에서 읽으므로 추가 API 호출 없음.
 
 ### 3.4 FmpClient 확장
 
@@ -329,7 +325,7 @@ public AnalystEstimates analyst(
 | 파일 | 변경 유형 | 설명 |
 |------|----------|------|
 | `stock/domain/AnalystEstimates.java` | **신규** | 도메인 record (Rating, PriceTarget, EarningsQuarter) |
-| `stock/service/AnalystEstimatesService.java` | **신규** | Yahoo primary + FMP fallback + 24h 캐시 |
+| `stock/service/AnalystEstimatesService.java` | **신규** | Yahoo primary + enrichCurrentPrice + 24h 캐시 |
 | `stock/infra/client/YahooFinanceClient.java` | **수정** | `analystEstimates()` 메서드 + 파싱 로직 추가 |
 | `market/infra/FmpClient.java` | **수정** | 3개 엔드포인트 + 3개 DTO record 추가 |
 | `stock/web/StockController.java` | **수정** | `GET /{ticker}/analyst` 엔드포인트 추가 |
@@ -370,7 +366,7 @@ export interface AnalystEstimates {
     epsActual: number;
     epsEstimate: number;
     surprisePercent: number;
-    result: 'BEAT' | 'MISS' | 'MEET';
+    result: 'BEAT' | 'MISS' | 'MEET' | 'EST';
   }[];
 }
 ```
@@ -619,9 +615,9 @@ interface EarningsHistoryProps {
 
 | 시나리오 | BE 동작 | FE 동작 |
 |---------|---------|---------|
-| Yahoo + FMP 모두 실패 | `null` 반환 (예외 전파 안 함) | 패널 미렌더링 |
-| Yahoo 401 (crumb 만료) | `invalidateCrumb()` → FMP fallback | 투명 |
-| FMP 429 (rate limit) | `null` 반환 (예외 삼킴) | 패널 미렌더링 |
+| Yahoo 실패 (null) | `null` 반환 (예외 전파 안 함) | 패널 미렌더링 |
+| Yahoo 401 (crumb 만료) | `invalidateCrumb()` → 재시도 | 투명 |
+| Yahoo 429 (rate limit) | crumb 5분 backoff → `null` 반환 | 패널 미렌더링 |
 | Redis 장애 | `getOrLoad` fail-open (loader 직접 호출) | 투명 |
 | 부분 데이터 (rating만 있고 earnings 없음) | 가용 필드만 채운 AnalystEstimates 반환 | 가용 섹션만 렌더링 |
 
@@ -633,7 +629,7 @@ interface EarningsHistoryProps {
 |---|----------|------|
 | T-1 | AAPL 조회 시 3개 섹션 모두 표시 | 브라우저 |
 | T-2 | 소형주(SMCI 등) 데이터 부재 시 패널 숨김 | 브라우저 |
-| T-3 | Yahoo 실패 → FMP fallback 동작 | BE 로그 |
+| T-3 | Yahoo 실패 → null 반환, 패널 숨김 | BE 로그 + 브라우저 |
 | T-4 | Redis 캐시 히트 (24h TTL) | BE 로그 |
 | T-5 | 모바일 반응형 (768px 이하 1열) | 브라우저 DevTools |
 | T-6 | `tsc --noEmit` 통과 | CLI |
