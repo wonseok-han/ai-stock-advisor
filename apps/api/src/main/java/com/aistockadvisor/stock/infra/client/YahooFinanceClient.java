@@ -1,12 +1,16 @@
 package com.aistockadvisor.stock.infra.client;
 
+import com.aistockadvisor.cache.RedisCacheAdapter;
+import com.aistockadvisor.stock.domain.AnalystEstimates;
 import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.CompanyOverview;
 import com.aistockadvisor.stock.domain.MarketStatus;
 import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.infra.CandleEntity;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -16,9 +20,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.HttpCookie;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -47,22 +54,33 @@ public class YahooFinanceClient {
     private static final String QUERY2_URL = "https://query2.finance.yahoo.com";
     private static final String CRUMB_INIT_URL = "https://fc.yahoo.com";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
-    private static final String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-    private static final String SUMMARY_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile";
+    private static final String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+    private static final String ALL_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory";
+    private static final Duration SUMMARY_CACHE_TTL = Duration.ofHours(24);
+    private static final TypeReference<JsonNode> JSON_NODE_TYPE = new TypeReference<>() {};
+    private static final long MIN_REQUEST_INTERVAL_MS = 2_000;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final WebClient webClient;
-    private final WebClient query2Client;
+    private final RedisCacheAdapter cache;
 
     private final ReentrantLock crumbLock = new ReentrantLock();
     private volatile String crumb;
     private volatile String cookie;
     private volatile long crumbExpiresAt;
+    private volatile long lastYahooRequestAt;
 
-    public YahooFinanceClient() {
-        this(BASE_URL);
+    @Autowired
+    public YahooFinanceClient(RedisCacheAdapter cache) {
+        this(BASE_URL, cache);
     }
 
     YahooFinanceClient(String baseUrl) {
+        this(baseUrl, null);
+    }
+
+    YahooFinanceClient(String baseUrl, RedisCacheAdapter cache) {
+        this.cache = cache;
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
@@ -70,11 +88,6 @@ public class YahooFinanceClient {
                 .responseTimeout(TIMEOUT);
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader("User-Agent", USER_AGENT)
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .build();
-        this.query2Client = WebClient.builder()
-                .baseUrl(QUERY2_URL)
                 .defaultHeader("User-Agent", USER_AGENT)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
@@ -314,47 +327,69 @@ public class YahooFinanceClient {
         }
     }
 
+    // curl 사용 — Java HttpClient는 Yahoo TLS fingerprinting에 의해 429 차단됨
     private void refreshCrumb() {
         try {
-            var httpClient = java.net.http.HttpClient.newBuilder()
-                    .followRedirects(java.net.http.HttpClient.Redirect.ALWAYS)
-                    .connectTimeout(Duration.ofSeconds(5))
-                    .cookieHandler(new java.net.CookieManager())
-                    .build();
-
-            var initReq = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(CRUMB_INIT_URL))
-                    .header("User-Agent", USER_AGENT)
-                    .timeout(Duration.ofSeconds(5))
-                    .GET().build();
-            httpClient.send(initReq, java.net.http.HttpResponse.BodyHandlers.discarding());
-
-            var cookieStore = ((java.net.CookieManager) httpClient.cookieHandler().orElseThrow()).getCookieStore();
-            StringBuilder sb = new StringBuilder();
-            for (HttpCookie c : cookieStore.getCookies()) {
-                if (!sb.isEmpty()) sb.append("; ");
-                sb.append(c.getName()).append("=").append(c.getValue());
+            var pb1 = new ProcessBuilder(
+                    "curl", "-s", "-L", "-D", "-", "-o", "/dev/null",
+                    "-A", USER_AGENT, CRUMB_INIT_URL
+            );
+            var p1 = pb1.start();
+            String headers = new String(p1.getInputStream().readAllBytes());
+            if (!p1.waitFor(10, TimeUnit.SECONDS)) {
+                p1.destroyForcibly();
+                log.warn("yahoo crumb: cookie request timed out");
+                return;
             }
-            this.cookie = sb.toString();
 
-            var crumbReq = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(QUERY2_URL + "/v1/test/getcrumb"))
-                    .header("User-Agent", USER_AGENT)
-                    .header("Cookie", this.cookie)
-                    .timeout(Duration.ofSeconds(5))
-                    .GET().build();
-            var crumbResp = httpClient.send(crumbReq, java.net.http.HttpResponse.BodyHandlers.ofString());
-
-            if (crumbResp.statusCode() == 200 && crumbResp.body() != null && !crumbResp.body().isBlank()) {
-                this.crumb = crumbResp.body().trim();
-                this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(20).toMillis();
-                log.info("yahoo crumb refreshed successfully");
-            } else {
-                log.warn("yahoo crumb refresh failed: status={}", crumbResp.statusCode());
+            StringBuilder cookieBuilder = new StringBuilder();
+            for (String line : headers.split("\\r?\\n")) {
+                if (line.regionMatches(true, 0, "set-cookie:", 0, 11)) {
+                    String nameVal = line.substring(11).trim().split(";")[0];
+                    if (!cookieBuilder.isEmpty()) cookieBuilder.append("; ");
+                    cookieBuilder.append(nameVal);
+                }
+            }
+            String cookies = cookieBuilder.toString();
+            if (cookies.isBlank()) {
+                log.warn("yahoo crumb: no cookies from init");
                 this.crumb = null;
+                return;
+            }
+
+            var pb2 = new ProcessBuilder(
+                    "curl", "-s", "-w", "\n%{http_code}",
+                    "-A", USER_AGENT,
+                    "-b", cookies,
+                    QUERY2_URL + "/v1/test/getcrumb"
+            );
+            var p2 = pb2.start();
+            String output = new String(p2.getInputStream().readAllBytes()).trim();
+            if (!p2.waitFor(10, TimeUnit.SECONDS)) {
+                p2.destroyForcibly();
+                log.warn("yahoo crumb: crumb request timed out");
+                return;
+            }
+
+            int lastNl = output.lastIndexOf('\n');
+            String status = lastNl >= 0 ? output.substring(lastNl + 1).trim() : "";
+            String body = lastNl >= 0 ? output.substring(0, lastNl).trim() : output;
+
+            if ("200".equals(status) && !body.isBlank() && !body.contains(" ")) {
+                this.crumb = body;
+                this.cookie = cookies;
+                this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofHours(4).toMillis();
+                log.info("yahoo crumb refreshed via curl");
+            } else {
+                log.warn("yahoo crumb via curl: status={} body={}", status, body);
+                if ("429".equals(status)) {
+                    this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
+                } else {
+                    this.crumb = null;
+                }
             }
         } catch (Exception ex) {
-            log.warn("yahoo crumb refresh error: {}", ex.getMessage());
+            log.warn("yahoo crumb via curl error: {}", ex.getMessage());
             this.crumb = null;
         }
     }
@@ -364,25 +399,27 @@ public class YahooFinanceClient {
         this.crumbExpiresAt = 0;
     }
 
-    // ── quoteSummary (기업 펀더멘털) ──
+    // ── quoteSummary (Redis 24h 캐시 + curl) ──
 
-    public CompanyOverview quoteSummary(String ticker) {
+    private JsonNode fetchQuoteSummaryRaw(String ticker) {
+        if (cache == null) return fetchQuoteSummaryFromYahoo(ticker);
+        return cache.getOrLoad("yahoo:summary:" + ticker, JSON_NODE_TYPE, SUMMARY_CACHE_TTL,
+                () -> fetchQuoteSummaryFromYahoo(ticker));
+    }
+
+    private JsonNode fetchQuoteSummaryFromYahoo(String ticker) {
+        ensureCrumb();
+        if (crumb == null || cookie == null) return null;
+
+        String url = QUERY2_URL + "/v10/finance/quoteSummary/" + ticker
+                + "?modules=" + ALL_MODULES
+                + "&crumb=" + URLEncoder.encode(crumb, StandardCharsets.UTF_8);
+
+        String json = curlFetch(url, cookie);
+        if (json == null || json.isBlank()) return null;
+
         try {
-            ensureCrumb();
-            if (crumb == null || cookie == null) return null;
-
-            JsonNode root = query2Client.get()
-                    .uri(b -> b.path("/v10/finance/quoteSummary/{symbol}")
-                            .queryParam("modules", SUMMARY_MODULES)
-                            .queryParam("crumb", crumb)
-                            .build(ticker))
-                    .header("Cookie", cookie)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(TIMEOUT);
-
-            if (root == null) return null;
-
+            JsonNode root = MAPPER.readTree(json);
             JsonNode result = root.path("quoteSummary").path("result");
             if (!result.isArray() || result.isEmpty()) {
                 if ("401".equals(root.path("quoteSummary").path("error").path("code").asText())) {
@@ -390,9 +427,56 @@ public class YahooFinanceClient {
                 }
                 return null;
             }
+            return result.get(0);
+        } catch (Exception ex) {
+            log.warn("yahoo quoteSummary parse error for {}: {}", ticker, ex.getMessage());
+            return null;
+        }
+    }
 
-            JsonNode data = result.get(0);
-            return parseQuoteSummary(data);
+    private synchronized void throttle() {
+        long elapsed = System.currentTimeMillis() - lastYahooRequestAt;
+        if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+            try { Thread.sleep(MIN_REQUEST_INTERVAL_MS - elapsed); } catch (InterruptedException ignored) {}
+        }
+        lastYahooRequestAt = System.currentTimeMillis();
+    }
+
+    private String curlFetch(String url, String cookies) {
+        try {
+            throttle();
+            var pb = new ProcessBuilder(
+                    "curl", "-s", "-w", "\n%{http_code}",
+                    "-A", USER_AGENT, "-b", cookies, url);
+            var p = pb.start();
+            String output = new String(p.getInputStream().readAllBytes());
+            if (!p.waitFor(15, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                return null;
+            }
+            if (p.exitValue() != 0) return null;
+
+            int lastNl = output.lastIndexOf('\n');
+            if (lastNl < 0) return null;
+            String status = output.substring(lastNl + 1).trim();
+            String body = output.substring(0, lastNl);
+
+            if ("200".equals(status)) return body;
+            log.warn("curlFetch status={} for {}", status, url);
+            if ("429".equals(status)) {
+                crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
+            }
+            return null;
+        } catch (Exception ex) {
+            log.warn("curlFetch failed for {}: {}", url, ex.getMessage());
+            return null;
+        }
+    }
+
+    public CompanyOverview quoteSummary(String ticker) {
+        try {
+            JsonNode data = fetchQuoteSummaryRaw(ticker);
+            return data != null ? parseQuoteSummary(data) : null;
         } catch (Exception ex) {
             String msg = ex.getMessage();
             if (msg != null && msg.contains("401")) invalidateCrumb();
@@ -441,5 +525,133 @@ public class YahooFinanceClient {
         if (node == null || node.isMissingNode() || node.isNull()) return null;
         int v = node.asInt(0);
         return v == 0 ? null : v;
+    }
+
+    // ── analystEstimates (애널리스트 컨센서스) ──
+
+    public AnalystEstimates analystEstimates(String ticker) {
+        try {
+            JsonNode data = fetchQuoteSummaryRaw(ticker);
+            return data != null ? parseAnalystData(data) : null;
+        } catch (Exception ex) {
+            String msg = ex.getMessage();
+            if (msg != null && msg.contains("401")) invalidateCrumb();
+            log.warn("yahoo analystEstimates {} failed: {}", ticker, msg);
+            return null;
+        }
+    }
+
+    private AnalystEstimates parseAnalystData(JsonNode data) {
+        AnalystEstimates.Rating rating = parseRating(data);
+        AnalystEstimates.PriceTarget priceTarget = parsePriceTarget(data);
+        List<AnalystEstimates.EarningsQuarter> earnings = parseEarnings(data);
+
+        if (rating == null && priceTarget == null && earnings.isEmpty()) {
+            return null;
+        }
+        return new AnalystEstimates(rating, priceTarget, earnings);
+    }
+
+    /**
+     * Yahoo {raw: ...} 또는 direct number 를 모두 처리.
+     * rawNum 과 달리 0 도 유효한 값으로 취급.
+     */
+    private static BigDecimal numVal(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) return null;
+        JsonNode raw = node.path("raw");
+        if (!raw.isMissingNode() && !raw.isNull() && raw.isNumber()) {
+            return BigDecimal.valueOf(raw.asDouble()).setScale(4, RoundingMode.HALF_UP);
+        }
+        if (node.isNumber()) {
+            return BigDecimal.valueOf(node.asDouble()).setScale(4, RoundingMode.HALF_UP);
+        }
+        return null;
+    }
+
+    private AnalystEstimates.Rating parseRating(JsonNode data) {
+        JsonNode fd = data.path("financialData");
+        BigDecimal score = numVal(fd.path("recommendationMean"));
+        if (score == null) return null;
+
+        BigDecimal opinionsBd = numVal(fd.path("numberOfAnalystOpinions"));
+        Integer totalAnalysts = opinionsBd != null ? opinionsBd.intValue() : null;
+
+        AnalystEstimates.Rating.Distribution dist = null;
+        JsonNode trend = data.path("recommendationTrend").path("trend");
+        if (trend.isArray() && !trend.isEmpty()) {
+            JsonNode latest = trend.get(0);
+            dist = new AnalystEstimates.Rating.Distribution(
+                    latest.path("strongBuy").asInt(0),
+                    latest.path("buy").asInt(0),
+                    latest.path("hold").asInt(0),
+                    latest.path("sell").asInt(0),
+                    latest.path("strongSell").asInt(0)
+            );
+        }
+
+        return new AnalystEstimates.Rating(
+                score,
+                AnalystEstimates.ratingLabel(score),
+                AnalystEstimates.ratingLabelKo(score),
+                totalAnalysts,
+                dist
+        );
+    }
+
+    private AnalystEstimates.PriceTarget parsePriceTarget(JsonNode data) {
+        JsonNode fd = data.path("financialData");
+        BigDecimal mean = numVal(fd.path("targetMeanPrice"));
+        if (mean == null) return null;
+
+        BigDecimal current = numVal(fd.path("currentPrice"));
+        BigDecimal high = numVal(fd.path("targetHighPrice"));
+        BigDecimal low = numVal(fd.path("targetLowPrice"));
+        BigDecimal median = numVal(fd.path("targetMedianPrice"));
+
+        BigDecimal upsidePercent = null;
+        if (current != null && current.signum() > 0) {
+            upsidePercent = mean.subtract(current)
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(current, 2, RoundingMode.HALF_UP);
+        }
+
+        return new AnalystEstimates.PriceTarget(current, high, low, mean, median, upsidePercent);
+    }
+
+    private List<AnalystEstimates.EarningsQuarter> parseEarnings(JsonNode data) {
+        JsonNode history = data.path("earningsHistory").path("history");
+        if (!history.isArray() || history.isEmpty()) return List.of();
+
+        List<AnalystEstimates.EarningsQuarter> result = new ArrayList<>(4);
+        for (JsonNode h : history) {
+            BigDecimal actual = numVal(h.path("epsActual"));
+            BigDecimal estimate = numVal(h.path("epsEstimate"));
+            if (actual == null && estimate == null) continue;
+
+            BigDecimal surprise = numVal(h.path("surprisePercent"));
+            BigDecimal surprisePct = surprise != null
+                    ? surprise.multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP)
+                    : null;
+
+            String quarter = textOrNull(h.path("quarter").path("fmt"));
+            if (quarter == null) {
+                JsonNode rawQ = h.path("quarter").path("raw");
+                if (!rawQ.isMissingNode() && rawQ.isNumber()) {
+                    long epoch = rawQ.asLong();
+                    LocalDate d = Instant.ofEpochSecond(epoch).atZone(ZoneOffset.UTC).toLocalDate();
+                    int q = (d.getMonthValue() - 1) / 3 + 1;
+                    quarter = "Q" + q + " " + d.getYear();
+                }
+            }
+
+            result.add(new AnalystEstimates.EarningsQuarter(
+                    quarter,
+                    actual,
+                    estimate,
+                    surprisePct,
+                    AnalystEstimates.earningsResult(surprisePct)
+            ));
+        }
+        return result;
     }
 }
