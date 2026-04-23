@@ -33,6 +33,11 @@ export function SiteHeader() {
 
   return (
     <>
+      <div className="bg-amber-50 text-center text-[11px] leading-relaxed text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 sm:text-xs">
+          <p className="px-4 py-1.5">
+            개발 중인 베타 서비스입니다. 쌀먹 인프라로 운영되어 응답이 많이 느릴 수 있습니다.
+          </p>
+        </div>
       <header className="glass-header sticky top-0 z-40 border-b border-border">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-2">
