@@ -175,4 +175,91 @@ public class FmpClient {
             @JsonProperty("dividendPerShareTTM") Double dividendPerShare
     ) {
     }
+
+    // ── Analyst Estimates ──
+
+    public FmpGradesConsensus gradesConsensus(String ticker) {
+        try {
+            FmpGradesConsensus[] resp = webClient.get()
+                    .uri(b -> b.path("/grades-consensus")
+                            .queryParam("symbol", ticker)
+                            .queryParam("apikey", apiKey)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FmpGradesConsensus[].class)
+                    .block(TIMEOUT);
+            return (resp != null && resp.length > 0) ? resp[0] : null;
+        } catch (Exception ex) {
+            log.warn("fmp grades-consensus {} failed: {}", ticker, ex.getMessage());
+            return null;
+        }
+    }
+
+    public FmpPriceTargetConsensus priceTargetConsensus(String ticker) {
+        try {
+            FmpPriceTargetConsensus[] resp = webClient.get()
+                    .uri(b -> b.path("/price-target-consensus")
+                            .queryParam("symbol", ticker)
+                            .queryParam("apikey", apiKey)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FmpPriceTargetConsensus[].class)
+                    .block(TIMEOUT);
+            return (resp != null && resp.length > 0) ? resp[0] : null;
+        } catch (Exception ex) {
+            log.warn("fmp price-target-consensus {} failed: {}", ticker, ex.getMessage());
+            return null;
+        }
+    }
+
+    public List<FmpAnalystEstimate> analystEstimates(String ticker) {
+        try {
+            FmpAnalystEstimate[] resp = webClient.get()
+                    .uri(b -> b.path("/analyst-estimates")
+                            .queryParam("symbol", ticker)
+                            .queryParam("period", "quarter")
+                            .queryParam("limit", "4")
+                            .queryParam("apikey", apiKey)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FmpAnalystEstimate[].class)
+                    .block(TIMEOUT);
+            return resp == null ? List.of() : List.of(resp);
+        } catch (Exception ex) {
+            log.warn("fmp analyst-estimates {} failed: {}", ticker, ex.getMessage());
+            return List.of();
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpGradesConsensus(
+            String symbol,
+            Integer strongBuy,
+            Integer buy,
+            Integer hold,
+            Integer sell,
+            Integer strongSell,
+            String consensus
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpPriceTargetConsensus(
+            BigDecimal targetHigh,
+            BigDecimal targetLow,
+            BigDecimal targetConsensus,
+            BigDecimal targetMedian
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpAnalystEstimate(
+            String symbol,
+            String date,
+            BigDecimal estimatedEpsAvg,
+            BigDecimal estimatedEpsHigh,
+            BigDecimal estimatedEpsLow,
+            Integer numberAnalystsEstimatedEps
+    ) {
+    }
 }

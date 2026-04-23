@@ -109,6 +109,37 @@ export interface StockDetail {
   };
 }
 
+export interface AnalystEstimates {
+  rating: {
+    score: number;
+    label: string;
+    labelKo: string;
+    totalAnalysts: number;
+    distribution: {
+      strongBuy: number;
+      buy: number;
+      hold: number;
+      sell: number;
+      strongSell: number;
+    };
+  } | null;
+  priceTarget: {
+    current: number;
+    high: number;
+    low: number;
+    mean: number;
+    median: number;
+    upsidePercent: number;
+  } | null;
+  earnings: {
+    quarter: string;
+    epsActual: number;
+    epsEstimate: number;
+    surprisePercent: number;
+    result: 'BEAT' | 'MISS' | 'MEET' | 'EST';
+  }[];
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

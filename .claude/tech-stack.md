@@ -17,7 +17,7 @@
 | **Tech Indicators** | ta4j (MACD / Bollinger / RSI) |
 | **Data Sources** | Yahoo Finance (1차) + Finnhub + TwelveData (fallback) + FMP |
 | **Deploy (FE)** | Vercel |
-| **Deploy (BE)** | Fly.io or Oracle Cloud Free Tier (ARM) |
+| **Deploy (BE)** | Render |
 
 > Tier 1 (TypeScript) + Tier 2 (Java) 혼합 — 풀 AI 지원은 FE 쪽이 더 강하고, BE는 규모가 커질 경우 AI 협업 밀도가 낮아질 수 있음을 염두.
 
