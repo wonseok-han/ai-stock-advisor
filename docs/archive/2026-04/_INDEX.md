@@ -19,6 +19,21 @@
 | [ai-analysis-deepening](ai-analysis-deepening/) | Phase 4.5.6 | 93% | 2026-04-21 | 2026-04-21 | plan, design, analysis, report |
 | [yahoo-migration](yahoo-migration/) | Phase 4.5.7 | 100% | 2026-04-23 | 2026-04-23 | plan, design, report |
 | [stock-detail-enrichment](stock-detail-enrichment/) | Phase 4.5.8 | 92% | 2026-04-10 | 2026-04-23 | plan, design, analysis, report |
+| [dashboard-expansion](dashboard-expansion/) | Phase 4.5.9 | 97.8% | 2026-04-23 | 2026-04-23 | plan, design, analysis, report |
+
+## dashboard-expansion — Phase 4.5.9 대시보드 확장 (매크로 지표·섹터 퍼포먼스·카테고리 분류)
+
+대시보드를 3개 섹션으로 체계화: 주요 지수(S&P 500, Nasdaq, Dow Jones, Russell 2000) / 변동성·환율·금리(VIX, DXY, 10Y Treasury, USD/KRW) / 원자재(Gold, Silver, WTI Oil, Copper). 섹터 퍼포먼스 위젯 신규(11 GICS 섹터, FMP+Yahoo ETF fallback). Match Rate 97.8%, iteration 0회.
+
+- **범위**: BE 6파일 (MarketOverviewService 7 매크로 심볼 확장, SectorPerformanceService FMP+Yahoo 이중 소스, MarketController /sectors 엔드포인트) + FE 6파일 (MarketOverview 3섹션 분리, SectorPerformance 바 차트, InfoTooltip 전 카드 적용) + PDCA 2파일
+- **결과**: 16파일, +1,702 lines. 설계 45항목 중 39 매칭, 5 개선, 1 변경(SectorChip→SectorBar UX 개선), 0 누락
+- **PR**: #31 squash-merged
+- **핵심 변경**: 설계 후 사용자 요청으로 Russell 2000 추가, VIX 매크로 이동, DXY/Silver/Copper 추가, 매크로 2분류 분리
+- **Key Decisions**: BE macro 단일 배열 유지 + FE에서 name 기반 카테고리 분류 (BE 변경 최소화) · DXY 심볼 DX-Y.NYB (Yahoo Finance 호환) · 3-tier fallback 재활용 (신규 코드 최소화) · Redis 15분 캐시 (섹터/매크로)
+- **Lessons**: 데이터 소스 심볼은 실제 API 테스트 후 확정할 것 (DX=F → DX-Y.NYB) · FE 카테고리 분류가 BE API 구조 변경보다 유연 · InfoTooltip은 초보자 UX에 높은 가치
+- **Follow-up**: 매크로 카드 클릭 → 상세 차트 페이지, 2Y Treasury 추가(안정적 데이터 소스 확보 시)
+
+**링크**: [plan](dashboard-expansion/dashboard-expansion.plan.md) · [design](dashboard-expansion/dashboard-expansion.design.md) · [analysis](dashboard-expansion/dashboard-expansion.analysis.md) · [report](dashboard-expansion/dashboard-expansion.report.md)
 
 ## stock-detail-enrichment — Phase 4.5.8 종목 상세 기업 개요 패널 (CompanyOverviewPanel)
 
