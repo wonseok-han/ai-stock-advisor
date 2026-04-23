@@ -81,4 +81,5 @@ apps/api/src/test/resources/application-test-local.yml
 # ============================================================
 .claude/cache/
 .claude/sessions/
+.claude/agent-memory/
 .claude/*.log
