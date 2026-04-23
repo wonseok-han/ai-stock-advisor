@@ -3,9 +3,11 @@ package com.aistockadvisor.market.web;
 import com.aistockadvisor.market.domain.MarketMoversResponse;
 import com.aistockadvisor.market.domain.MarketNewsItem;
 import com.aistockadvisor.market.domain.MarketOverviewResponse;
+import com.aistockadvisor.market.domain.SectorPerformance;
 import com.aistockadvisor.market.service.MarketMoversService;
 import com.aistockadvisor.market.service.MarketNewsService;
 import com.aistockadvisor.market.service.MarketOverviewService;
+import com.aistockadvisor.market.service.SectorPerformanceService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -13,10 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * 시장 대시보드 REST 엔드포인트.
- * 참조: docs/02-design/features/market-dashboard.design.md §4
- */
 @RestController
 @RequestMapping("/api/v1/market")
 public class MarketController {
@@ -24,13 +22,16 @@ public class MarketController {
     private final MarketOverviewService overviewService;
     private final MarketNewsService newsService;
     private final MarketMoversService moversService;
+    private final SectorPerformanceService sectorService;
 
     public MarketController(MarketOverviewService overviewService,
                             MarketNewsService newsService,
-                            MarketMoversService moversService) {
+                            MarketMoversService moversService,
+                            SectorPerformanceService sectorService) {
         this.overviewService = overviewService;
         this.newsService = newsService;
         this.moversService = moversService;
+        this.sectorService = sectorService;
     }
 
     @GetMapping("/overview")
@@ -47,5 +48,10 @@ public class MarketController {
     @GetMapping("/movers")
     public MarketMoversResponse movers() {
         return moversService.getMovers();
+    }
+
+    @GetMapping("/sectors")
+    public List<SectorPerformance> sectors() {
+        return sectorService.getSectors();
     }
 }

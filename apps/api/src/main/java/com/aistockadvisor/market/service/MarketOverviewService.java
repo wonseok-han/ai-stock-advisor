@@ -23,7 +23,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
- * 시장 개요: 주요 지수(S&P500, Nasdaq, Dow) + VIX + USD/KRW.
+ * 시장 개요: 주요 지수(S&P500, Nasdaq, Dow, Russell 2000) + 매크로(VIX, 국채, 금, 유가) + USD/KRW.
  * 캐시: market:overview (5분).
  * 참조: docs/02-design/features/market-dashboard.design.md §5.1
  */
@@ -42,10 +42,21 @@ public class MarketOverviewService {
 
     /** 지수 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
     private static final String[][] INDEX_SYMBOLS = {
-            {"^GSPC", "^GSPC", "SPX", "S&P 500"},
+            {"^GSPC", "^GSPC", "SPX",  "S&P 500"},
             {"^IXIC", "^IXIC", "IXIC", "Nasdaq"},
-            {"^DJI",  "^DJI",  "DJI", "Dow Jones"},
-            {"^VIX",  "^VIX",  "VIX", "VIX"},
+            {"^DJI",  "^DJI",  "DJI",  "Dow Jones"},
+            {"^RUT",  "^RUT",  "RUT",  "Russell 2000"},
+    };
+
+    /** 매크로 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
+    private static final String[][] MACRO_SYMBOLS = {
+            {"^VIX",  "^VIX",  "VIX",     "VIX"},
+            {"DX-Y.NYB", "DX-Y.NYB", "DXY", "DXY"},
+            {"^TNX",  "^TNX",  "TNX",     "10Y Treasury"},
+            {"GC=F",  "GC=F",  "XAU/USD", "Gold"},
+            {"SI=F",  "SI=F",  "XAG/USD", "Silver"},
+            {"CL=F",  "CL=F",  "WTI/USD", "WTI Oil"},
+            {"HG=F",  "HG=F",  "XCU/USD", "Copper"},
     };
 
     public MarketOverviewService(FinnhubClient finnhubClient,
@@ -65,6 +76,7 @@ public class MarketOverviewService {
     private MarketOverviewResponse fetchOverview() {
         List<MarketIndex> indices = fetchIndices();
         BigDecimal[] forex = fetchUsdKrw();
+        List<MarketIndex> macro = fetchMacro();
 
         if (indices.isEmpty() && forex[0] == null) {
             throw new BusinessException(
@@ -76,9 +88,18 @@ public class MarketOverviewService {
                 indices,
                 forex[0],
                 forex[1],
+                macro,
                 OffsetDateTime.now(ZoneOffset.UTC),
                 Disclaimers.MARKET
         );
+    }
+
+    private List<MarketIndex> fetchMacro() {
+        return java.util.Arrays.stream(MACRO_SYMBOLS)
+                .parallel()
+                .map(sym -> fetchIndex(sym[0], sym[1], sym[2], sym[3]))
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private List<MarketIndex> fetchIndices() {
