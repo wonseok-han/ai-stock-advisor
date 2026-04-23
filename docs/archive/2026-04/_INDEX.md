@@ -18,6 +18,21 @@
 | [feedback](feedback/) | Phase 4.5.5 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [ai-analysis-deepening](ai-analysis-deepening/) | Phase 4.5.6 | 93% | 2026-04-21 | 2026-04-21 | plan, design, analysis, report |
 | [yahoo-migration](yahoo-migration/) | Phase 4.5.7 | 100% | 2026-04-23 | 2026-04-23 | plan, design, report |
+| [stock-detail-enrichment](stock-detail-enrichment/) | Phase 4.5.8 | 92% | 2026-04-10 | 2026-04-23 | plan, design, analysis, report |
+
+## stock-detail-enrichment — Phase 4.5.8 종목 상세 기업 개요 패널 (CompanyOverviewPanel)
+
+종목 상세 페이지에 기업 핵심 펀더멘털(섹터, 시가총액, P/E, EPS, 배당, 베타, 52주 범위) 시각화. Yahoo quoteSummary(primary) + FMP(fallback) 이중 소스, Redis 24h 캐시. Match Rate 92%, iteration 0회.
+
+- **범위**: BE 10 파일 (CompanyOverview record, CompanyOverviewService, FmpClient.companyProfile/ratiosTtm, YahooFinanceClient.quoteSummary crumb/cookie 인증, StockController.overview, Quote week52High/Low 확장) + FE 12 파일 (CompanyOverviewPanel 8셀 그리드 + 52주 바 + 접이식 설명, InfoTooltip @floating-ui/react 공유 컴포넌트, useCompanyOverview, formatMarketCap/formatRatio/formatEmployees)
+- **결과**: 22 파일, +1,568 lines. AC 7/7 (100%) 통과
+- **PR**: 미생성 (feat/stock-detail-enrichment 브랜치)
+- **핵심 변경**: 설계 "FMP 단일 소스" → 구현 "Yahoo primary + FMP fallback" 전환 (FMP 250 req/day 예산 절약), InfoTooltip 공유 컴포넌트 추출 (@floating-ui/react flip+shift), 6셀→8셀 정보 확대 (산업/직원수 추가)
+- **Key Decisions**: Yahoo crumb/cookie 인증 (무제한, API 키 불필요) · FMP stable API 호환 (@JsonProperty 매핑) · graceful degradation (overview=null → 나머지 6블록 정상)
+- **Lessons**: 데이터 소스 다중화를 처음부터 설계할 것 · CSS-only 툴팁 대신 @floating-ui 뷰포트 인식 포지셔닝 · Yahoo Finance v10 quoteSummary가 펀더멘털 정보에 최적
+- **Follow-up**: 베타 피드백 수집, FMP 필드 모니터링, 에러 상태 메시지 개선, 기업 설명 한국어 번역
+
+**링크**: [plan](stock-detail-enrichment/stock-detail-enrichment.plan.md) · [design](stock-detail-enrichment/stock-detail-enrichment.design.md) · [analysis](stock-detail-enrichment/stock-detail-enrichment.analysis.md) · [report](stock-detail-enrichment/stock-detail-enrichment.report.md)
 
 ## yahoo-migration — Phase 4.5.7 TwelveData → Yahoo Finance 마이그레이션
 
