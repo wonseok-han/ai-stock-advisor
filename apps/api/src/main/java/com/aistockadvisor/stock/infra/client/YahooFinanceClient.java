@@ -1,6 +1,7 @@
 package com.aistockadvisor.stock.infra.client;
 
 import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.CompanyOverview;
 import com.aistockadvisor.stock.domain.MarketStatus;
 import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
@@ -17,6 +18,7 @@ import reactor.netty.http.client.HttpClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.HttpCookie;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Yahoo Finance v8 chart API 클라이언트.
@@ -41,15 +44,24 @@ public class YahooFinanceClient {
 
     private static final Logger log = LoggerFactory.getLogger(YahooFinanceClient.class);
     private static final String BASE_URL = "https://query1.finance.yahoo.com";
+    private static final String QUERY2_URL = "https://query2.finance.yahoo.com";
+    private static final String CRUMB_INIT_URL = "https://fc.yahoo.com";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
+    private static final String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+    private static final String SUMMARY_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile";
 
     private final WebClient webClient;
+    private final WebClient query2Client;
+
+    private final ReentrantLock crumbLock = new ReentrantLock();
+    private volatile String crumb;
+    private volatile String cookie;
+    private volatile long crumbExpiresAt;
 
     public YahooFinanceClient() {
         this(BASE_URL);
     }
 
-    /** 테스트 전용: MockWebServer URL 주입 경로. */
     YahooFinanceClient(String baseUrl) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
@@ -58,7 +70,12 @@ public class YahooFinanceClient {
                 .responseTimeout(TIMEOUT);
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader("User-Agent", "Mozilla/5.0 (compatible; AIStockAdvisor/1.0)")
+                .defaultHeader("User-Agent", USER_AGENT)
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+        this.query2Client = WebClient.builder()
+                .baseUrl(QUERY2_URL)
+                .defaultHeader("User-Agent", USER_AGENT)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
@@ -116,7 +133,9 @@ public class YahooFinanceClient {
                     meta.path("regularMarketVolume").asLong(0),
                     updatedAt,
                     status,
-                    MarketStatusResolver.priceLabel(status, updatedAt)
+                    MarketStatusResolver.priceLabel(status, updatedAt),
+                    tobd(meta.path("fiftyTwoWeekHigh")),
+                    tobd(meta.path("fiftyTwoWeekLow"))
             );
         } catch (Exception ex) {
             log.warn("yahoo finance quote {} failed: {}", ticker, ex.getMessage());
@@ -280,5 +299,147 @@ public class YahooFinanceClient {
     private static BigDecimal toBigDecimal(JsonNode node) {
         if (node == null || node.isNull()) return BigDecimal.ZERO;
         return BigDecimal.valueOf(node.asDouble()).setScale(4, RoundingMode.HALF_UP);
+    }
+
+    // ── crumb/cookie 인증 ──
+
+    private void ensureCrumb() {
+        if (crumb != null && System.currentTimeMillis() < crumbExpiresAt) return;
+        crumbLock.lock();
+        try {
+            if (crumb != null && System.currentTimeMillis() < crumbExpiresAt) return;
+            refreshCrumb();
+        } finally {
+            crumbLock.unlock();
+        }
+    }
+
+    private void refreshCrumb() {
+        try {
+            var httpClient = java.net.http.HttpClient.newBuilder()
+                    .followRedirects(java.net.http.HttpClient.Redirect.ALWAYS)
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .cookieHandler(new java.net.CookieManager())
+                    .build();
+
+            var initReq = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(CRUMB_INIT_URL))
+                    .header("User-Agent", USER_AGENT)
+                    .timeout(Duration.ofSeconds(5))
+                    .GET().build();
+            httpClient.send(initReq, java.net.http.HttpResponse.BodyHandlers.discarding());
+
+            var cookieStore = ((java.net.CookieManager) httpClient.cookieHandler().orElseThrow()).getCookieStore();
+            StringBuilder sb = new StringBuilder();
+            for (HttpCookie c : cookieStore.getCookies()) {
+                if (!sb.isEmpty()) sb.append("; ");
+                sb.append(c.getName()).append("=").append(c.getValue());
+            }
+            this.cookie = sb.toString();
+
+            var crumbReq = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(QUERY2_URL + "/v1/test/getcrumb"))
+                    .header("User-Agent", USER_AGENT)
+                    .header("Cookie", this.cookie)
+                    .timeout(Duration.ofSeconds(5))
+                    .GET().build();
+            var crumbResp = httpClient.send(crumbReq, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (crumbResp.statusCode() == 200 && crumbResp.body() != null && !crumbResp.body().isBlank()) {
+                this.crumb = crumbResp.body().trim();
+                this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(20).toMillis();
+                log.info("yahoo crumb refreshed successfully");
+            } else {
+                log.warn("yahoo crumb refresh failed: status={}", crumbResp.statusCode());
+                this.crumb = null;
+            }
+        } catch (Exception ex) {
+            log.warn("yahoo crumb refresh error: {}", ex.getMessage());
+            this.crumb = null;
+        }
+    }
+
+    private void invalidateCrumb() {
+        this.crumb = null;
+        this.crumbExpiresAt = 0;
+    }
+
+    // ── quoteSummary (기업 펀더멘털) ──
+
+    public CompanyOverview quoteSummary(String ticker) {
+        try {
+            ensureCrumb();
+            if (crumb == null || cookie == null) return null;
+
+            JsonNode root = query2Client.get()
+                    .uri(b -> b.path("/v10/finance/quoteSummary/{symbol}")
+                            .queryParam("modules", SUMMARY_MODULES)
+                            .queryParam("crumb", crumb)
+                            .build(ticker))
+                    .header("Cookie", cookie)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(TIMEOUT);
+
+            if (root == null) return null;
+
+            JsonNode result = root.path("quoteSummary").path("result");
+            if (!result.isArray() || result.isEmpty()) {
+                if ("401".equals(root.path("quoteSummary").path("error").path("code").asText())) {
+                    invalidateCrumb();
+                }
+                return null;
+            }
+
+            JsonNode data = result.get(0);
+            return parseQuoteSummary(data);
+        } catch (Exception ex) {
+            String msg = ex.getMessage();
+            if (msg != null && msg.contains("401")) invalidateCrumb();
+            log.warn("yahoo quoteSummary {} failed: {}", ticker, msg);
+            return null;
+        }
+    }
+
+    private CompanyOverview parseQuoteSummary(JsonNode data) {
+        JsonNode summary = data.path("summaryDetail");
+        JsonNode keyStats = data.path("defaultKeyStatistics");
+        JsonNode profile = data.path("assetProfile");
+
+        return new CompanyOverview(
+                textOrNull(profile.path("sector")),
+                textOrNull(profile.path("industry")),
+                rawNum(summary.path("marketCap")),
+                rawNum(summary.path("trailingPE")),
+                rawNum(keyStats.path("trailingEps")),
+                rawNum(summary.path("dividendRate")),
+                rawNum(summary.path("beta")),
+                rawNum(summary.path("fiftyTwoWeekHigh")),
+                rawNum(summary.path("fiftyTwoWeekLow")),
+                textOrNull(profile.path("longBusinessSummary")),
+                intOrNull(profile.path("fullTimeEmployees")),
+                textOrNull(profile.path("website")),
+                null
+        );
+    }
+
+    private static BigDecimal rawNum(JsonNode node) {
+        if (node == null || node.isMissingNode()) return null;
+        JsonNode raw = node.path("raw");
+        if (raw.isMissingNode() || raw.isNull()) return null;
+        double v = raw.asDouble(0);
+        return v == 0 ? null : BigDecimal.valueOf(v);
+    }
+
+    private static String textOrNull(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) return null;
+        String v = node.asText();
+        return (v == null || v.isBlank()) ? null : v;
+    }
+
+    private static Integer intOrNull(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) return null;
+        int v = node.asInt(0);
+        return v == 0 ? null : v;
     }
 }

@@ -19,6 +19,8 @@ public record Quote(
         long volume,
         OffsetDateTime updatedAt,
         MarketStatus marketStatus,
-        String priceLabel
+        String priceLabel,
+        BigDecimal week52High,
+        BigDecimal week52Low
 ) {
 }

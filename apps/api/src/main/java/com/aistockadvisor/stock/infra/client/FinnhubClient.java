@@ -103,10 +103,12 @@ public class FinnhubClient {
                 resp.l(),
                 resp.o(),
                 resp.pc(),
-                0L, // Finnhub free /quote 는 volume 미제공.
+                0L,
                 updatedAt,
                 status,
-                MarketStatusResolver.priceLabel(status, updatedAt)
+                MarketStatusResolver.priceLabel(status, updatedAt),
+                null,
+                null
         );
     }
 

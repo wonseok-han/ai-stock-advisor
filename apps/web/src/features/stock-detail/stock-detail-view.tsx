@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { AiSignalPanel } from '@/features/stock-detail/ai-signal/ai-signal-panel';
+import { CompanyOverviewPanel } from '@/features/stock-detail/company-overview-panel';
 import { NewsPanel } from '@/features/stock-detail/news/news-panel';
 import { ChartPanel } from '@/features/stock-detail/chart/chart-panel';
 import { IndicatorsPanel } from '@/features/stock-detail/indicators/indicators-panel';
@@ -21,6 +22,7 @@ export function StockDetailView({ ticker }: { ticker: string }) {
   return (
     <div className="flex flex-col gap-6">
       <StockHeader ticker={ticker} />
+      <CompanyOverviewPanel ticker={ticker} />
       <TimeFrameTabs value={tf} onChange={setTf} />
       <ChartPanel ticker={ticker} tf={tf} />
       <IndicatorsPanel ticker={ticker} />

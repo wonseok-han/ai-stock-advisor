@@ -7,6 +7,7 @@ import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.news.domain.NewsItem;
 import com.aistockadvisor.news.service.NewsService;
 import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.CompanyOverview;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.StockDetailResponse;
@@ -51,19 +52,22 @@ public class StockDetailService {
     private final IndicatorService indicatorService;
     private final NewsService newsService;
     private final AiSignalService aiSignalService;
+    private final CompanyOverviewService overviewService;
 
     public StockDetailService(StockProfileService profileService,
                               QuoteService quoteService,
                               CandleService candleService,
                               IndicatorService indicatorService,
                               NewsService newsService,
-                              AiSignalService aiSignalService) {
+                              AiSignalService aiSignalService,
+                              CompanyOverviewService overviewService) {
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.candleService = candleService;
         this.indicatorService = indicatorService;
         this.newsService = newsService;
         this.aiSignalService = aiSignalService;
+        this.overviewService = overviewService;
     }
 
     public StockDetailResponse getDetail(String ticker, TimeFrame tf) {
@@ -72,6 +76,7 @@ public class StockDetailService {
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Future<StockProfile> profileF = executor.submit(() -> profileService.getProfile(ticker));
             Future<Quote> quoteF = executor.submit(() -> quoteService.getQuote(ticker));
+            Future<CompanyOverview> overviewF = executor.submit(() -> overviewService.getOverview(ticker));
             Future<List<Candle>> candlesF = executor.submit(() -> candleService.getCandles(ticker, tf));
             Future<IndicatorSnapshot> indF = executor.submit(() -> indicatorService.compute(ticker));
             Future<List<NewsItem>> newsF = executor.submit(() -> newsService.getNews(ticker, 5));
@@ -79,6 +84,7 @@ public class StockDetailService {
 
             StockProfile profile = await("profile", profileF, errors);
             Quote quote = await("quote", quoteF, errors);
+            CompanyOverview overview = await("overview", overviewF, errors);
             List<Candle> candles = await("candles", candlesF, errors);
             IndicatorSnapshot indicators = await("indicators", indF, errors);
             List<NewsItem> news = await("news", newsF, errors);
@@ -98,6 +104,7 @@ public class StockDetailService {
             return new StockDetailResponse(
                     profile,
                     quote,
+                    overview,
                     candles,
                     indicators,
                     news,

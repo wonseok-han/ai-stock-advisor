@@ -16,6 +16,7 @@ import java.util.List;
 public record StockDetailResponse(
         StockProfile profile,
         Quote quote,
+        CompanyOverview overview,
         List<Candle> candles,
         IndicatorSnapshot indicators,
         List<NewsItem> news,

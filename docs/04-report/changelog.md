@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-04-22 - Yahoo Finance Migration (Data Source Diversification)
+
+### 📊 Added - Multi-Source Fallback Strategy
+
+- **YahooFinanceClient Intraday Support**
+  - New method: `fetchIntradayCandles(String ticker)`
+  - Endpoint: `/v8/finance/chart/{ticker}?interval=5m&range=1d` (free, no API key)
+  - Returns: 78 5-minute candles for current trading day
+  - Defensive parsing: null/empty checks, safe default (empty list) on failure
+  - Solves TwelveData 8 req/min rate limit bottleneck
+
+- **CandleService Primary Source Switch**
+  - D1(intraday) flow: Yahoo Finance → TwelveData fallback
+  - New helper: `fetchIntradayWithFallback()` with logging
+  - Redis cache compatibility: 5-minute TTL unchanged
+  - Graceful degradation: Falls back to TwelveData on Yahoo failure
+
+- **MarketOverviewService 3-Tier Fallback**
+  - Index & currency fallback chain: Finnhub → Yahoo Finance → TwelveData
+  - Symbols mapped: ^GSPC, ^IXIC, ^DJI, ^VIX for indices; USDKRW=X for FX
+  - New helper: `tryQuote(Supplier)` consolidates error handling (eliminates 3x try-catch duplication)
+  - Result: Graceful degradation when upstream sources unavailable
+
+- **TimeFrame Enum Enhancement**
+  - New field: `yahooInterval` (format: "5m", "1d" vs TwelveData "5min", "1day")
+  - New method: `yahooInterval()` getter
+  - Legacy method preserved: `twelveDataInterval()` for fallback compatibility
+
+- **TwelveDataClient Downgrade Strategy**
+  - Code & configuration fully preserved (no breaking changes)
+  - Usage downgraded: No longer primary source for candles/indices
+  - Role: Ultimate fallback when Yahoo/Finnhub unavailable
+  - Benefit: Conserves API quota for emergency use cases
+
+### 🎯 Achieved Goals
+
+- **Rate Limit Relief**: TwelveData 8 req/min burden eliminated for daily operations
+- **API Redundancy**: 3-tier fallback ensures graceful degradation
+- **Zero Breaking Changes**: FE API contracts identical, backward compatible
+- **Code Quality**: 100% design match rate, 0 build errors, +122 lines / -51 lines
+
+### 📊 Design Match Rate: 100%
+
+- Plan vs Implementation: 37/37 items verified
+- Test Status: PASSED
+- Build Status: BUILD SUCCESSFUL
+- Issues Found: 0
+
+### 🔧 Implementation Details
+
+| Component | Change | Impact |
+|-----------|--------|--------|
+| YahooFinanceClient | +fetchIntradayCandles() | Enables 5m candle support |
+| CandleService | +fetchIntradayWithFallback() | Primary→fallback strategy |
+| MarketOverviewService | +tryQuote() helper | Eliminates code duplication |
+| TimeFrame enum | +yahooInterval() | Dual-API interval support |
+| TwelveDataClient | Preserved, downgraded | Fallback insurance |
+
+### 📝 Documentation
+
+- **Plan**: `docs/01-plan/features/yahoo-migration.plan.md`
+- **Design**: `docs/02-design/features/yahoo-migration.design.md`
+- **Analysis**: `docs/03-analysis/yahoo-migration.analysis.md` (100% match rate)
+- **Report**: `docs/04-report/features/yahoo-migration.report.md` (completion)
+
+### 🚀 Next Steps
+
+- Monitor Yahoo hit rate & TwelveData fallback frequency
+- Consider environment variable `YAHOO_API_ENABLED` for runtime toggle
+- Future: Replace Finnhub fallback with dedicated FX API for USDKRW
+
+---
+
 ## [1.1.1] - 2026-04-20 - Notification Dedup Fix (Phase 4.5 Post)
 
 ### 🔧 Fixed - Notification Spam Prevention
