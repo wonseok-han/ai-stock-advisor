@@ -1,5 +1,6 @@
 package com.aistockadvisor.stock.infra.client;
 
+import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.MarketStatus;
 import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
@@ -127,6 +128,65 @@ public class YahooFinanceClient {
         if (node == null || node.isNull() || node.isMissingNode()) return null;
         double v = node.asDouble(0);
         return v == 0 ? null : BigDecimal.valueOf(v).setScale(4, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 인트라데이 5분봉 OHLCV. range=1d, interval=5m.
+     * 실패 시 빈 리스트 반환 (예외 전파 없음 — fallback 체인 대비).
+     */
+    public List<Candle> fetchIntradayCandles(String ticker) {
+        try {
+            JsonNode root = webClient.get()
+                    .uri(b -> b.path("/v8/finance/chart/{symbol}")
+                            .queryParam("interval", "5m")
+                            .queryParam("range", "1d")
+                            .build(ticker))
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(TIMEOUT);
+
+            return parseIntradayResponse(root);
+        } catch (Exception ex) {
+            log.warn("yahoo finance intraday {} failed: {}", ticker, ex.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Candle> parseIntradayResponse(JsonNode root) {
+        if (root == null) return Collections.emptyList();
+
+        JsonNode result = root.path("chart").path("result");
+        if (!result.isArray() || result.isEmpty()) return Collections.emptyList();
+
+        JsonNode first = result.get(0);
+        JsonNode timestamps = first.path("timestamp");
+        JsonNode quote = first.path("indicators").path("quote");
+        if (!timestamps.isArray() || !quote.isArray() || quote.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        JsonNode q = quote.get(0);
+        JsonNode opens = q.path("open");
+        JsonNode highs = q.path("high");
+        JsonNode lows = q.path("low");
+        JsonNode closes = q.path("close");
+        JsonNode volumes = q.path("volume");
+
+        List<Candle> candles = new ArrayList<>(timestamps.size());
+        for (int i = 0; i < timestamps.size(); i++) {
+            if (timestamps.get(i).isNull() || closes.get(i).isNull()) continue;
+
+            candles.add(new Candle(
+                    timestamps.get(i).asLong(),
+                    toBigDecimal(opens.get(i)),
+                    toBigDecimal(highs.get(i)),
+                    toBigDecimal(lows.get(i)),
+                    toBigDecimal(closes.get(i)),
+                    (volumes.get(i) != null && !volumes.get(i).isNull())
+                            ? volumes.get(i).asLong() : 0L
+            ));
+        }
+        return candles;
     }
 
     /**

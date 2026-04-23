@@ -9,21 +9,23 @@ package com.aistockadvisor.stock.domain;
  */
 public enum TimeFrame {
 
-    D1("5min",    78,    1, false),
-    W1("1day",     5,    7,  true),
-    M1("1day",    22,   30,  true),
-    M3("1day",    66,   90,  true),
-    Y1("1day",   252,  365,  true),
-    Y5("1day",  1260, 1825,  true);
+    D1("5min", "5m",     78,    1, false),
+    W1("1day", "1d",      5,    7,  true),
+    M1("1day", "1d",     22,   30,  true),
+    M3("1day", "1d",     66,   90,  true),
+    Y1("1day", "1d",    252,  365,  true),
+    Y5("1day", "1d",   1260, 1825,  true);
 
     private final String twelveDataInterval;
+    private final String yahooInterval;
     private final int outputSize;
     /** lookback 기간 (일 단위). LocalDate.minusDays() 에 직접 사용. */
     private final long lookbackDays;
     private final boolean dbBacked;
 
-    TimeFrame(String twelveDataInterval, int outputSize, long lookbackDays, boolean dbBacked) {
+    TimeFrame(String twelveDataInterval, String yahooInterval, int outputSize, long lookbackDays, boolean dbBacked) {
         this.twelveDataInterval = twelveDataInterval;
+        this.yahooInterval = yahooInterval;
         this.outputSize = outputSize;
         this.lookbackDays = lookbackDays;
         this.dbBacked = dbBacked;
@@ -31,6 +33,10 @@ public enum TimeFrame {
 
     public String twelveDataInterval() {
         return twelveDataInterval;
+    }
+
+    public String yahooInterval() {
+        return yahooInterval;
     }
 
     public int outputSize() {

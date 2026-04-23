@@ -65,15 +65,24 @@ public class CandleService {
         return getDailyCandles(ticker, tf);
     }
 
-    /** D1: 기존 로직 — TwelveData 5분봉 + Redis 캐시. */
+    /** D1: Yahoo Finance 우선 → TwelveData fallback + Redis 캐시. */
     private List<Candle> getIntradayCandles(String ticker, TimeFrame tf) {
         String key = "candle:" + ticker + ":" + tf.code();
         List<Candle> candles = cache.getOrLoad(key, LIST_TYPE, TTL_INTRADAY,
-                () -> twelveData.timeSeries(ticker, tf.twelveDataInterval(), tf.outputSize()));
+                () -> fetchIntradayWithFallback(ticker, tf));
         if (candles == null || candles.isEmpty()) {
             throw new BusinessException(ErrorCode.TICKER_NOT_FOUND);
         }
         return candles;
+    }
+
+    private List<Candle> fetchIntradayWithFallback(String ticker, TimeFrame tf) {
+        List<Candle> candles = yahooFinance.fetchIntradayCandles(ticker);
+        if (candles != null && !candles.isEmpty()) {
+            return candles;
+        }
+        log.info("yahoo intraday empty for {}, falling back to twelvedata", ticker);
+        return twelveData.timeSeries(ticker, tf.twelveDataInterval(), tf.outputSize());
     }
 
     /** W1~Y5: DB 우선 → on-demand Yahoo fallback → 비동기 persist. */
