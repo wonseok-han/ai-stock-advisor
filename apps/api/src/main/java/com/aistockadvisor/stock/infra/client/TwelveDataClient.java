@@ -95,7 +95,9 @@ public class TwelveDataClient {
                 resp.volume() != null ? resp.volume() : 0L,
                 updatedAt,
                 status,
-                MarketStatusResolver.priceLabel(status, updatedAt)
+                MarketStatusResolver.priceLabel(status, updatedAt),
+                null,
+                null
         );
     }
 

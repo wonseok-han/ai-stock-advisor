@@ -3,6 +3,7 @@ package com.aistockadvisor.market.infra;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -76,6 +77,30 @@ public class FmpClient {
         }
     }
 
+    public FmpProfile companyProfile(String ticker) {
+        try {
+            FmpProfile[] resp = webClient.get()
+                    .uri(b -> b.path("/profile")
+                            .queryParam("symbol", ticker)
+                            .queryParam("apikey", apiKey)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FmpProfile[].class)
+                    .block(TIMEOUT);
+            return (resp != null && resp.length > 0) ? resp[0] : null;
+        } catch (WebClientResponseException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            log.warn("fmp profile {} failed: status={}", ticker, status);
+            if (status == HttpStatus.TOO_MANY_REQUESTS) {
+                throw new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex);
+            }
+            throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex);
+        } catch (RuntimeException ex) {
+            log.warn("fmp profile {} timeout/io: {}", ticker, ex.getMessage());
+            throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
+        }
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FmpMover(
             String symbol,
@@ -84,6 +109,47 @@ public class FmpClient {
             BigDecimal change,
             BigDecimal changesPercentage,
             String exchange
+    ) {
+    }
+
+    public FmpRatiosTtm ratiosTtm(String ticker) {
+        try {
+            FmpRatiosTtm[] resp = webClient.get()
+                    .uri(b -> b.path("/ratios-ttm")
+                            .queryParam("symbol", ticker)
+                            .queryParam("apikey", apiKey)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FmpRatiosTtm[].class)
+                    .block(TIMEOUT);
+            return (resp != null && resp.length > 0) ? resp[0] : null;
+        } catch (Exception ex) {
+            log.warn("fmp ratios-ttm {} failed: {}", ticker, ex.getMessage());
+            return null;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpProfile(
+            String symbol,
+            String companyName,
+            String sector,
+            String industry,
+            @JsonProperty("marketCap") Long mktCap,
+            Double beta,
+            @JsonProperty("lastDividend") Double lastDiv,
+            String description,
+            Integer fullTimeEmployees,
+            String website,
+            String ipoDate
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpRatiosTtm(
+            @JsonProperty("priceToEarningsRatioTTM") Double peRatio,
+            @JsonProperty("netIncomePerShareTTM") Double eps,
+            @JsonProperty("dividendPerShareTTM") Double dividendPerShare
     ) {
     }
 }

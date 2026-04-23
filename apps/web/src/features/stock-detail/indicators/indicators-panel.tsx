@@ -1,5 +1,6 @@
 'use client';
 
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { useIndicators } from '@/features/stock-detail/hooks/use-indicators';
 import { cn } from '@/lib/cn';
 
@@ -60,37 +61,6 @@ function Card({
       </div>
       <div className="mt-2 space-y-1 text-sm tabular-nums">{children}</div>
     </div>
-  );
-}
-
-function InfoTooltip({ text }: { text: string }) {
-  return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
-        aria-label={text}
-        className="cursor-help rounded-full p-0.5 text-fg-muted outline-none hover:text-fg-secondary focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 16 16"
-          className="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        >
-          <circle cx="8" cy="8" r="6.5" />
-          <path d="M8 7.25v3.5" strokeLinecap="round" />
-          <circle cx="8" cy="5.25" r="0.6" fill="currentColor" stroke="none" />
-        </svg>
-      </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-72 max-w-[calc(100vw-2rem)] whitespace-normal break-keep rounded-xl border border-border bg-bg-surface px-3 py-2 text-xs leading-relaxed text-fg-secondary opacity-0 shadow-lg transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
-      >
-        {text}
-      </span>
-    </span>
   );
 }
 
