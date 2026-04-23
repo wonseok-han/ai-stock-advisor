@@ -77,6 +77,29 @@ public class FmpClient {
         }
     }
 
+    public List<FmpSectorPerformance> sectorPerformance() {
+        try {
+            FmpSectorPerformance[] resp = webClient.get()
+                    .uri(b -> b.path("/sector-performance")
+                            .queryParam("apikey", apiKey)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FmpSectorPerformance[].class)
+                    .block(TIMEOUT);
+            return resp == null ? List.of() : List.of(resp);
+        } catch (Exception ex) {
+            log.warn("fmp sector-performance failed: {}", ex.getMessage());
+            return List.of();
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpSectorPerformance(
+            String sector,
+            @JsonProperty("changesPercentage") Double changePercent
+    ) {
+    }
+
     public FmpProfile companyProfile(String ticker) {
         try {
             FmpProfile[] resp = webClient.get()

@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api/client';
 
-import type { MarketMovers, MarketNewsItem, MarketOverview } from '@/types/market';
+import type { MarketMovers, MarketNewsItem, MarketOverview, SectorPerformance } from '@/types/market';
 
 export function getMarketOverview(): Promise<MarketOverview> {
   return apiFetch<MarketOverview>('/market/overview');
@@ -12,4 +12,8 @@ export function getMarketNews(limit = 10): Promise<MarketNewsItem[]> {
 
 export function getMarketMovers(): Promise<MarketMovers> {
   return apiFetch<MarketMovers>('/market/movers');
+}
+
+export function getSectorPerformance(): Promise<SectorPerformance[]> {
+  return apiFetch<SectorPerformance[]>('/market/sectors');
 }
