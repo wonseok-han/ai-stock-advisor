@@ -20,6 +20,21 @@
 | [yahoo-migration](yahoo-migration/) | Phase 4.5.7 | 100% | 2026-04-23 | 2026-04-23 | plan, design, report |
 | [stock-detail-enrichment](stock-detail-enrichment/) | Phase 4.5.8 | 92% | 2026-04-10 | 2026-04-23 | plan, design, analysis, report |
 | [dashboard-expansion](dashboard-expansion/) | Phase 4.5.9 | 97.8% | 2026-04-23 | 2026-04-23 | plan, design, analysis, report |
+| [api-cache-optimization](api-cache-optimization/) | Optimization | 98% | 2026-04-23 | 2026-04-24 | plan, design, analysis, report |
+
+## api-cache-optimization — API 캐시 최적화 (적응형 TTL + 2중 캐시 구조)
+
+외부 API 무료 할당량(FMP 250/일) 한계 해소를 위해 `MarketStatusResolver.durationUntilNextOpen()` 기반 적응형 TTL + Client/Service 2중 캐시 구조 도입. 장외시간 캐시를 다음 개장까지 유지하여 불필요한 API 호출 원천 차단. Match Rate 98%, iteration 0회.
+
+- **범위**: BE 14파일 (MarketStatusResolver 확장, Service 7개 적응형 TTL, Client 5개 원본 캐싱 16키, 테스트 M8~M13)
+- **결과**: 14파일, +302/-52 lines. 설계 전 항목 매칭, Critical/Major Gap 0건
+- **PR**: #33
+- **핵심 변경**: 고정 closed TTL(4h/1h/30m) → `durationUntilNextOpen()` 통일 (뉴스만 고정 30분 유지 — 장외에도 발행)
+- **Key Decisions**: 뉴스 TTL 예외 처리 (데이터 특성별 차등) · FmpClient `marketTtl()` DRY 헬퍼 · YahooFinanceClient `cache != null` guard (테스트 호환)
+- **예상 효과**: FMP 288→78/일(-73%), Finnhub 384→96/일(-75%), 전체 930→320/일(-65%)
+- **Follow-up**: NYSE 공휴일 캘린더 추가, 실제 호출량 모니터링, Redis 메모리 사용률 점검
+
+**링크**: [plan](api-cache-optimization/api-cache-optimization.plan.md) · [design](api-cache-optimization/api-cache-optimization.design.md) · [analysis](api-cache-optimization/api-cache-optimization.analysis.md) · [report](api-cache-optimization/api-cache-optimization.report.md)
 
 ## dashboard-expansion — Phase 4.5.9 대시보드 확장 (매크로 지표·섹터 퍼포먼스·카테고리 분류)
 
