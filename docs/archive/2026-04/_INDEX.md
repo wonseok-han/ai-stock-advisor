@@ -21,6 +21,20 @@
 | [stock-detail-enrichment](stock-detail-enrichment/) | Phase 4.5.8 | 92% | 2026-04-10 | 2026-04-23 | plan, design, analysis, report |
 | [dashboard-expansion](dashboard-expansion/) | Phase 4.5.9 | 97.8% | 2026-04-23 | 2026-04-23 | plan, design, analysis, report |
 | [api-cache-optimization](api-cache-optimization/) | Optimization | 98% | 2026-04-23 | 2026-04-24 | plan, design, analysis, report |
+| [ai-signal-ux](ai-signal-ux/) | UX | 98% | 2026-04-24 | 2026-04-24 | plan, design, report |
+
+## ai-signal-ux — AI 시그널 UX 개선 (이중관점·tf 분리·로딩 애니메이션·테마 보정)
+
+AI 참고 분석을 v3 이중관점(단기 트레이딩/장기 투자)으로 전환하고 UX 전반을 개선. Gemini 1회 호출로 단기(기술 지표)+장기(펀더멘탈) 동시 출력. 시그널 라벨 방향성 용어화, 분석 확신도 리네이밍, 차트 tf 디커플링, 투자의견 점수 반전(높을수록 매수), 분기실적 카드 레이아웃 재설계, 타이핑 로딩 애니메이션, 라이트 모드 테마 대비 보정. Match Rate 98%, iteration 0회.
+
+- **범위**: BE 13파일 (SignalPerspective 도메인, AiSignal v3 재구조, ContextAssembler 애널리스트+52주 고저 연동, v3 프롬프트, ResponseValidator 듀얼 파싱, maxOutputTokens 4096, MAX_TOKENS 즉시 실패, V17 마이그레이션) + FE 17파일 (이중관점 패널, PanelLoading 공통 컴포넌트, 투자의견 점수 반전, 분기실적 카드, 테마 토큰 보정, React 19 lint 수정)
+- **결과**: 37파일, +1,486/-445 lines. 설계 35/36 항목 매칭, 설계 외 9건 추가 개선
+- **핵심 변경**: 단일 관점→이중관점, tf 파라미터 BE/FE 양쪽 제거, 캐시 키 v2→v3, "강한 긍정/부정"→"강한 상승/하락 신호", "신뢰도"→"분석 확신도"
+- **Key Decisions**: maxOutputTokens 4096 (v3 이중 응답 수용) · MAX_TOKENS finishReason 비재시도 즉시 실패 · 투자의견 display=6-score 반전 (직관적 5점 척도) · 라이트 모드 3단계 반복 조정 (너무 밝음→너무 어두움→균형)
+- **Lessons**: Gemini 토큰 예산은 응답 스키마 복잡도에 비례하여 사전 산정 필요 · lint 오류는 발견 즉시 수정(pre-existing 변명 불가) · 테마 토큰 조정은 디자인 시스템 contrast ratio 기준표로 1회 해결 가능
+- **Follow-up**: PR 생성 및 develop 머지, 운영 환경 이중관점 품질 검증, NYSE 공휴일 캘린더 추가
+
+**링크**: [plan](ai-signal-ux/ai-signal-ux.plan.md) · [design](ai-signal-ux/ai-signal-ux.design.md) · [report](ai-signal-ux/ai-signal-ux.report.md)
 
 ## api-cache-optimization — API 캐시 최적화 (적응형 TTL + 2중 캐시 구조)
 
