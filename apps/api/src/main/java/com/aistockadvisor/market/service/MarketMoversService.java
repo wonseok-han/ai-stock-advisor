@@ -31,7 +31,7 @@ public class MarketMoversService {
     private static final Duration TTL_OPEN = Duration.ofMinutes(15);
     private static final TypeReference<MarketMoversResponse> TYPE = new TypeReference<>() {
     };
-    private static final int TOP_N = 20;
+    private static final int TOP_N = 10;
 
     private final FmpClient fmpClient;
     private final RedisCacheAdapter cache;

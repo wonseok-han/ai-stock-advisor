@@ -9,15 +9,17 @@ export function SectorPerformance() {
 
   if (isLoading) {
     return (
-      <section aria-label="섹터 퍼포먼스" className="card space-y-3 p-4">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-fg-muted">
-            섹터 퍼포먼스
-          </h2>
+      <section aria-label="섹터 퍼포먼스" className="card overflow-hidden">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+              섹터 퍼포먼스
+            </h2>
+          </div>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 p-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-7 animate-pulse rounded bg-bg-muted" />
+            <div key={i} className="h-7 animate-pulse rounded bg-bg-skeleton" />
           ))}
         </div>
       </section>
@@ -32,14 +34,16 @@ export function SectorPerformance() {
   const maxAbs = Math.max(...sorted.map((s) => Math.abs(s.changePercent)), 0.01);
 
   return (
-    <section aria-label="섹터 퍼포먼스" className="card space-y-3 p-4">
-      <div className="flex items-center gap-1.5">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-fg-muted">
-          섹터 퍼포먼스
-        </h2>
-        <InfoTooltip text="미국 주식 시장 11개 GICS 섹터의 일간 변동률입니다. 어떤 업종이 강하고 약한지 한눈에 파악할 수 있습니다." />
+    <section aria-label="섹터 퍼포먼스" className="card overflow-hidden">
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-sm font-semibold text-fg">
+            섹터 퍼포먼스
+          </h2>
+          <InfoTooltip text="미국 주식 시장 11개 GICS 섹터의 일간 변동률입니다. 어떤 업종이 강하고 약한지 한눈에 파악할 수 있습니다." />
+        </div>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 p-5">
         {sorted.map((s) => (
           <SectorBar key={s.sector} sector={s} maxAbs={maxAbs} />
         ))}
@@ -67,10 +71,10 @@ function SectorBar({
       <span className="w-[72px] flex-shrink-0 text-right text-xs text-fg-secondary">
         {sector.sectorKo}
       </span>
-      <div className="relative flex h-6 flex-1 items-center">
-        <div className="absolute inset-0 rounded bg-bg-muted/50" />
+      <div className="relative flex h-7 flex-1 items-center">
+        <div className="absolute inset-0 rounded-md bg-bg-muted/50" />
         <div
-          className={cn('relative h-full rounded transition-all duration-500', barColor)}
+          className={cn('relative h-full rounded-md transition-all duration-500', barColor)}
           style={{ width: `${widthPercent}%`, minWidth: widthPercent > 0 ? '4px' : '0' }}
         />
       </div>

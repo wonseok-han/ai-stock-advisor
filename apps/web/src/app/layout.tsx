@@ -2,7 +2,9 @@ import { Analytics } from '@vercel/analytics/next';
 import { Geist, Geist_Mono } from 'next/font/google';
 
 import { Providers } from '@/app/providers';
+import { FloatingToolbox } from '@/components/layout/floating-toolbox';
 import { SiteHeader } from '@/components/layout/site-header';
+import { Snackbar } from '@/components/ui/snackbar';
 import { SwRegister } from '@/components/sw-register';
 import { DisclaimerBanner } from '@/components/legal/disclaimer-banner';
 import { DisclaimerFooter } from '@/components/legal/disclaimer-footer';
@@ -48,6 +50,8 @@ export default function RootLayout({
         <Providers>
           <SiteHeader />
           <div className="flex flex-1 flex-col">{children}</div>
+          <FloatingToolbox />
+          <Snackbar />
           <DisclaimerBanner />
           <DisclaimerFooter />
         </Providers>

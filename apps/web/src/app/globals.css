@@ -8,6 +8,7 @@
   --color-bg: var(--bg);
   --color-bg-surface: var(--bg-surface);
   --color-bg-muted: var(--bg-muted);
+  --color-bg-skeleton: var(--bg-skeleton);
   --color-fg: var(--fg);
   --color-fg-secondary: var(--fg-secondary);
   --color-fg-muted: var(--fg-muted);
@@ -30,13 +31,14 @@
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #ffffff;
-  --bg-surface: #f6f7f8;
-  --bg-muted: #edeef1;
-  --fg: #111318;
-  --fg-secondary: #3d4250;
-  --fg-muted: #636971;
-  --border-color: #dcdfe4;
+  --bg: #f4f8f6;
+  --bg-surface: #ffffff;
+  --bg-muted: #f5f5f5;
+  --bg-skeleton: #e5e5e5;
+  --fg: #171717;
+  --fg-secondary: #404040;
+  --fg-muted: #737373;
+  --border-color: #e5e5e5;
   --primary: #059669;
   --primary-hover: #047857;
   --primary-fg: #ffffff;
@@ -44,8 +46,10 @@
   --danger: #dc2626;
   --accent-from: #10b981;
   --accent-to: #06b6d4;
-  --glow-color: rgba(5, 150, 105, 0.08);
-  --glow-color-strong: rgba(5, 150, 105, 0.15);
+  --glow-color: rgba(5, 150, 105, 0.06);
+  --glow-color-strong: rgba(5, 150, 105, 0.12);
+  --card-shadow: 0 0 3px rgba(28, 28, 35, 0.09), 0 6px 10px rgba(28, 28, 35, 0.04), 0 10px 16px rgba(28, 28, 35, 0.02);
+  --card-shadow-hover: 0 0 3px rgba(28, 28, 35, 0.12), 0 8px 16px rgba(28, 28, 35, 0.06), 0 16px 24px rgba(28, 28, 35, 0.04);
 }
 
 /* ═══════════════════════════════════════════════
@@ -57,6 +61,7 @@
   --bg: #09090b;
   --bg-surface: #131316;
   --bg-muted: #1a1a1f;
+  --bg-skeleton: #252529;
   --fg: #f0f1f3;
   --fg-secondary: #9ca3af;
   --fg-muted: #6b7280;
@@ -70,6 +75,8 @@
   --accent-to: #06b6d4;
   --glow-color: rgba(16, 185, 129, 0.06);
   --glow-color-strong: rgba(16, 185, 129, 0.12);
+  --card-shadow: none;
+  --card-shadow-hover: 0 4px 24px var(--glow-color), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* ─── 글로벌 기본 스타일 ─── */
@@ -108,39 +115,96 @@ body {
   pointer-events: none;
 }
 
-/* ─── 카드 시스템 ─── */
-.card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+/* ─── 커스텀 컴포넌트 (utilities 레이어보다 낮은 우선순위) ─── */
+@layer components {
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: var(--card-shadow-hover);
+  }
+
+  .card-interactive:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px var(--glow-color-strong), 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+
+  .glass-header {
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(12px) saturate(1.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .search-glow:focus-within {
+    box-shadow: 0 0 0 1px var(--primary), 0 0 20px var(--glow-color-strong);
+  }
 }
 
-.card:hover {
-  box-shadow: 0 4px 24px var(--glow-color), 0 1px 3px rgba(0, 0, 0, 0.08);
+/* ─── 스낵바 슬라이드업 ─── */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.card-interactive:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 32px var(--glow-color-strong), 0 2px 6px rgba(0, 0, 0, 0.06);
+.animate-slide-up {
+  animation: slide-up 200ms ease-out;
 }
 
-/* ─── 글래스 헤더 ─── */
-.glass-header {
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(12px) saturate(1.5);
-  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+/* ─── 툴박스 블랙홀(지니) 효과 ─── */
+@keyframes toolbox-open {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(2rem);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-2px);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
 }
 
-/* ─── 그라디언트 텍스트 ─── */
-.text-gradient {
-  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+@keyframes toolbox-close {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.3) translateY(2rem);
+    filter: blur(4px);
+  }
 }
 
-/* ─── 검색창 글로우 ─── */
-.search-glow:focus-within {
-  box-shadow: 0 0 0 1px var(--primary), 0 0 20px var(--glow-color-strong);
+.animate-toolbox-open {
+  animation: toolbox-open 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-toolbox-close {
+  animation: toolbox-close 200ms cubic-bezier(0.55, 0, 1, 0.45);
+  pointer-events: none;
 }

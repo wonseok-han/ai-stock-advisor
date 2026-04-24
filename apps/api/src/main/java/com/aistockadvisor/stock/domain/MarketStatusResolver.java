@@ -12,9 +12,11 @@ import java.time.format.DateTimeFormatter;
 public final class MarketStatusResolver {
 
     private static final ZoneId ET = ZoneId.of("America/New_York");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalTime OPEN  = LocalTime.of(9, 30);
     private static final LocalTime CLOSE = LocalTime.of(16, 0);
     private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("M/d");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     private MarketStatusResolver() {}
 
@@ -36,11 +38,13 @@ public final class MarketStatusResolver {
         if (status == MarketStatus.OPEN) {
             return "실시간 (약 1~2분 지연)";
         }
+        ZonedDateTime closeEt = ZonedDateTime.now(ET).with(CLOSE);
+        String closeKst = closeEt.withZoneSameInstant(KST).format(TIME_FMT);
         if (updatedAt != null) {
             String date = updatedAt.atZoneSameInstant(ET).format(LABEL_FMT);
-            return date + " 정규장 종가";
+            return date + " 정규장 종가 (KST " + closeKst + ")";
         }
-        return "정규장 종가";
+        return "정규장 종가 (KST " + closeKst + ")";
     }
 
     public static Duration durationUntilNextOpen() {

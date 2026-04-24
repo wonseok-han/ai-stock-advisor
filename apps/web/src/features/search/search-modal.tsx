@@ -166,7 +166,15 @@ export function SearchModal({
           )}
 
           {trimmed.length > 0 && isFetching && (
-            <div className="px-4 py-3 text-sm text-fg-muted">검색 중…</div>
+            <div className="space-y-1 p-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex animate-pulse items-center gap-3 rounded-lg px-2 py-3">
+                  <div className="h-4 w-14 rounded bg-bg-skeleton" />
+                  <div className="h-4 flex-1 rounded bg-bg-skeleton" />
+                  <div className="h-3 w-12 rounded bg-bg-skeleton" />
+                </div>
+              ))}
+            </div>
           )}
 
           {trimmed.length > 0 && !isFetching && error && (

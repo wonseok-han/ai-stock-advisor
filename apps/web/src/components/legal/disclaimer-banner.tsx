@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export function DisclaimerBanner() {
   return (
-    <div className="border-t border-border bg-bg-muted/50">
+    <div className="border-t border-border">
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-[11px] text-fg-muted sm:px-6">
         <p>
           본 서비스는 투자 <strong className="text-fg-secondary">참고용 정보</strong>이며, 투자 자문이 아닙니다.
