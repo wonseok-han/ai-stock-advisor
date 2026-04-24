@@ -1,9 +1,13 @@
 package com.aistockadvisor.market.infra;
 
+import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.news.infra.FinnhubNewsClient.CompanyNews;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.infra.client.FinnhubProperties;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -29,13 +33,18 @@ public class FinnhubMarketNewsClient {
 
     private static final Logger log = LoggerFactory.getLogger(FinnhubMarketNewsClient.class);
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration TTL_OPEN   = Duration.ofMinutes(15);
+    private static final Duration TTL_CLOSED = Duration.ofMinutes(30);
     private static final int MAX_ITEMS = 10;
+    private static final TypeReference<List<CompanyNews>> NEWS_TYPE = new TypeReference<>() {};
 
     private final WebClient webClient;
     private final String apiKey;
+    private final RedisCacheAdapter cache;
 
-    public FinnhubMarketNewsClient(FinnhubProperties props) {
+    public FinnhubMarketNewsClient(FinnhubProperties props, RedisCacheAdapter cache) {
         this.apiKey = props.apiKey();
+        this.cache = cache;
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
@@ -52,6 +61,11 @@ public class FinnhubMarketNewsClient {
      * Finnhub /news?category=general 은 최신순 정렬 반환.
      */
     public List<CompanyNews> fetchGeneralNews() {
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN ? TTL_OPEN : TTL_CLOSED;
+        return cache.getOrLoad("finnhub:news:general", NEWS_TYPE, ttl, this::fetchGeneralNewsFromApi);
+    }
+
+    private List<CompanyNews> fetchGeneralNewsFromApi() {
         try {
             List<CompanyNews> raw = webClient.get()
                     .uri(b -> b.path("/news")

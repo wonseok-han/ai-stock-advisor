@@ -11,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
+
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
@@ -21,7 +24,7 @@ import java.util.Objects;
 public class SectorPerformanceService {
 
     private static final Logger log = LoggerFactory.getLogger(SectorPerformanceService.class);
-    private static final Duration TTL = Duration.ofMinutes(15);
+    private static final Duration TTL_OPEN = Duration.ofMinutes(15);
     private static final TypeReference<List<SectorPerformance>> TYPE = new TypeReference<>() {};
 
     private final FmpClient fmpClient;
@@ -64,7 +67,9 @@ public class SectorPerformanceService {
     }
 
     public List<SectorPerformance> getSectors() {
-        return cache.getOrLoad("market:sectors", TYPE, TTL, this::fetchWithFallback);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        return cache.getOrLoad("market:sectors", TYPE, ttl, this::fetchWithFallback);
     }
 
     private List<SectorPerformance> fetchWithFallback() {

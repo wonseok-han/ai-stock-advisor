@@ -14,6 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
+
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -31,7 +34,7 @@ import java.util.function.Supplier;
 public class MarketOverviewService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketOverviewService.class);
-    private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+    private static final Duration TTL_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<MarketOverviewResponse> TYPE = new TypeReference<>() {
     };
 
@@ -70,7 +73,9 @@ public class MarketOverviewService {
     }
 
     public MarketOverviewResponse getOverview() {
-        return cache.getOrLoad("market:overview", TYPE, CACHE_TTL, this::fetchOverview);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        return cache.getOrLoad("market:overview", TYPE, ttl, this::fetchOverview);
     }
 
     private MarketOverviewResponse fetchOverview() {

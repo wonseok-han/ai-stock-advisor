@@ -4,6 +4,8 @@ import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.TimeFrame;
 import com.aistockadvisor.stock.infra.CandleEntity;
 import com.aistockadvisor.stock.infra.CandleRepository;
@@ -39,7 +41,7 @@ import java.util.concurrent.CompletableFuture;
 public class CandleService {
 
     private static final Logger log = LoggerFactory.getLogger(CandleService.class);
-    private static final Duration TTL_INTRADAY = Duration.ofMinutes(5);
+    private static final Duration TTL_INTRADAY_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<List<Candle>> LIST_TYPE = new TypeReference<>() {
     };
 
@@ -68,7 +70,9 @@ public class CandleService {
     /** D1: Yahoo Finance 우선 → TwelveData fallback + Redis 캐시. */
     private List<Candle> getIntradayCandles(String ticker, TimeFrame tf) {
         String key = "candle:" + ticker + ":" + tf.code();
-        List<Candle> candles = cache.getOrLoad(key, LIST_TYPE, TTL_INTRADAY,
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_INTRADAY_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        List<Candle> candles = cache.getOrLoad(key, LIST_TYPE, ttl,
                 () -> fetchIntradayWithFallback(ticker, tf));
         if (candles == null || candles.isEmpty()) {
             throw new BusinessException(ErrorCode.TICKER_NOT_FOUND);

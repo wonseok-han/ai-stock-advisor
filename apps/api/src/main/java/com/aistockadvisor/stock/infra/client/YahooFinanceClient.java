@@ -57,6 +57,8 @@ public class YahooFinanceClient {
     private static final String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
     private static final String ALL_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory";
     private static final Duration SUMMARY_CACHE_TTL = Duration.ofHours(24);
+    private static final Duration TTL_CHART_OPEN = Duration.ofSeconds(30);
+    private static final Duration TTL_INTRADAY_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<JsonNode> JSON_NODE_TYPE = new TypeReference<>() {};
     private static final long MIN_REQUEST_INTERVAL_MS = 2_000;
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -98,16 +100,13 @@ public class YahooFinanceClient {
      * regularMarketPrice 가 null 이거나 0 이면 null 반환.
      */
     public Quote quote(String ticker) {
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_CHART_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        JsonNode root = cache != null
+                ? cache.getOrLoad("yahoo:chart:" + ticker, JSON_NODE_TYPE, ttl,
+                        () -> fetchChart(ticker, "1m", "1d"))
+                : fetchChart(ticker, "1m", "1d");
         try {
-            JsonNode root = webClient.get()
-                    .uri(b -> b.path("/v8/finance/chart/{symbol}")
-                            .queryParam("interval", "1m")
-                            .queryParam("range", "1d")
-                            .build(ticker))
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(TIMEOUT);
-
             if (root == null) return null;
             JsonNode result = root.path("chart").path("result");
             if (!result.isArray() || result.isEmpty()) return null;
@@ -167,20 +166,28 @@ public class YahooFinanceClient {
      * 실패 시 빈 리스트 반환 (예외 전파 없음 — fallback 체인 대비).
      */
     public List<Candle> fetchIntradayCandles(String ticker) {
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_INTRADAY_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        JsonNode root = cache != null
+                ? cache.getOrLoad("yahoo:intraday:" + ticker, JSON_NODE_TYPE, ttl,
+                        () -> fetchChart(ticker, "5m", "1d"))
+                : fetchChart(ticker, "5m", "1d");
+        return parseIntradayResponse(root);
+    }
+
+    private JsonNode fetchChart(String ticker, String interval, String range) {
         try {
-            JsonNode root = webClient.get()
+            return webClient.get()
                     .uri(b -> b.path("/v8/finance/chart/{symbol}")
-                            .queryParam("interval", "5m")
-                            .queryParam("range", "1d")
+                            .queryParam("interval", interval)
+                            .queryParam("range", range)
                             .build(ticker))
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block(TIMEOUT);
-
-            return parseIntradayResponse(root);
         } catch (Exception ex) {
-            log.warn("yahoo finance intraday {} failed: {}", ticker, ex.getMessage());
-            return Collections.emptyList();
+            log.warn("yahoo finance chart {} interval={} failed: {}", ticker, interval, ex.getMessage());
+            return null;
         }
     }
 

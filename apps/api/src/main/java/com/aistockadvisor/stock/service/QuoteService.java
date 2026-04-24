@@ -3,6 +3,8 @@ package com.aistockadvisor.stock.service;
 import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.infra.client.FinnhubClient;
 import com.aistockadvisor.stock.infra.client.YahooFinanceClient;
@@ -21,7 +23,7 @@ import java.time.Duration;
 public class QuoteService {
 
     private static final Logger log = LoggerFactory.getLogger(QuoteService.class);
-    private static final Duration TTL = Duration.ofSeconds(30);
+    private static final Duration TTL_OPEN = Duration.ofSeconds(30);
     private static final TypeReference<Quote> TYPE = new TypeReference<>() {
     };
 
@@ -36,7 +38,9 @@ public class QuoteService {
     }
 
     public Quote getQuote(String ticker) {
-        Quote quote = cache.getOrLoad("quote:" + ticker, TYPE, TTL,
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        Quote quote = cache.getOrLoad("quote:" + ticker, TYPE, ttl,
                 () -> fetch(ticker));
         if (quote == null) {
             throw new BusinessException(ErrorCode.TICKER_NOT_FOUND);
