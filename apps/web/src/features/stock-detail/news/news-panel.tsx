@@ -1,5 +1,6 @@
 'use client';
 
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { useNews } from '@/features/stock-detail/news/hooks/use-news';
 import { cn } from '@/lib/cn';
 
@@ -9,7 +10,7 @@ export function NewsPanel({ ticker }: { ticker: string }) {
   const { data, isLoading, error } = useNews(ticker, 5);
 
   if (isLoading) {
-    return <PanelShell>뉴스를 가져오는 중…</PanelShell>;
+    return <PanelLoading title="최근 뉴스" text="관련 뉴스를 가져오고 있어요" />;
   }
   if (error) {
     return (

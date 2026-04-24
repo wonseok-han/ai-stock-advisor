@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { Logo } from '@/components/brand/logo';
 import { ThemeSwitcher } from '@/components/theme/theme-switcher';
@@ -9,13 +9,13 @@ import { SearchModal } from '@/features/search/search-modal';
 import { UserMenu } from '@/features/auth/user-menu';
 import { modKey } from '@/lib/platform';
 
+const noopSubscribe = () => () => {};
+const getShortcut = () => `${modKey()}K`;
+const getServerShortcut = () => '';
+
 export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shortcut, setShortcut] = useState('');
-
-  useEffect(() => {
-    setShortcut(`${modKey()}K`);
-  }, []);
+  const shortcut = useSyncExternalStore(noopSubscribe, getShortcut, getServerShortcut);
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);

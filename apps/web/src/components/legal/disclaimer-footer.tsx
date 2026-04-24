@@ -29,8 +29,9 @@ export function DisclaimerFooter() {
           </Link>
         </nav>
         <p className="mt-4 text-[11px] text-fg-muted">
-          © {new Date().getFullYear()} 지금이니?! 시세: Finnhub · Twelve
-          Data · FMP · AI: Google Gemini · 차트: TradingView Lightweight Charts.
+          © {new Date().getFullYear()} 지금이니?! 시세: Yahoo Finance ·
+          Finnhub · Twelve Data · FMP · AI: Google Gemini · 차트: TradingView
+          Lightweight Charts.
         </p>
       </div>
     </footer>

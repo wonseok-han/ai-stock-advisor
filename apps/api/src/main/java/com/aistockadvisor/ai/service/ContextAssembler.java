@@ -2,10 +2,11 @@ package com.aistockadvisor.ai.service;
 
 import com.aistockadvisor.news.domain.NewsItem;
 import com.aistockadvisor.news.service.NewsService;
+import com.aistockadvisor.stock.domain.AnalystEstimates;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.StockProfile;
-import com.aistockadvisor.stock.domain.TimeFrame;
+import com.aistockadvisor.stock.service.AnalystEstimatesService;
 import com.aistockadvisor.stock.service.IndicatorService;
 import com.aistockadvisor.stock.service.QuoteService;
 import com.aistockadvisor.stock.service.StockProfileService;
@@ -45,31 +46,35 @@ public class ContextAssembler {
     private final QuoteService quoteService;
     private final IndicatorService indicatorService;
     private final NewsService newsService;
+    private final AnalystEstimatesService analystService;
 
     public ContextAssembler(StockProfileService profileService,
                             QuoteService quoteService,
                             IndicatorService indicatorService,
-                            NewsService newsService) {
+                            NewsService newsService,
+                            AnalystEstimatesService analystService) {
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.indicatorService = indicatorService;
         this.newsService = newsService;
+        this.analystService = analystService;
     }
 
-    public Map<String, Object> assemble(String ticker, TimeFrame timeframe) {
+    public Map<String, Object> assemble(String ticker) {
         try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
             Future<StockProfile> pF = ex.submit(() -> safely(() -> profileService.getProfile(ticker)));
             Future<Quote> qF = ex.submit(() -> safely(() -> quoteService.getQuote(ticker)));
             Future<IndicatorSnapshot> iF = ex.submit(() -> safely(() -> indicatorService.compute(ticker)));
             Future<List<NewsItem>> nF = ex.submit(() -> safely(() -> newsService.getNews(ticker, NEWS_LIMIT)));
+            Future<AnalystEstimates> aF = ex.submit(() -> safely(() -> analystService.getEstimates(ticker)));
 
             Map<String, Object> ctx = new LinkedHashMap<>();
             ctx.put("ticker", ticker);
-            ctx.put("timeframe", timeframe == null ? "1D" : timeframe.code());
             ctx.put("profile", profileOf(await(pF)));
             ctx.put("quote", quoteOf(await(qF)));
             ctx.put("indicators", indicatorsOf(await(iF)));
             ctx.put("recent_news", newsOf(await(nF)));
+            ctx.put("analyst_estimates", analystOf(await(aF)));
             return ctx;
         }
     }
@@ -111,6 +116,8 @@ public class ContextAssembler {
         m.put("low", q.low());
         m.put("open", q.open());
         m.put("previous_close", q.previousClose());
+        m.put("fifty_two_week_high", q.week52High());
+        m.put("fifty_two_week_low", q.week52Low());
         return m;
     }
 
@@ -160,6 +167,33 @@ public class ContextAssembler {
             }
             return m;
         }).toList();
+    }
+
+    private Map<String, Object> analystOf(AnalystEstimates a) {
+        if (a == null) return null;
+        Map<String, Object> m = new LinkedHashMap<>();
+        if (a.rating() != null) {
+            m.put("consensus_score", a.rating().score());
+            m.put("consensus_label", a.rating().labelKo());
+            m.put("total_analysts", a.rating().totalAnalysts());
+        }
+        if (a.priceTarget() != null) {
+            m.put("target_mean", a.priceTarget().mean());
+            m.put("target_high", a.priceTarget().high());
+            m.put("target_low", a.priceTarget().low());
+            m.put("upside_percent", a.priceTarget().upsidePercent());
+        }
+        if (a.earnings() != null && !a.earnings().isEmpty()) {
+            m.put("recent_earnings", a.earnings().stream().map(eq -> {
+                Map<String, Object> e = new LinkedHashMap<>();
+                e.put("quarter", eq.quarter());
+                e.put("eps_actual", eq.epsActual());
+                e.put("eps_estimate", eq.epsEstimate());
+                e.put("result", eq.result());
+                return e;
+            }).toList());
+        }
+        return m.isEmpty() ? null : m;
     }
 
     private static String freshnessOf(long hoursAgo) {

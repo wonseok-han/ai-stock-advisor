@@ -60,9 +60,12 @@ class MicrometerMetricsTest {
     @DisplayName("T-6 ResponseValidator 금지용어 검출 → forbidden.hit{layer=validator} + failure{reason=forbidden}")
     void forbiddenTermIncrementsHitAndFailureCounter() {
         ResponseValidator validator = new ResponseValidator(mapper, forbidden, registry);
-        String payloadWithForbidden = "{\"signal\":\"BUY\",\"confidence\":0.9,\"timeframe\":\"SHORT\","
+        String payloadWithForbidden = "{\"short_term\":{\"signal\":\"BUY\",\"confidence\":0.9,"
                 + "\"rationale\":[\"지금 매수 추천합니다.\"],\"risks\":[\"시장 변동성\"],"
-                + "\"summary_ko\":\"매수 추천합니다.\"}";
+                + "\"summary_ko\":\"매수 추천합니다.\"},"
+                + "\"long_term\":{\"signal\":\"NEUTRAL\",\"confidence\":0.5,"
+                + "\"rationale\":[\"중립 관점\"],\"risks\":[\"변동성\"],"
+                + "\"summary_ko\":\"중립입니다.\"}}";
         validator.validate(payloadWithForbidden, "ai-signal");
 
         double hits = registry.counter(LlmMetrics.FORBIDDEN_HIT,

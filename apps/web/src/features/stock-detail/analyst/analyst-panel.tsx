@@ -1,6 +1,7 @@
 'use client';
 
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { EarningsHistory } from '@/features/stock-detail/analyst/components/earnings-history';
 import { PriceTargetBar } from '@/features/stock-detail/analyst/components/price-target-bar';
 import { RatingGauge } from '@/features/stock-detail/analyst/components/rating-gauge';
@@ -10,11 +11,7 @@ export function AnalystPanel({ ticker }: { ticker: string }) {
   const { data, isLoading, error } = useAnalystEstimates(ticker);
 
   if (isLoading) {
-    return (
-      <section className="card p-5 text-sm text-fg-muted">
-        애널리스트 데이터 불러오는 중…
-      </section>
-    );
+    return <PanelLoading title="애널리스트 평가" text="애널리스트 데이터를 불러오고 있어요" />;
   }
 
   if (error || !data) return null;

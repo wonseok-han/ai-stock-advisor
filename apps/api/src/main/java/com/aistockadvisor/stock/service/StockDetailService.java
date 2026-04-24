@@ -80,7 +80,7 @@ public class StockDetailService {
             Future<List<Candle>> candlesF = executor.submit(() -> candleService.getCandles(ticker, tf));
             Future<IndicatorSnapshot> indF = executor.submit(() -> indicatorService.compute(ticker));
             Future<List<NewsItem>> newsF = executor.submit(() -> newsService.getNews(ticker, 5));
-            Future<AiSignal> aiF = executor.submit(() -> aiSignalService.getSignal(ticker, tf));
+            Future<AiSignal> aiF = executor.submit(() -> aiSignalService.getSignal(ticker));
 
             StockProfile profile = await("profile", profileF, errors);
             Quote quote = await("quote", quoteF, errors);

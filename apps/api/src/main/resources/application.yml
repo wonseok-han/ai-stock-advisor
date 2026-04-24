@@ -82,7 +82,7 @@ app:
       api-key: ${GEMINI_API_KEY:}
       model: ${GEMINI_MODEL:gemini-2.5-flash}
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-      timeout-ms: ${GEMINI_TIMEOUT_MS:8000}
+      timeout-ms: ${GEMINI_TIMEOUT_MS:20000}
   supabase:
     url: ${SUPABASE_URL:}
     service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
