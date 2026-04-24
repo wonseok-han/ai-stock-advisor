@@ -8,6 +8,7 @@ import {
   useNotificationSettings,
   useUpsertNotificationSetting,
 } from '@/features/notification/hooks/use-notification-settings';
+import { useSnackbarStore } from '@/stores/use-snackbar-store';
 
 interface Props {
   ticker: string;
@@ -32,6 +33,7 @@ function NotificationSettingModalInner({
   const deleteMutation = useDeleteNotificationSetting();
   const addBookmarkMutation = useAddBookmark();
 
+  const showSnackbar = useSnackbarStore((s) => s.show);
   const [threshold, setThreshold] = useState<number>(initialThreshold);
   const [onNewNews, setOnNewNews] = useState(initialOnNewNews);
 
@@ -50,12 +52,12 @@ function NotificationSettingModalInner({
           enabled: true,
         },
       },
-      { onSuccess: onClose },
+      { onSuccess: () => { showSnackbar('알림이 설정되었습니다'); onClose(); } },
     );
   }
 
   function handleDelete() {
-    deleteMutation.mutate(ticker, { onSuccess: onClose });
+    deleteMutation.mutate(ticker, { onSuccess: () => { showSnackbar('알림이 해제되었습니다'); onClose(); } });
   }
 
   const isPending = upsertMutation.isPending || addBookmarkMutation.isPending || deleteMutation.isPending;

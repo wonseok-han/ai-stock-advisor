@@ -48,7 +48,7 @@ export function SearchBox({ className, compact = false }: SearchBoxProps) {
             maxLength={20}
             aria-label="종목 검색"
             className={cn(
-              'w-full rounded-xl border border-border bg-bg-surface text-fg outline-none transition-colors placeholder:text-fg-muted',
+              'w-full rounded-xl border border-border bg-bg text-fg outline-none transition-colors placeholder:text-fg-muted',
               'focus:border-primary focus:ring-1 focus:ring-primary',
               compact ? 'py-1.5 pl-8 pr-3 text-sm' : 'py-3 pl-11 pr-4 text-base',
             )}

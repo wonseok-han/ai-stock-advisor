@@ -13,6 +13,7 @@ export interface MarketOverview {
   usdKrwChange: number | null;
   macro: MarketIndex[];
   updatedAt: string;
+  priceLabel: string | null;
   disclaimer: string;
 }
 

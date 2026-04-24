@@ -10,12 +10,12 @@ export function MarketNews() {
   if (isLoading) {
     return (
       <section aria-label="시장 뉴스" className="card p-5">
-        <div className="h-4 w-24 animate-pulse rounded bg-bg-muted" />
+        <div className="h-4 w-24 animate-pulse rounded bg-bg-skeleton" />
         <div className="mt-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="space-y-1">
-              <div className="h-4 animate-pulse rounded bg-bg-muted" />
-              <div className="h-3 w-3/4 animate-pulse rounded bg-bg-muted" />
+              <div className="h-4 animate-pulse rounded bg-bg-skeleton" />
+              <div className="h-3 w-3/4 animate-pulse rounded bg-bg-skeleton" />
             </div>
           ))}
         </div>
@@ -46,14 +46,18 @@ export function MarketNews() {
   }
 
   return (
-    <section aria-label="시장 뉴스" className="card p-5">
-      <h2 className="text-sm font-semibold text-fg">시장 뉴스</h2>
-      <ul className="mt-4 flex flex-col divide-y divide-border">
+    <section aria-label="시장 뉴스" className="card overflow-hidden">
+      <div className="border-b border-border px-5 py-4">
+        <h2 className="text-sm font-semibold text-fg">시장 뉴스</h2>
+      </div>
+      <ul className="divide-y divide-border">
         {data.map((item) => (
           <NewsRow key={item.id} item={item} />
         ))}
       </ul>
-      <p className="mt-4 text-[11px] text-fg-muted">{data[0]?.disclaimer}</p>
+      <div className="border-t border-border px-5 py-2.5">
+        <p className="text-[11px] text-fg-muted">{data[0]?.disclaimer}</p>
+      </div>
     </section>
   );
 }
@@ -62,7 +66,7 @@ function NewsRow({ item }: { item: MarketNewsItem }) {
   const title = item.titleKo ?? item.titleEn;
 
   return (
-    <li className="flex flex-col gap-1 py-3 first:pt-0">
+    <li className="px-5 py-3.5 transition-colors hover:bg-bg-muted/50">
       <a
         href={item.sourceUrl}
         target="_blank"
@@ -72,11 +76,10 @@ function NewsRow({ item }: { item: MarketNewsItem }) {
         {title}
       </a>
       {item.summaryKo && (
-        <p className="line-clamp-2 text-xs text-fg-secondary">{item.summaryKo}</p>
+        <p className="mt-1 line-clamp-2 text-xs text-fg-secondary">{item.summaryKo}</p>
       )}
-      <div className="flex items-center gap-2 text-[11px] text-fg-muted">
-        <span>{item.source}</span>
-        <span aria-hidden="true">&middot;</span>
+      <div className="mt-1.5 flex items-center gap-2 text-[11px] text-fg-muted">
+        <span className="rounded bg-bg-muted px-1.5 py-0.5 text-[10px] font-medium">{item.source}</span>
         <time>{formatRelativeTime(item.publishedAt)}</time>
       </div>
     </li>

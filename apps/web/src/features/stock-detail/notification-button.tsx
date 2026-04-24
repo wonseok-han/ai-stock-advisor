@@ -40,7 +40,7 @@ export function NotificationButton({ ticker }: { ticker: string }) {
       >
         <svg
           className="h-4 w-4"
-          fill={isActive ? 'currentColor' : 'none'}
+          fill="currentColor"
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"

@@ -33,13 +33,13 @@ export function MarketOverview() {
 
   if (isLoading) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-6">
         {['주요 지수', '변동성 · 환율 · 금리', '원자재'].map((label) => (
-          <section key={label} aria-label={label} className="space-y-2">
+          <section key={label} className="card overflow-hidden">
             <SectionLabel>{label}</SectionLabel>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-xl bg-bg-muted" />
+                <div key={i} className="h-24 animate-pulse rounded-xl bg-bg-skeleton" />
               ))}
             </div>
           </section>
@@ -63,14 +63,14 @@ export function MarketOverview() {
   }
 
   return (
-    <div className="space-y-5">
-      <section aria-label="주요 지수" className="space-y-2">
+    <div className="space-y-6">
+      <section aria-label="주요 지수" className="card overflow-hidden">
         <SectionLabel
           tooltip="미국 주요 주가 지수와 변동성 지수입니다. 시장 전반의 분위기를 빠르게 파악할 수 있습니다."
         >
           주요 지수
         </SectionLabel>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
           {data.indices.map((idx) => (
             <IndexCard key={idx.symbol} index={idx} />
           ))}
@@ -106,11 +106,11 @@ function MacroSections({
   return (
     <>
       {hasSentiment && (
-        <section aria-label="변동성 · 환율 · 금리" className="space-y-2">
+        <section aria-label="변동성 · 환율 · 금리" className="card overflow-hidden">
           <SectionLabel tooltip="시장 심리, 환율 변동, 금리 추이를 보여주는 거시경제 지표입니다.">
             변동성 · 환율 · 금리
           </SectionLabel>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
             {sentiment.map((item) => (
               <MacroCard key={item.symbol} index={item} />
             ))}
@@ -121,11 +121,11 @@ function MacroSections({
         </section>
       )}
       {hasCommodities && (
-        <section aria-label="원자재" className="space-y-2">
+        <section aria-label="원자재" className="card overflow-hidden">
           <SectionLabel tooltip="주요 원자재 가격입니다. 인플레이션과 글로벌 경기를 가늠하는 지표입니다.">
             원자재
           </SectionLabel>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
             {commodities.map((item) => (
               <MacroCard key={item.symbol} index={item} />
             ))}
@@ -138,8 +138,8 @@ function MacroSections({
 
 function SectionLabel({ children, tooltip }: { children: React.ReactNode; tooltip?: string }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+    <div className="flex items-center gap-1.5 border-b border-border px-5 py-4">
+      <h2 className="text-sm font-semibold text-fg">
         {children}
       </h2>
       {tooltip && <InfoTooltip text={tooltip} />}
@@ -162,23 +162,23 @@ function IndexCard({ index }: { index: MarketIndex }) {
   const tooltip = INDEX_TOOLTIPS[index.name];
 
   return (
-    <div className="card p-3">
+    <div className="rounded-xl bg-bg-muted border-t-2 border-t-primary/50 p-4 transition-shadow hover:shadow-lg">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
           {index.name}
           {tooltip && <InfoTooltip text={tooltip} />}
         </span>
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
+        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums', changeBg)}>
           {formatPercentChange(index.changePercent)}
         </span>
       </div>
-      <div className="mt-1.5 text-lg font-semibold tabular-nums text-fg">
+      <div className="mt-3 text-2xl font-bold tabular-nums text-fg">
         {index.price.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
       </div>
-      <div className={cn('text-xs tabular-nums', changeColor)}>
+      <div className={cn('mt-1 text-sm font-medium tabular-nums', changeColor)}>
         {formatSignedNumber(index.change)}
       </div>
     </div>
@@ -209,28 +209,28 @@ function MacroCard({ index }: { index: MarketIndex }) {
 
   const vixHighlight =
     isVix && index.price >= 30
-      ? 'ring-1 ring-red-500/30'
+      ? 'ring-1 ring-red-500/40 bg-red-500/5'
       : isVix && index.price >= 20
-        ? 'ring-1 ring-amber-500/30'
+        ? 'ring-1 ring-amber-500/40 bg-amber-500/5'
         : '';
 
   const tooltip = MACRO_TOOLTIPS[index.name];
 
   return (
-    <div className={cn('card p-3', vixHighlight)}>
+    <div className={cn('rounded-xl bg-bg-muted p-3', vixHighlight)}>
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
           {index.name}
           {tooltip && <InfoTooltip text={tooltip} />}
         </span>
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
+        <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
           {formatPercentChange(index.changePercent)}
         </span>
       </div>
-      <div className="mt-1.5 text-lg font-semibold tabular-nums text-fg">
+      <div className="mt-2 text-lg font-bold tabular-nums text-fg">
         {priceDisplay}
       </div>
-      <div className={cn('text-xs tabular-nums', changeColor)}>
+      <div className={cn('mt-0.5 text-xs font-medium tabular-nums', changeColor)}>
         {formatSignedNumber(index.change)}
       </div>
     </div>
@@ -249,25 +249,25 @@ function UsdKrwCard({ price, change }: { price: number; change?: number | null }
   const tooltip = MACRO_TOOLTIPS['USD/KRW'];
 
   return (
-    <div className="card p-3">
+    <div className="rounded-xl bg-bg-muted p-3">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
           USD/KRW
           {tooltip && <InfoTooltip text={tooltip} />}
         </span>
         {change != null && change !== 0 && (
-          <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
+          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums', changeBg)}>
             {formatSignedNumber(change)}
           </span>
         )}
       </div>
-      <div className="mt-1.5 text-lg font-semibold tabular-nums text-fg">
+      <div className="mt-2 text-lg font-bold tabular-nums text-fg">
         {price.toLocaleString('ko-KR', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
       </div>
-      <div className="text-xs text-fg-muted">원</div>
+      <div className="mt-0.5 text-xs text-fg-muted">원</div>
     </div>
   );
 }

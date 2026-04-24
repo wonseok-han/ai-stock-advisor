@@ -119,7 +119,14 @@ export function ChartPanel({ ticker, tf }: { ticker: string; tf: TimeFrame }) {
           차트 데이터를 불러오지 못했습니다.
         </div>
       ) : (
-        <div ref={containerRef} className="w-full px-2 pb-2" />
+        <>
+          <div ref={containerRef} className="w-full px-2 pb-2" />
+          {isLoading && (
+            <div className="flex h-[400px] items-center justify-center px-2 pb-2">
+              <div className="h-full w-full animate-pulse rounded-lg bg-bg-skeleton" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

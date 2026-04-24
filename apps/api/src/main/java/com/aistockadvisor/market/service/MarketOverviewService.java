@@ -89,12 +89,15 @@ public class MarketOverviewService {
                     "모든 시장 데이터 소스 실패");
         }
 
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        MarketStatus status = MarketStatusResolver.resolve();
         return new MarketOverviewResponse(
                 indices,
                 forex[0],
                 forex[1],
                 macro,
-                OffsetDateTime.now(ZoneOffset.UTC),
+                now,
+                MarketStatusResolver.priceLabel(status, now),
                 Disclaimers.MARKET
         );
     }
