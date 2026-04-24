@@ -1,5 +1,6 @@
 package com.aistockadvisor.stock.infra.client;
 
+import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.stock.domain.Candle;
@@ -8,6 +9,7 @@ import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -44,16 +46,22 @@ public class TwelveDataClient {
 
     private static final Logger log = LoggerFactory.getLogger(TwelveDataClient.class);
     private static final Duration TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration TTL_QUOTE_OPEN = Duration.ofSeconds(30);
+    private static final Duration TTL_SERIES_OPEN = Duration.ofMinutes(5);
     private static final DateTimeFormatter DATE_ONLY =
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final TypeReference<TwelveQuoteResponse> QUOTE_TYPE = new TypeReference<>() {};
+    private static final TypeReference<TimeSeriesResponse> SERIES_TYPE = new TypeReference<>() {};
 
     private final WebClient webClient;
     private final String apiKey;
+    private final RedisCacheAdapter cache;
 
-    public TwelveDataClient(TwelveDataProperties props) {
+    public TwelveDataClient(TwelveDataProperties props, RedisCacheAdapter cache) {
         this.apiKey = props.apiKey();
+        this.cache = cache;
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
@@ -71,9 +79,12 @@ public class TwelveDataClient {
      * 반환: Quote record (기존 도메인 재사용). 데이터 없으면 null.
      */
     public Quote quote(String symbol) {
-        TwelveQuoteResponse resp = call("/quote", uri -> uri
-                .queryParam("symbol", symbol)
-                .queryParam("apikey", apiKey), TwelveQuoteResponse.class);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_QUOTE_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        TwelveQuoteResponse resp = cache.getOrLoad("twelve:quote:" + symbol, QUOTE_TYPE,
+                ttl, () -> call("/quote", uri -> uri
+                        .queryParam("symbol", symbol)
+                        .queryParam("apikey", apiKey), TwelveQuoteResponse.class));
         if (resp == null || resp.close() == null) {
             return null;
         }
@@ -107,12 +118,16 @@ public class TwelveDataClient {
      * 응답이 status=error 인 경우 빈 리스트.
      */
     public List<Candle> timeSeries(String symbol, String interval, int outputsize) {
-        TimeSeriesResponse resp = call("/time_series", uri -> uri
-                .queryParam("symbol", symbol)
-                .queryParam("interval", interval)
-                .queryParam("outputsize", outputsize)
-                .queryParam("format", "JSON")
-                .queryParam("apikey", apiKey), TimeSeriesResponse.class);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_SERIES_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        TimeSeriesResponse resp = cache.getOrLoad(
+                "twelve:series:" + symbol + ":" + interval, SERIES_TYPE,
+                ttl, () -> call("/time_series", uri -> uri
+                        .queryParam("symbol", symbol)
+                        .queryParam("interval", interval)
+                        .queryParam("outputsize", outputsize)
+                        .queryParam("format", "JSON")
+                        .queryParam("apikey", apiKey), TimeSeriesResponse.class));
         if (resp == null || !"ok".equalsIgnoreCase(resp.status())
                 || resp.values() == null || resp.values().isEmpty()) {
             return List.of();

@@ -11,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +26,8 @@ import java.util.List;
 public class MarketNewsService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketNewsService.class);
-    private static final Duration CACHE_TTL = Duration.ofMinutes(15);
+    private static final Duration TTL_OPEN   = Duration.ofMinutes(15);
+    private static final Duration TTL_CLOSED = Duration.ofMinutes(30);
     private static final TypeReference<List<MarketNewsItem>> TYPE = new TypeReference<>() {
     };
     private static final int DEFAULT_LIMIT = 10;
@@ -42,7 +46,8 @@ public class MarketNewsService {
 
     public List<MarketNewsItem> getNews(int limit) {
         int take = limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, DEFAULT_LIMIT);
-        List<MarketNewsItem> all = cache.getOrLoad("market:news", TYPE, CACHE_TTL, this::fetchAndTranslate);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN ? TTL_OPEN : TTL_CLOSED;
+        List<MarketNewsItem> all = cache.getOrLoad("market:news", TYPE, ttl, this::fetchAndTranslate);
         if (all == null || all.isEmpty()) {
             return List.of();
         }

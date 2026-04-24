@@ -1,6 +1,7 @@
 package com.aistockadvisor.stock.domain;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -18,7 +19,10 @@ public final class MarketStatusResolver {
     private MarketStatusResolver() {}
 
     public static MarketStatus resolve() {
-        ZonedDateTime now = ZonedDateTime.now(ET);
+        return resolve(ZonedDateTime.now(ET));
+    }
+
+    static MarketStatus resolve(ZonedDateTime now) {
         DayOfWeek dow = now.getDayOfWeek();
         if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
             return MarketStatus.CLOSED;
@@ -37,6 +41,35 @@ public final class MarketStatusResolver {
             return date + " 정규장 종가";
         }
         return "정규장 종가";
+    }
+
+    public static Duration durationUntilNextOpen() {
+        return durationUntilNextOpen(ZonedDateTime.now(ET));
+    }
+
+    static Duration durationUntilNextOpen(ZonedDateTime now) {
+        if (resolve(now) == MarketStatus.OPEN) {
+            return Duration.ZERO;
+        }
+        return Duration.between(now, nextOpenTime(now));
+    }
+
+    private static ZonedDateTime nextOpenTime(ZonedDateTime now) {
+        ZonedDateTime today930 = now.toLocalDate().atTime(OPEN).atZone(ET);
+
+        if (now.isBefore(today930) && isWeekday(now.getDayOfWeek())) {
+            return today930;
+        }
+
+        ZonedDateTime next = today930.plusDays(1);
+        while (!isWeekday(next.getDayOfWeek())) {
+            next = next.plusDays(1);
+        }
+        return next;
+    }
+
+    private static boolean isWeekday(DayOfWeek dow) {
+        return dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY;
     }
 
     /** Yahoo currentTradingPeriod.regular 로 판단 (epoch 초 기준). */

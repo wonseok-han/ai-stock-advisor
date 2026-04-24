@@ -1,9 +1,13 @@
 package com.aistockadvisor.market.infra;
 
+import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -30,11 +34,25 @@ public class FmpClient {
     private static final Logger log = LoggerFactory.getLogger(FmpClient.class);
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
+    private static final Duration TTL_MARKET_OPEN  = Duration.ofMinutes(15);
+    private static final Duration TTL_TICKER_OPEN  = Duration.ofHours(24);
+    private static final Duration TTL_TICKER_CLOSED = Duration.ofHours(24);
+
+    private static final TypeReference<List<FmpMover>> MOVERS_TYPE = new TypeReference<>() {};
+    private static final TypeReference<List<FmpSectorPerformance>> SECTORS_TYPE = new TypeReference<>() {};
+    private static final TypeReference<FmpProfile> PROFILE_TYPE = new TypeReference<>() {};
+    private static final TypeReference<FmpRatiosTtm> RATIOS_TYPE = new TypeReference<>() {};
+    private static final TypeReference<FmpGradesConsensus> GRADES_TYPE = new TypeReference<>() {};
+    private static final TypeReference<FmpPriceTargetConsensus> PRICE_TARGET_TYPE = new TypeReference<>() {};
+    private static final TypeReference<List<FmpAnalystEstimate>> ESTIMATES_TYPE = new TypeReference<>() {};
+
     private final WebClient webClient;
     private final String apiKey;
+    private final RedisCacheAdapter cache;
 
-    public FmpClient(FmpProperties props) {
+    public FmpClient(FmpProperties props, RedisCacheAdapter cache) {
         this.apiKey = props.apiKey();
+        this.cache = cache;
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
@@ -47,11 +65,18 @@ public class FmpClient {
     }
 
     public List<FmpMover> gainers() {
-        return fetchMovers("/biggest-gainers");
+        return cache.getOrLoad("fmp:gainers", MOVERS_TYPE, marketTtl(),
+                () -> fetchMovers("/biggest-gainers"));
     }
 
     public List<FmpMover> losers() {
-        return fetchMovers("/biggest-losers");
+        return cache.getOrLoad("fmp:losers", MOVERS_TYPE, marketTtl(),
+                () -> fetchMovers("/biggest-losers"));
+    }
+
+    private Duration marketTtl() {
+        return MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_MARKET_OPEN : MarketStatusResolver.durationUntilNextOpen();
     }
 
     private List<FmpMover> fetchMovers(String path) {
@@ -78,6 +103,11 @@ public class FmpClient {
     }
 
     public List<FmpSectorPerformance> sectorPerformance() {
+        return cache.getOrLoad("fmp:sectors", SECTORS_TYPE, marketTtl(),
+                this::fetchSectorPerformance);
+    }
+
+    private List<FmpSectorPerformance> fetchSectorPerformance() {
         try {
             FmpSectorPerformance[] resp = webClient.get()
                     .uri(b -> b.path("/sector-performance")
@@ -101,6 +131,11 @@ public class FmpClient {
     }
 
     public FmpProfile companyProfile(String ticker) {
+        return cache.getOrLoad("fmp:profile:" + ticker, PROFILE_TYPE, TTL_TICKER_OPEN,
+                () -> fetchCompanyProfile(ticker));
+    }
+
+    private FmpProfile fetchCompanyProfile(String ticker) {
         try {
             FmpProfile[] resp = webClient.get()
                     .uri(b -> b.path("/profile")
@@ -136,6 +171,11 @@ public class FmpClient {
     }
 
     public FmpRatiosTtm ratiosTtm(String ticker) {
+        return cache.getOrLoad("fmp:ratios:" + ticker, RATIOS_TYPE, TTL_TICKER_OPEN,
+                () -> fetchRatiosTtm(ticker));
+    }
+
+    private FmpRatiosTtm fetchRatiosTtm(String ticker) {
         try {
             FmpRatiosTtm[] resp = webClient.get()
                     .uri(b -> b.path("/ratios-ttm")
@@ -179,6 +219,11 @@ public class FmpClient {
     // ── Analyst Estimates ──
 
     public FmpGradesConsensus gradesConsensus(String ticker) {
+        return cache.getOrLoad("fmp:grades:" + ticker, GRADES_TYPE, TTL_TICKER_OPEN,
+                () -> fetchGradesConsensus(ticker));
+    }
+
+    private FmpGradesConsensus fetchGradesConsensus(String ticker) {
         try {
             FmpGradesConsensus[] resp = webClient.get()
                     .uri(b -> b.path("/grades-consensus")
@@ -196,6 +241,11 @@ public class FmpClient {
     }
 
     public FmpPriceTargetConsensus priceTargetConsensus(String ticker) {
+        return cache.getOrLoad("fmp:price-target:" + ticker, PRICE_TARGET_TYPE, TTL_TICKER_OPEN,
+                () -> fetchPriceTargetConsensus(ticker));
+    }
+
+    private FmpPriceTargetConsensus fetchPriceTargetConsensus(String ticker) {
         try {
             FmpPriceTargetConsensus[] resp = webClient.get()
                     .uri(b -> b.path("/price-target-consensus")
@@ -213,6 +263,11 @@ public class FmpClient {
     }
 
     public List<FmpAnalystEstimate> analystEstimates(String ticker) {
+        return cache.getOrLoad("fmp:estimates:" + ticker, ESTIMATES_TYPE, TTL_TICKER_OPEN,
+                () -> fetchAnalystEstimates(ticker));
+    }
+
+    private List<FmpAnalystEstimate> fetchAnalystEstimates(String ticker) {
         try {
             FmpAnalystEstimate[] resp = webClient.get()
                     .uri(b -> b.path("/analyst-estimates")
