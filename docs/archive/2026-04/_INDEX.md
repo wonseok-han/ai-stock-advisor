@@ -22,6 +22,20 @@
 | [dashboard-expansion](dashboard-expansion/) | Phase 4.5.9 | 97.8% | 2026-04-23 | 2026-04-23 | plan, design, analysis, report |
 | [api-cache-optimization](api-cache-optimization/) | Optimization | 98% | 2026-04-23 | 2026-04-24 | plan, design, analysis, report |
 | [ai-signal-ux](ai-signal-ux/) | UX | 98% | 2026-04-24 | 2026-04-24 | plan, design, report |
+| [header-toolbox](header-toolbox/) | UX | 95% | 2026-04-24 | 2026-04-24 | plan, design, analysis, report |
+
+## header-toolbox — 헤더 간소화 + 플로팅 툴박스 + 스낵바 + 마이페이지 리디자인
+
+헤더 버튼 과밀 해소(검색+유저아이콘만 남기고 ThemeSwitcher/UserMenu 제거), 플로팅 툴박스(FAB + 테마/피드백/로그아웃 패널), Zustand 스낵바 토스트(6개 호출 지점), 마이페이지 탭 레이아웃 전환 + UI 리디자인. 추가로 라이트모드 UI 폴리싱(에메랄드 틴트 배경, bg-skeleton 토큰 분리, @layer components, 대시보드 섹션 카드 그룹화, DST 대응 priceLabel, 급등/급락 10개 축소). Match Rate 95%, iteration 0회.
+
+- **범위**: FE 17파일 (신규 5: floating-toolbox, snackbar, use-snackbar-store, search-modal, platform.ts / 수정 12: site-header, user-menu, bookmark-button, bookmark-card, bookmark-grid, notification-section, notification-setting-modal, profile-section, account-section, my/page, globals.css, layout.tsx) + BE 4파일 (MarketOverviewResponse, MarketMoversService, MarketOverviewService, MarketStatusResolver)
+- **결과**: 21파일, +1,955 lines. 설계 148항목 중 141 정확 일치, 2 경미 편차, 12 개선 구현
+- **PR**: #35 squash-merged
+- **핵심 변경**: 헤더→2요소 간소화, FAB 툴박스(스크롤 반투명 + ESC/외부클릭 닫기), 스낵바 Zustand→6 call sites, 마이페이지 수직→탭(URL searchParams 유지), bg-skeleton 토큰 분리, @layer components 이동
+- **Key Decisions**: 마이페이지 수직 섹션→탭 레이아웃 (설계 외 개선, 사용자 직접 요청) · 스낵바 센터링 inset-x-0 flex (translate 기반 애니메이션 버그 회피) · 아바타 이메일 이니셜→SVG 아이콘 (프라이버시 개선) · 플랫폼 인식 단축키 (⌘K / Ctrl K)
+- **Lessons**: bg-muted와 bg-skeleton은 용도가 다르므로 토큰 분리 필수 · @layer components 안의 커스텀 클래스만 Tailwind 유틸리티에 오버라이드 가능 · React Query 캐시 dedup으로 자식 컴포넌트 isLoading이 false 될 수 있음 → 부모에서 로딩 상태 관리
+
+**링크**: [plan](header-toolbox/header-toolbox.plan.md) · [design](header-toolbox/header-toolbox.design.md) · [analysis](header-toolbox/header-toolbox.analysis.md) · [report](header-toolbox/header-toolbox.report.md)
 
 ## ai-signal-ux — AI 시그널 UX 개선 (이중관점·tf 분리·로딩 애니메이션·테마 보정)
 
