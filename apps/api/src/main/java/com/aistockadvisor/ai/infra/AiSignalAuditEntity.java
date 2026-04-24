@@ -43,7 +43,7 @@ public class AiSignalAuditEntity {
     private BigDecimal confidence;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "timeframe", nullable = false, length = 8)
+    @Column(name = "timeframe", length = 8)
     private Timeframe timeframe;
 
     @JdbcTypeCode(SqlTypes.JSON)

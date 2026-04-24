@@ -324,10 +324,15 @@ public class YahooFinanceClient {
     // ── crumb/cookie 인증 ──
 
     private void ensureCrumb() {
-        if (crumb != null && System.currentTimeMillis() < crumbExpiresAt) return;
+        long now = System.currentTimeMillis();
+        if (crumb != null && now < crumbExpiresAt) return;
+        // 429 쿨다운 중에는 crumb 갱신 시도하지 않음
+        if (crumb == null && now < crumbExpiresAt) return;
         crumbLock.lock();
         try {
-            if (crumb != null && System.currentTimeMillis() < crumbExpiresAt) return;
+            now = System.currentTimeMillis();
+            if (crumb != null && now < crumbExpiresAt) return;
+            if (crumb == null && now < crumbExpiresAt) return;
             refreshCrumb();
         } finally {
             crumbLock.unlock();
@@ -389,10 +394,9 @@ public class YahooFinanceClient {
                 log.info("yahoo crumb refreshed via curl");
             } else {
                 log.warn("yahoo crumb via curl: status={} body={}", status, body);
+                this.crumb = null;
                 if ("429".equals(status)) {
                     this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
-                } else {
-                    this.crumb = null;
                 }
             }
         } catch (Exception ex) {

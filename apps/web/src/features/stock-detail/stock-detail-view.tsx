@@ -28,7 +28,7 @@ export function StockDetailView({ ticker }: { ticker: string }) {
       <TimeFrameTabs value={tf} onChange={setTf} />
       <ChartPanel ticker={ticker} tf={tf} />
       <IndicatorsPanel ticker={ticker} />
-      <AiSignalPanel ticker={ticker} tf={tf} />
+      <AiSignalPanel ticker={ticker} />
       <NewsPanel ticker={ticker} />
     </div>
   );

@@ -27,15 +27,16 @@
    Light
    깔끔·신뢰, 밝은 배경 + emerald 브랜드 액센트
    ═══════════════════════════════════════════════ */
-:root, [data-theme="light"] {
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --bg: #ffffff;
-  --bg-surface: #f8f9fa;
-  --bg-muted: #f1f3f5;
+  --bg-surface: #f6f7f8;
+  --bg-muted: #edeef1;
   --fg: #111318;
   --fg-secondary: #3d4250;
-  --fg-muted: #6b7280;
-  --border-color: #e2e5e9;
+  --fg-muted: #636971;
+  --border-color: #dcdfe4;
   --primary: #059669;
   --primary-hover: #047857;
   --primary-fg: #ffffff;
@@ -126,7 +127,7 @@ body {
 
 /* ─── 글래스 헤더 ─── */
 .glass-header {
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
   backdrop-filter: blur(12px) saturate(1.5);
   -webkit-backdrop-filter: blur(12px) saturate(1.5);
 }

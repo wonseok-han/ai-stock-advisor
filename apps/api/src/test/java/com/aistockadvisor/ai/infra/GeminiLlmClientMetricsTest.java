@@ -219,6 +219,37 @@ class GeminiLlmClientMetricsTest {
         assertThat(parseFailures).isEqualTo(1.0);
     }
 
+    @Test
+    @DisplayName("T-9b MAX_TOKENS with partial content → llm.failure.count{reason=parse} +1, non-retryable")
+    void maxTokensWithPartialContent_throwsImmediately() {
+        String truncatedWithContent = """
+                {
+                  "candidates": [{
+                    "content": {"parts": [{"text": "{\\"short_term\\": {\\"signal\\": \\"BUY"}], "role": "model"},
+                    "finishReason": "MAX_TOKENS"
+                  }],
+                  "usageMetadata": {
+                    "promptTokenCount": 500,
+                    "candidatesTokenCount": 2048,
+                    "totalTokenCount": 2548
+                  }
+                }
+                """;
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(truncatedWithContent));
+
+        assertThatThrownBy(() -> client.generate("system", "user", FEATURE))
+                .isInstanceOf(com.aistockadvisor.common.error.BusinessException.class)
+                .hasMessageContaining("MAX_TOKENS");
+
+        double parseFailures = registry.counter(LlmMetrics.FAILURE_COUNT,
+                LlmMetrics.TAG_FEATURE, FEATURE,
+                LlmMetrics.TAG_REASON, LlmMetrics.REASON_PARSE).count();
+        assertThat(parseFailures).isEqualTo(1.0);
+    }
+
     // -------------------------------------------------------------------------
     // T-10: thought part 스킵 → 유효 text 가 있는 part 를 선택
     // Gemini 2.5 호환: thinking part(thought=true) 가 앞에 오더라도 실제 JSON 파트 반환

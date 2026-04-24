@@ -1,9 +1,8 @@
 import { apiFetch } from '@/lib/api/client';
 
 import type { AiSignal } from '@/types/ai-signal';
-import type { TimeFrame } from '@/types/stock';
 
-export function getAiSignal(ticker: string, tf: TimeFrame): Promise<AiSignal> {
+export function getAiSignal(ticker: string): Promise<AiSignal> {
   const t = encodeURIComponent(ticker);
-  return apiFetch<AiSignal>(`/stocks/${t}/ai-signal?tf=${tf}`);
+  return apiFetch<AiSignal>(`/stocks/${t}/ai-signal`);
 }

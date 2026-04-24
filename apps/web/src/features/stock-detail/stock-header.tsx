@@ -16,7 +16,6 @@ export function StockHeader({ ticker }: { ticker: string }) {
   const change = quote?.change ?? 0;
   const up = change > 0;
   const down = change < 0;
-  const colorClass = up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted';
   const changeBg = up
     ? 'bg-emerald-500/10 text-success'
     : down

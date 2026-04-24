@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   useFloating,
   autoUpdate,
@@ -13,28 +13,36 @@ import {
   useRole,
   useInteractions,
   FloatingPortal,
-} from '@floating-ui/react';
-import { cn } from '@/lib/cn';
+} from "@floating-ui/react";
+import { cn } from "@/lib/cn";
 
-export function InfoTooltip({ text, className }: { text: string; className?: string }) {
+export function InfoTooltip({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    placement: 'bottom-end',
+    placement: "bottom-end",
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(6),
-      flip({ fallbackPlacements: ['top-end', 'bottom-start', 'top-start'] }),
+      flip({ fallbackPlacements: ["top-end", "bottom-start", "top-start"] }),
       shift({ padding: 8 }),
     ],
   });
 
+  const { setReference, setFloating } = refs;
+
   const hover = useHover(context, { move: false });
   const focus = useFocus(context);
   const dismiss = useDismiss(context);
-  const role = useRole(context, { role: 'tooltip' });
+  const role = useRole(context, { role: "tooltip" });
 
   const { getReferenceProps, getFloatingProps } = useInteractions([
     hover,
@@ -47,10 +55,10 @@ export function InfoTooltip({ text, className }: { text: string; className?: str
     <>
       <button
         type="button"
-        ref={refs.setReference}
+        ref={setReference}
         aria-label={text}
         className={cn(
-          'cursor-help rounded-full p-0.5 text-fg-muted outline-none hover:text-fg-secondary focus-visible:ring-2 focus-visible:ring-primary',
+          "cursor-help rounded-full p-0.5 text-fg-muted outline-none hover:text-fg-secondary focus-visible:ring-2 focus-visible:ring-primary",
           className,
         )}
         {...getReferenceProps()}
@@ -71,7 +79,7 @@ export function InfoTooltip({ text, className }: { text: string; className?: str
       {isOpen && (
         <FloatingPortal>
           <div
-            ref={refs.setFloating}
+            ref={setFloating}
             style={floatingStyles}
             className="z-50 w-72 max-w-[calc(100vw-2rem)] whitespace-normal break-keep rounded-xl border border-border bg-bg-surface px-3 py-2 text-xs leading-relaxed text-fg-secondary shadow-lg"
             {...getFloatingProps()}

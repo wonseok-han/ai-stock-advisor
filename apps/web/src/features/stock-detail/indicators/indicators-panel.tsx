@@ -1,6 +1,7 @@
 'use client';
 
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { useIndicators } from '@/features/stock-detail/hooks/use-indicators';
 import { cn } from '@/lib/cn';
 
@@ -10,7 +11,7 @@ export function IndicatorsPanel({ ticker }: { ticker: string }) {
   const { data, isLoading, error } = useIndicators(ticker);
 
   if (isLoading) {
-    return <PanelShell>지표 계산 중…</PanelShell>;
+    return <PanelLoading title="참고 지표" text="기술 지표를 계산하고 있어요" />;
   }
   if (error || !data) {
     return (

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { useCompanyOverview } from '@/features/stock-detail/hooks/use-company-overview';
 import { useQuote } from '@/features/stock-detail/hooks/use-quote';
 import { formatUsd } from '@/lib/format/currency';
@@ -14,7 +15,7 @@ export function CompanyOverviewPanel({ ticker }: { ticker: string }) {
   const { data: quote } = useQuote(ticker);
 
   if (isLoading) {
-    return <PanelShell>기업 정보 불러오는 중…</PanelShell>;
+    return <PanelLoading title="기업 개요" text="기업 정보를 불러오고 있어요" />;
   }
   if (error || !overview) {
     return null;
@@ -62,12 +63,6 @@ export function CompanyOverviewPanel({ ticker }: { ticker: string }) {
         </div>
       )}
     </section>
-  );
-}
-
-function PanelShell({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="card p-5 text-sm text-fg-muted">{children}</section>
   );
 }
 

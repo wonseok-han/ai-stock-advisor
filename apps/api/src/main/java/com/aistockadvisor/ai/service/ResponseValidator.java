@@ -1,10 +1,10 @@
 package com.aistockadvisor.ai.service;
 
 import com.aistockadvisor.ai.domain.AiSignal.Signal;
-import com.aistockadvisor.ai.domain.AiSignal.Timeframe;
 import com.aistockadvisor.ai.domain.ImpactDirection;
 import com.aistockadvisor.ai.domain.IndicatorInterpretation;
 import com.aistockadvisor.ai.domain.NewsImpact;
+import com.aistockadvisor.ai.domain.SignalPerspective;
 import com.aistockadvisor.common.metrics.LlmMetrics;
 import com.aistockadvisor.legal.ForbiddenTermsRegistry;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -19,16 +19,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-/**
- * LLM 응답 스키마 + 금지용어 검증 (4-level guard의 Level 3).
- * 참조:
- *  - docs/02-design/features/phase2-rag-pipeline.design.md §7.3
- *  - docs/02-design/features/phase2.1-metrics-fe-refactor.design.md §4.3
- *  - docs/02-design/features/ai-analysis-deepening.design.md §4.2 (v2 옵셔널 필드)
- *
- * <p>v2 확장: beginner_explanation / indicator_interpretation / news_impact / what_to_watch 는
- * 모두 nullable. 존재할 경우 forbidden 스캔 대상에 포함하되, 누락되어도 valid 로 간주.
- */
 @Component
 public class ResponseValidator {
 
@@ -55,71 +45,96 @@ public class ResponseValidator {
             recordValidationFailure(feature);
             return Result.invalid("empty response", List.of(), null);
         }
-        RawSignal parsed;
+        RawDualSignal parsed;
         Map<String, Object> rawMap;
         try {
-            parsed = objectMapper.readValue(rawJson, RawSignal.class);
-            rawMap = objectMapper.readValue(rawJson, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+            parsed = objectMapper.readValue(rawJson, RawDualSignal.class);
+            rawMap = objectMapper.readValue(rawJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
         } catch (Exception ex) {
             log.warn("validator: parse failed: {}", ex.getMessage());
             recordValidationFailure(feature);
             return Result.invalid("parse-failed: " + ex.getMessage(), List.of(), null);
         }
 
-        Signal signal = parseEnum(Signal.class, parsed.signal);
-        Timeframe timeframe = parseEnum(Timeframe.class, parsed.timeframe);
-        if (signal == null || timeframe == null) {
+        if (parsed.short_term == null || parsed.long_term == null) {
             recordValidationFailure(feature);
-            return Result.invalid("invalid enum values", List.of(), rawMap);
-        }
-        double confidence = parsed.confidence == null ? -1 : parsed.confidence;
-        if (confidence < 0.0 || confidence > 1.0) {
-            recordValidationFailure(feature);
-            return Result.invalid("confidence out of range", List.of(), rawMap);
-        }
-        List<String> rationale = nonEmptyList(parsed.rationale);
-        List<String> risks = nonEmptyList(parsed.risks);
-        if (rationale.isEmpty() || risks.isEmpty()) {
-            recordValidationFailure(feature);
-            return Result.invalid("rationale/risks must be non-empty", List.of(), rawMap);
-        }
-        String summary = parsed.summary_ko == null ? "" : parsed.summary_ko.trim();
-        if (summary.isBlank()) {
-            recordValidationFailure(feature);
-            return Result.invalid("summary_ko is blank", List.of(), rawMap);
+            return Result.invalid("missing short_term or long_term", List.of(), rawMap);
         }
 
-        // v2 옵셔널 필드 — 누락/빈 값이면 null 로 두고, 존재할 때만 정규화.
-        String beginnerExplanation = blankToNull(parsed.beginner_explanation);
-        List<IndicatorInterpretation> indicatorInterpretation = mapIndicators(parsed.indicator_interpretation);
-        List<NewsImpact> newsImpact = mapNewsImpact(parsed.news_impact);
-        List<String> whatToWatch = nullIfEmpty(nonEmptyList(parsed.what_to_watch));
+        SignalPerspective shortTerm = validatePerspective(parsed.short_term, feature);
+        if (shortTerm == null) {
+            return Result.invalid("short_term validation failed", List.of(), rawMap);
+        }
+
+        SignalPerspective longTerm = validatePerspective(parsed.long_term, feature);
+        if (longTerm == null) {
+            return Result.invalid("long_term validation failed", List.of(), rawMap);
+        }
 
         StringBuilder scan = new StringBuilder();
-        scan.append(summary).append(' ');
-        for (String r : rationale) scan.append(r).append(' ');
-        for (String r : risks) scan.append(r).append(' ');
-        if (beginnerExplanation != null) scan.append(beginnerExplanation).append(' ');
-        if (indicatorInterpretation != null) {
-            for (IndicatorInterpretation ii : indicatorInterpretation) scan.append(ii.meaningKo()).append(' ');
-        }
-        if (newsImpact != null) {
-            for (NewsImpact ni : newsImpact) {
-                if (ni.titleKo() != null) scan.append(ni.titleKo()).append(' ');
-                if (ni.reasonKo() != null) scan.append(ni.reasonKo()).append(' ');
-            }
-        }
-        if (whatToWatch != null) {
-            for (String w : whatToWatch) scan.append(w).append(' ');
-        }
+        appendPerspectiveText(scan, shortTerm);
+        appendPerspectiveText(scan, longTerm);
         List<String> hits = forbidden.detect(scan.toString());
         if (!hits.isEmpty()) {
             recordForbiddenHit(feature, hits.size());
             return Result.invalid("forbidden-terms-detected", hits, rawMap);
         }
 
-        return Result.valid(signal, confidence, timeframe, rationale, risks, summary,
-                beginnerExplanation, indicatorInterpretation, newsImpact, whatToWatch, rawMap);
+        return Result.valid(shortTerm, longTerm, rawMap);
+    }
+
+    private SignalPerspective validatePerspective(RawSignal raw, String feature) {
+        Signal signal = parseEnum(Signal.class, raw.signal);
+        if (signal == null) {
+            recordValidationFailure(feature);
+            return null;
+        }
+        double confidence = raw.confidence == null ? -1 : raw.confidence;
+        if (confidence < 0.0 || confidence > 1.0) {
+            recordValidationFailure(feature);
+            return null;
+        }
+        List<String> rationale = nonEmptyList(raw.rationale);
+        List<String> risks = nonEmptyList(raw.risks);
+        if (rationale.isEmpty() || risks.isEmpty()) {
+            recordValidationFailure(feature);
+            return null;
+        }
+        String summary = raw.summary_ko == null ? "" : raw.summary_ko.trim();
+        if (summary.isBlank()) {
+            recordValidationFailure(feature);
+            return null;
+        }
+
+        String beginnerExplanation = blankToNull(raw.beginner_explanation);
+        List<IndicatorInterpretation> indicatorInterpretation = mapIndicators(raw.indicator_interpretation);
+        List<NewsImpact> newsImpact = mapNewsImpact(raw.news_impact);
+        List<String> whatToWatch = nullIfEmpty(nonEmptyList(raw.what_to_watch));
+
+        return new SignalPerspective(
+                signal, confidence, rationale, risks, summary,
+                beginnerExplanation, indicatorInterpretation, newsImpact, whatToWatch
+        );
+    }
+
+    private void appendPerspectiveText(StringBuilder scan, SignalPerspective p) {
+        scan.append(p.summaryKo()).append(' ');
+        for (String r : p.rationale()) scan.append(r).append(' ');
+        for (String r : p.risks()) scan.append(r).append(' ');
+        if (p.beginnerExplanation() != null) scan.append(p.beginnerExplanation()).append(' ');
+        if (p.indicatorInterpretation() != null) {
+            for (IndicatorInterpretation ii : p.indicatorInterpretation()) scan.append(ii.meaningKo()).append(' ');
+        }
+        if (p.newsImpact() != null) {
+            for (NewsImpact ni : p.newsImpact()) {
+                if (ni.titleKo() != null) scan.append(ni.titleKo()).append(' ');
+                if (ni.reasonKo() != null) scan.append(ni.reasonKo()).append(' ');
+            }
+        }
+        if (p.whatToWatch() != null) {
+            for (String w : p.whatToWatch()) scan.append(w).append(' ');
+        }
     }
 
     private void recordValidationFailure(String feature) {
@@ -194,45 +209,34 @@ public class ResponseValidator {
 
     public record Result(
             boolean valid,
-            Signal signal,
-            double confidence,
-            Timeframe timeframe,
-            List<String> rationale,
-            List<String> risks,
-            String summaryKo,
-            String beginnerExplanation,
-            List<IndicatorInterpretation> indicatorInterpretation,
-            List<NewsImpact> newsImpact,
-            List<String> whatToWatch,
+            SignalPerspective shortTerm,
+            SignalPerspective longTerm,
             String reason,
             List<String> forbiddenDetected,
             Map<String, Object> rawMap
     ) {
-        public static Result valid(Signal s, double c, Timeframe tf, List<String> r, List<String> rk,
-                                   String sum,
-                                   String beginnerExplanation,
-                                   List<IndicatorInterpretation> indicatorInterpretation,
-                                   List<NewsImpact> newsImpact,
-                                   List<String> whatToWatch,
+        public static Result valid(SignalPerspective shortTerm, SignalPerspective longTerm,
                                    Map<String, Object> raw) {
-            return new Result(true, s, c, tf, r, rk, sum,
-                    beginnerExplanation, indicatorInterpretation, newsImpact, whatToWatch,
-                    null, List.of(), raw);
+            return new Result(true, shortTerm, longTerm, null, List.of(), raw);
         }
 
         public static Result invalid(String reason, List<String> hits, Map<String, Object> raw) {
-            return new Result(false, null, 0.0, null, List.of(), List.of(), null,
-                    null, null, null, null,
+            return new Result(false, null, null,
                     reason, hits == null ? List.of() : hits,
                     raw == null ? Collections.emptyMap() : raw);
         }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    private record RawDualSignal(
+            RawSignal short_term,
+            RawSignal long_term
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record RawSignal(
             String signal,
             Double confidence,
-            String timeframe,
             List<String> rationale,
             List<String> risks,
             String summary_ko,
@@ -240,16 +244,14 @@ public class ResponseValidator {
             List<RawIndicator> indicator_interpretation,
             List<RawNewsImpact> news_impact,
             List<String> what_to_watch
-    ) {
-    }
+    ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RawIndicator(
             String indicator,
             String value,
             String meaning_ko
-    ) {
-    }
+    ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RawNewsImpact(
@@ -257,6 +259,5 @@ public class ResponseValidator {
             String impact,
             String reason_ko,
             Integer hours_ago
-    ) {
-    }
+    ) {}
 }
