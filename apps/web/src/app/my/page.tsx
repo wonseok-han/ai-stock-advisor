@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { Suspense, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/auth-provider';
@@ -16,6 +16,40 @@ type Tab = 'bookmarks' | 'notifications' | 'account';
 const VALID_TABS: Tab[] = ['bookmarks', 'notifications', 'account'];
 
 export default function MyPage() {
+  return (
+    <Suspense fallback={<MyPageSkeleton />}>
+      <MyPageContent />
+    </Suspense>
+  );
+}
+
+function MyPageSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+      <div className="animate-pulse rounded-2xl bg-bg-skeleton p-6">
+        <div className="flex items-center gap-5">
+          <div className="h-16 w-16 shrink-0 rounded-full bg-bg-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-5 w-48 rounded bg-bg-muted" />
+            <div className="h-4 w-32 rounded bg-bg-muted" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex gap-4 border-b border-border pb-3">
+        <div className="h-4 w-16 animate-pulse rounded bg-bg-skeleton" />
+        <div className="h-4 w-12 animate-pulse rounded bg-bg-skeleton" />
+        <div className="h-4 w-12 animate-pulse rounded bg-bg-skeleton" />
+      </div>
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-bg-skeleton" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MyPageContent() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
