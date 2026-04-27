@@ -90,9 +90,24 @@ nowini/
 > **구조 확정:**
 > - **Monorepo** — 단일 repo, `apps/web` + `apps/api` 네이티브 빌드 (pnpm workspace / turbo / nx **도입 안 함**)
 > - **형상관리:** GitHub **Public** repo + **Trunk-based** (main 보호) + feature 브랜치 (`feat/<bkit-feature>`)
-> - **Git 워크플로:** `feat/*` → PR to `develop` (squash merge) → PR to `main` (merge). main 직접 커밋 금지.
 > - **개발 형태:** 1인 개발
-> - **Vercel** Root Directory = `apps/web`, **Fly.io / Oracle Cloud** = `apps/api/Dockerfile`
+> - **Vercel** Root Directory = `apps/web`, **Render** = `apps/api/Dockerfile`
+
+### Git 브랜치 워크플로 (필수 준수)
+
+```
+main (배포) ← develop (통합) ← feat/xxx (작업)
+```
+
+1. **작업 브랜치 생성**: 항상 `develop` 기준으로 생성 (`git checkout -b feat/xxx develop`)
+2. **PR 생성**: 항상 `--base develop` 으로 생성. **절대 main 대상 PR을 임의로 만들지 않는다.**
+3. **develop 머지**: squash merge
+4. **main 머지**: 사용자가 "main에 머지해", "배포하자" 등 **명시적으로 요청할 때만** develop → main PR 생성
+
+> **금지사항:**
+> - main 직접 커밋 금지
+> - 사용자 요청 없이 main 대상 PR 생성 금지
+> - 사용자 요청 없이 main에 머지/push 금지
 
 ---
 
