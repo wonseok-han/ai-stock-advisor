@@ -88,6 +88,7 @@ public class YahooFinanceClient {
     private final WebClient[] webClients;
     private final RedisCacheAdapter cache;
     private final String[] proxyUrls;
+    private final String[] chartHosts;
     private final AtomicInteger hostIndex = new AtomicInteger(0);
 
     private final ReentrantLock crumbLock = new ReentrantLock();
@@ -117,6 +118,7 @@ public class YahooFinanceClient {
     private YahooFinanceClient(String baseUrl, RedisCacheAdapter cache, String proxyUrlCsv) {
         this.cache = cache;
         this.proxyUrls = parseProxyUrls(proxyUrlCsv);
+        this.chartHosts = BASE_URL.equals(baseUrl) ? CHART_HOSTS : new String[]{baseUrl};
         if (proxyUrls.length > 0) {
             this.webClients = new WebClient[proxyUrls.length];
             for (int i = 0; i < proxyUrls.length; i++) {
@@ -202,7 +204,7 @@ public class YahooFinanceClient {
     }
 
     private String nextChartHost() {
-        return CHART_HOSTS[Math.abs(hostIndex.getAndIncrement()) % CHART_HOSTS.length];
+        return chartHosts[Math.abs(hostIndex.getAndIncrement()) % chartHosts.length];
     }
 
     /**

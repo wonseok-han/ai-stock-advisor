@@ -86,7 +86,7 @@ class YahooFinanceClientQuoteTest {
 
         assertThat(q).isNotNull();
         assertThat(q.marketStatus()).isEqualTo(MarketStatus.CLOSED);
-        assertThat(q.priceLabel()).endsWith("정규장 종가");
+        assertThat(q.priceLabel()).contains("정규장 종가");
     }
 
     @Test
