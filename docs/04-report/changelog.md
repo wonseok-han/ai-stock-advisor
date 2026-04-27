@@ -7,470 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.2] - 2026-04-22 - Yahoo Finance Migration (Data Source Diversification)
+## [0.2.0-beta] - 2026-04-27
 
-### 📊 Added - Multi-Source Fallback Strategy
+지금이니?! 리브랜딩 + 대규모 기능 확장. 133 files changed, +12,604 / -1,022 lines.
 
-- **YahooFinanceClient Intraday Support**
-  - New method: `fetchIntradayCandles(String ticker)`
-  - Endpoint: `/v8/finance/chart/{ticker}?interval=5m&range=1d` (free, no API key)
-  - Returns: 78 5-minute candles for current trading day
-  - Defensive parsing: null/empty checks, safe default (empty list) on failure
-  - Solves TwelveData 8 req/min rate limit bottleneck
+### Added
 
-- **CandleService Primary Source Switch**
-  - D1(intraday) flow: Yahoo Finance → TwelveData fallback
-  - New helper: `fetchIntradayWithFallback()` with logging
-  - Redis cache compatibility: 5-minute TTL unchanged
-  - Graceful degradation: Falls back to TwelveData on Yahoo failure
+- **지금이니?! (Nowini) 리브랜딩** — PR #27
+  - 로고·파비콘·브랜드명 전면 교체
+  - Light / Dark / Brand 3-테마 시스템 구축 및 전역 적용
+  - 테마 스위처 UI + CSS 토큰 체계화 (`bg-surface`, `fg-primary`, `border` 등)
 
-- **MarketOverviewService 3-Tier Fallback**
-  - Index & currency fallback chain: Finnhub → Yahoo Finance → TwelveData
-  - Symbols mapped: ^GSPC, ^IXIC, ^DJI, ^VIX for indices; USDKRW=X for FX
-  - New helper: `tryQuote(Supplier)` consolidates error handling (eliminates 3x try-catch duplication)
-  - Result: Graceful degradation when upstream sources unavailable
+- **AI 참고 분석 v2 고도화** — PR #26
+  - RAG 파이프라인 개선 (뉴스 + 기술 지표 통합 컨텍스트)
+  - 시그널 정합도 측정 인프라 (Match Rate 96%) — PR #25
 
-- **TimeFrame Enum Enhancement**
-  - New field: `yahooInterval` (format: "5m", "1d" vs TwelveData "5min", "1day")
-  - New method: `yahooInterval()` getter
-  - Legacy method preserved: `twelveDataInterval()` for fallback compatibility
+- **Yahoo Finance 마이그레이션** — PR #29
+  - YahooFinanceClient v8 chart API (인트라데이 5m 캔들, API key 불필요)
+  - CandleService: Yahoo Finance 1차 → TwelveData fallback
+  - MarketOverviewService: 3-tier fallback (Finnhub → Yahoo → TwelveData)
+  - TimeFrame enum `yahooInterval()` 추가
+  - TwelveData를 최후 fallback으로 다운그레이드
 
-- **TwelveDataClient Downgrade Strategy**
-  - Code & configuration fully preserved (no breaking changes)
-  - Usage downgraded: No longer primary source for candles/indices
-  - Role: Ultimate fallback when Yahoo/Finnhub unavailable
-  - Benefit: Conserves API quota for emergency use cases
+- **종목 상세 강화** — PR #30
+  - CompanyOverviewPanel: 시가총액, P/E, EPS, 52주 고저, 배당수익률
+  - YahooFinanceClient `quoteSummary` API 통합 (v10 crumb+cookie 인증)
+  - CompanyOverview 도메인 모델 + CompanyOverviewService
 
-### 🎯 Achieved Goals
+- **대시보드 확장** — PR #31
+  - 섹터 퍼포먼스 패널 (11개 GICS 섹터, FMP API)
+  - 매크로 지표 카테고리 (지수·통화·원자재·채권 분류)
+  - SectorPerformanceService + FmpClient 확장
 
-- **Rate Limit Relief**: TwelveData 8 req/min burden eliminated for daily operations
-- **API Redundancy**: 3-tier fallback ensures graceful degradation
-- **Zero Breaking Changes**: FE API contracts identical, backward compatible
-- **Code Quality**: 100% design match rate, 0 build errors, +122 lines / -51 lines
+- **애널리스트 평점·목표가** — PR #32
+  - RatingGauge: 컨센서스 등급 (Strong Buy ~ Strong Sell)
+  - PriceTargetBar: 목표가 범위 vs 현재가 시각화
+  - EarningsHistory: 분기별 실적 (예상 vs 실제, Beat/Miss 표시)
+  - AnalystEstimatesService + YahooFinanceClient `analystEstimates()`
 
-### 📊 Design Match Rate: 100%
+- **AI 시그널 UX 개선** — PR #34
+  - 이중관점 구조: 단기(1~5일) + 장기(1~3개월) 시그널 분리
+  - SignalGuide: "이 분석은 이렇게 읽으세요" 가이드
+  - ConfidenceTooltip: 확신도 지표 설명 툴팁
+  - 테마별 시그널 색상 보정
 
-- Plan vs Implementation: 37/37 items verified
-- Test Status: PASSED
-- Build Status: BUILD SUCCESSFUL
-- Issues Found: 0
+- **헤더 툴박스 + 플로팅 FAB + 스낵바**
+  - FloatingToolbox: 모바일 하단 FAB (북마크·알림 빠른접근)
+  - Snackbar 시스템: Zustand 기반 전역 토스트 알림
+  - 마이페이지 탭 리디자인 (북마크·알림·계정 섹션 개편)
 
-### 🔧 Implementation Details
+### Changed
 
-| Component | Change | Impact |
-|-----------|--------|--------|
-| YahooFinanceClient | +fetchIntradayCandles() | Enables 5m candle support |
-| CandleService | +fetchIntradayWithFallback() | Primary→fallback strategy |
-| MarketOverviewService | +tryQuote() helper | Eliminates code duplication |
-| TimeFrame enum | +yahooInterval() | Dual-API interval support |
-| TwelveDataClient | Preserved, downgraded | Fallback insurance |
+- **API 캐시 최적화** — PR #33
+  - 적응형 TTL: 장중(짧은 TTL) / 장외(긴 TTL) 자동 전환
+  - `MarketStatusResolver.durationUntilNextOpen()` 기반 캐시 만료 계산
+  - 2중 캐시: Redis L1 + 로컬 인메모리 L2 캐시 구조
 
-### 📝 Documentation
+- **Yahoo Finance 429 대응**
+  - quoteSummary per-ticker synchronized lock (cache stampede 방지)
+  - curlFetch 429 시 불필요한 proxy rotation 제거
+  - crumb Redis 영속화 수정 (`crumbRotated` 플래그로 evict 루프 방지)
+  - 지수 4개 fallback을 TwelveData 우선으로 변경하여 Yahoo 요청량 감소
 
-- **Plan**: `docs/01-plan/features/yahoo-migration.plan.md`
-- **Design**: `docs/02-design/features/yahoo-migration.design.md`
-- **Analysis**: `docs/03-analysis/yahoo-migration.analysis.md` (100% match rate)
-- **Report**: `docs/04-report/features/yahoo-migration.report.md` (completion)
+- **라이트모드 UI 폴리싱** — PR #35
+  - 에메랄드 톤 배경 체계 (브랜드 테마 그라데이션)
+  - 스켈레톤 로딩 토큰 분리 (테마별 독립 색상)
+  - 대시보드 카드 그룹화 + 간격 통일
+  - InfoTooltip, PanelLoading 공용 UI 컴포넌트 추가
 
-### 🚀 Next Steps
+- **CI forbidden-terms.yml**: accuracy-domain 스캔 제거 (면책 문구 오탐 방지)
+- **CLAUDE.md** 분리: `tech-stack.md`, `conventions.md`, `workflow.md`로 모듈화
 
-- Monitor Yahoo hit rate & TwelveData fallback frequency
-- Consider environment variable `YAHOO_API_ENABLED` for runtime toggle
-- Future: Replace Finnhub fallback with dedicated FX API for USDKRW
+### Fixed
 
----
+- `/my` 페이지 `useSearchParams` Suspense boundary 누락 → Vercel 빌드 실패 수정
+- MarketStatusResolver `priceLabel` KST 표기 호환성 테스트 수정
+- YahooFinanceClient MockWebServer 테스트 호환성 (`chartHosts` 인스턴스 필드)
 
-## [1.1.1] - 2026-04-20 - Notification Dedup Fix (Phase 4.5 Post)
+### Statistics
 
-### 🔧 Fixed - Notification Spam Prevention
-
-- **Duplicate Notification Prevention**
-  - Hysteresis + cooldown mechanism for price change alerts
-  - State-based approach: detects state transitions (not absolute values)
-  - Resets threshold: 60% of trigger threshold to prevent boundary flapping
-  - Cooldown period: 4 hours between re-notifications for same condition
-  - Result: From 20+ daily repeat sends to ≤2 per trigger event
-
-- **Core Implementation**
-  - `NotificationDedupPolicy.java`: Pure function decision logic (DB-free, TDD-ready)
-  - State machine: 5 Actions (SEND, SKIP_NO_TRANSITION, SKIP_COOLDOWN, RESET_ONLY, NOOP)
-  - `PushService.sendToUser()`: Return type changed void → boolean for retry safety
-  - DB schema: `notification_settings` table + 2 new columns (`last_notified_at`, `last_triggered_above`)
-  - Configuration: `app.notification.dedup.reset-ratio`, `app.notification.dedup.cooldown` (yml driven)
-
-- **Quality Metrics**
-  - Match Rate: 100%
-  - Test Cases: 14 (9 Policy scenarios T1~T9 + 5 Entity tests U1~U5)
-  - Build Status: `./gradlew check` BUILD SUCCESSFUL
-  - Gaps Found: 0
-
-- **Database Migration**
-  - Flyway V10: ADD COLUMN `last_notified_at` (TIMESTAMPTZ, nullable)
-  - Flyway V10: ADD COLUMN `last_triggered_above` (BOOLEAN NOT NULL DEFAULT false)
-  - Backward compatible: Existing records initialized to (NULL, false)
-
-### 📝 Documentation
-
-- **Plan**: `docs/01-plan/features/notification-dedup.plan.md`
-- **Design**: `docs/02-design/features/notification-dedup.design.md`
-- **Analysis**: `docs/03-analysis/notification-dedup.analysis.md` (100% match rate)
-- **Report**: `docs/04-report/notification-dedup.report.md` (completion)
+| 항목 | 수치 |
+|------|------|
+| 변경 파일 | 133 |
+| 추가 라인 | +12,604 |
+| 삭제 라인 | -1,022 |
+| 머지된 PR | #25 ~ #38 (14개) |
+| PDCA 아카이브 | 7개 기능 완료 |
 
 ---
 
-## [1.1.0] - 2026-04-17 - Phase 4.5 Complete (Data Layer + UX Improvements)
-
-### 📊 Added - Candle Data Layer & Infrastructure
-
-- **Candle Database Layer (on-demand)**
-  - Flyway V8: `candles` table (ticker, trade_date, OHLCV, adj_close, volume)
-  - CandleEntity + CandleId (composite key) + CandleRepository
-  - YahooFinanceClient: Yahoo Finance v8 REST API (free, no API key)
-  - On-demand loading: DB-first → Yahoo fallback → async persist
-  - Partial data detection: triggers reload if entities < 50% of expected
-
-- **Daily Candle Batch Scheduler**
-  - Scheduled job: MON-FRI 22:00 UTC (EST 17:00, after market close)
-  - Auto-syncs open tickers with fresh daily candles
-  - INSERT ON CONFLICT DO NOTHING (prevents duplicates)
-
-- **Rate Limiter (Token Bucket)**
-  - IP-based, custom Token Bucket implementation (no Bucket4j)
-  - Default: 60 req/min capacity, 60 tokens/min refill
-  - Returns 429 when limit exceeded
-  - Public chain filter: protects `/api/v1/**` endpoints
-
-### 🎨 Added - My Page Redesign & Notifications
-
-- **My Page Components**
-  - ProfileSection: Avatar (initials) + email + join date
-  - BookmarkGrid + BookmarkCard: Card grid layout with price/change%
-  - NotificationSection: Global push toggle + per-stock settings
-  - AccountSection: Logout + delete account buttons
-  - DeleteAccountModal: Reason input + 2-year retention notice
-
-- **Stock Detail Notifications**
-  - NotificationButton: Bell icon in stock header (beside bookmark)
-  - NotificationSettingModal: Price threshold ± %, news alerts, signal changes
-  - Auto-bookmark: Non-bookmarked stocks auto-added when setting notifications
-  - Notification delete: Available from both My page and stock detail
-
-- **Chart Improvements**
-  - Volume histogram subchart (colored: green up, red down)
-  - `timeVisible` conditional: Only for 1D (intraday) timeframe
-  - 1W timeframe: Changed from 30-min × 70 to 1-day × 5 (last 5 trading days)
-  - 1M/3M/1Y: DB-backed daily candles (abundant data)
-  - 5Y: Weekly aggregation from daily DB candles
-
-### 🔐 Added - Account Management & Privacy
-
-- **Account Deletion (Soft Delete)**
-  - Flyway V9: `deleted_accounts` table
-  - AccountService: `deleteAccount(userId)` with 2-year retention
-  - AuthController: `DELETE /api/v1/me`
-  - Local data cleanup: Bookmarks, notifications, push subscriptions
-  - Supabase Auth ban: Prevents re-signup attempt
-  - Reactivation: `POST /api/v1/auth/reactivate` on re-signup (unbans + deletes record)
-
-- **Privacy Policy Updates**
-  - Data collection items: email, bookmarks, notifications, push subscription
-  - Retention period: 2 years after account deletion
-  - Reactivation procedure: Re-signup allowed after 2-year cooling-off
-  - AI disclaimer: Service is for reference only, not investment advice
-
-### 🐛 Fixed - Residual Gaps from Phase 1~4
-
-- **SearchHit.exchange**: FE type now nullable (matches BE Record)
-- **Quote.volume**: TwelveData volume field added to response
-- **MarketMover.volume**: FE hides when 0 (FMP API limitation)
-- **usdKrwChange**: `previousClose` fallback when `change` is null/zero
-- **204 No Content**: apiFetch now handles empty responses
-- **ESLint set-state-in-effect**: Fixed in NotificationModal + AuthProvider
-- **Cursor pointer**: Applied to all buttons (17 FE files)
-- **kebab-case files**: Normalized all FE file names (router.replace → useEffect fix)
-
-### 🔧 Changed
-
-- **TimeFrame enum**: `Duration` → `long lookbackDays` (LocalDate compatibility fix)
-- **CandleService**: DB-first logic replaces TwelveData-first for daily+ timeframes
-- **1Y/5Y data**: TwelveData weekly API replaced with DB daily + aggregation
-- **FE components**: File naming standardized to kebab-case (except Next.js reserved files)
-- **Auth design doc**: Documented two-chain + ES256+RS256 implementation differences
-
-### 📝 Documentation
-
-- **Plan**: `docs/01-plan/features/phase4.5-improvements.plan.md` (10 FR + 6 NFR)
-- **Design**: `docs/02-design/features/phase4.5-improvements.design.md` (14 steps)
-- **Analysis**: `docs/03-analysis/phase4.5-improvements.analysis.md` (96.4% match rate)
-- **Report**: `docs/04-report/features/phase4.5-improvements.report.md` (completion)
-
----
-
-## [1.0.0] - 2026-04-17 - Phase 4 Complete
-
-### 🔐 Added - Authentication & Personalization
-
-- **Supabase Auth Integration**
-  - Email/password signup and login
-  - Google OAuth authentication (via Supabase)
-  - JWT token management (access + refresh tokens)
-  - OAuth callback with server-side code exchange
-  
-- **Spring Security Configuration**
-  - JWT Resource Server with Supabase JWKS validation
-  - Two-chain SecurityFilterChain for public/protected APIs
-  - Support for RS256 and ES256 JWT algorithms
-  - Automatic JWT extraction from Authorization header
-
-- **User Authentication API**
-  - `GET /api/v1/me` — Current user info (id, email)
-  - JWT validation and refresh token flow
-  - 401/403 error handling
-
-- **Bookmark Feature (Phase 4.1)**
-  - `POST /api/v1/bookmarks` — Add bookmark
-  - `DELETE /api/v1/bookmarks/{ticker}` — Remove bookmark
-  - `GET /api/v1/bookmarks` — List bookmarks with price snapshot
-  - `GET /api/v1/bookmarks/check/{ticker}` — Check if bookmarked
-  - Optimistic UI updates in FE
-  - BookmarkButton component (toggle UI)
-  - BookmarkList component (my page display)
-  - `use-bookmarks` React Query hook
-
-- **Web Push Notifications (Phase 4.2)**
-  - VAPID-based Web Push subscription
-  - `POST /api/v1/push/subscribe` — Subscribe to push
-  - `DELETE /api/v1/push/unsubscribe` — Unsubscribe from push
-  - `GET /api/v1/push/vapid-key` — Get VAPID public key (secure endpoint)
-  - Service Worker for push event handling
-  - NotificationSettings UI for per-stock conditions
-  - Condition types: price change ±%, new news, signal change
-  - `@Scheduled` background job: 15-min interval checker
-
-- **Notification Management API**
-  - `GET /api/v1/notifications/settings` — List notification rules
-  - `PUT /api/v1/notifications/settings/{ticker}` — Update rule
-  - Per-stock notification conditions (price, news, signal)
-
-- **FE Authentication Components**
-  - AuthProvider (Supabase context)
-  - LoginForm, SignupForm, SocialLogin
-  - UserMenu (header dropdown)
-  - AuthGuardModal (non-blocking auth prompt)
-  - `use-auth` hook
-  - JWT auto-attach to API requests
-  - 401 interceptor with refresh token retry
-
-- **Pages**
-  - `/auth/login` — Email/password login
-  - `/auth/signup` — Email/password registration
-  - `/auth/callback` — OAuth redirect handler
-  - `/my` — My page (bookmarks + notification settings)
-
-- **Database Migrations**
-  - `V6__auth_bookmarks.sql` — bookmarks table (user_id, ticker)
-  - `V7__notification.sql` — push_subscriptions, notification_settings tables
-  - Indexes for user_id and (user_id, ticker) queries
-
-### 🔄 Changed
-
-- **SecurityFilterChain Architecture**
-  - Migrated from single-chain to two-chain (@Order 1, 2)
-  - Chain 1 (public): `/api/v1/stocks/**`, `/api/v1/market/**` → permitAll()
-  - Chain 2 (protected): `/api/v1/me`, `/api/v1/bookmarks/**`, `/api/v1/push/**`, `/api/v1/notifications/**` → authenticated()
-  - **Benefit**: No JWT JWKS validation overhead on public APIs
-
-- **JWT Algorithm Support**
-  - Added ES256 support (Supabase Auth v2 uses this by default)
-  - Kept RS256 fallback for compatibility
-
-- **VAPID Key Management**
-  - Moved from FE environment variable to BE-only storage
-  - Created `GET /api/v1/push/vapid-key` API endpoint
-  - **Benefit**: Public key not exposed in build artifacts
-
-- **API Response Types**
-  - BookmarkResponse: `price` as BigDecimal (financial precision)
-  - NotificationSettingResponse: Enhanced with full settings
-
-### 🐛 Fixed
-
-- **Public API 401 Errors**
-  - Root cause: Single SecurityFilterChain tried to validate JWT on all APIs
-  - Fix: Two-chain separation → public APIs skip JWT validation
-  - Commit: 8417156
-
-- **Hibernate Data Loss on Restart**
-  - Root cause: ddl-auto=create-drop losing data on DB restart
-  - Fix: Changed to ddl-auto=validate mode
-  - Commit: 8710603
-
-- **Supabase Bulk Insert Timeout**
-  - Root cause: Batch size too large during symbol sync
-  - Fix: Optimized batch insert size (1000 records per batch)
-  - Commit: 8710603
-
-- **CORS on Protected Endpoints**
-  - Root cause: CORS config didn't apply to protected chain
-  - Fix: WebCorsConfig bean added with allowCredentials(true)
-  - Commit: 7532540
-
-- **API Path Prefix Duplication**
-  - Root cause: `/api/v1` prefix in both base path and endpoint
-  - Fix: Removed duplication, standardized to `/api/v1/**`
-  - Commit: 7532540
-
-- **OAuth Callback Security**
-  - Root cause: Using page.tsx with client-side code exchange
-  - Fix: Migrated to route.ts (API route) with server-side code exchange
-  - Benefit: Prevents token exposure on client
-
-- **Bookmark List Path**
-  - Root cause: Link pointed to `/stocks` instead of `/stock`
-  - Fix: Corrected path to `/stock`
-  - Commit: 3373c79
-
-### 🔒 Security
-
-- Implemented two-chain SecurityFilterChain for defense-in-depth
-- VAPID public key served via secure API endpoint (not exposed in env)
-- Server-side OAuth code exchange (XSS prevention)
-- CORS origin whitelist configured
-- JWT signature validation with Supabase JWKS endpoint
-- No password storage (delegated to Supabase)
-
-### 📊 Test Coverage
-
-- Integration tests for JWT validation and 401/403 responses
-- Bookmark CRUD API tests (with PostgreSQL Testcontainers)
-- NotificationCheckService @Scheduled task tests
-- Manual E2E testing: login → bookmark → push notification
-
-### 📝 Documentation
-
-- **Plan**: `docs/01-plan/features/auth.plan.md` (12 FR + 6 NFR)
-- **Design**: `docs/02-design/features/auth.design.md` (comprehensive architecture)
-- **Analysis**: `docs/03-analysis/auth.analysis.md` (95% match rate)
-- **Report**: `docs/04-report/auth.report.md` (completion report)
-
----
-
-## Metrics Summary
-
-### Implementation Statistics
-- **Total Commits**: 8
-- **Files Changed**: 75
-- **Lines Added**: +3,424
-- **Lines Removed**: -50
-- **Net Change**: +3,374
-
-### Code Quality
-- **Design Match Rate**: 95% ✅
-- **Convention Compliance**: 97% ✅
-- **Lint Errors**: 0 ✅
-- **Security Issues**: 0 Critical ✅
-
-### Performance
-- JWT decode: ~2ms (via cached JWKS)
-- Bookmark CRUD: ~50ms avg
-- API response: <100ms (design target met)
-
-### Coverage
-- BE Endpoints: 9/9 implemented
-- FE Components: 7/7 implemented
-- FE Hooks: 4/4 implemented
-- FE Pages: 4/4 implemented
-- DB Migrations: 2/2 implemented
-
----
-
-## Architecture Improvements
-
-### Two-Chain SecurityFilterChain
-```java
-// Before: Single chain with requestMatchers
-.authorizeHttpRequests(auth -> auth
-    .requestMatchers("/api/v1/stocks/**").permitAll()
-    .requestMatchers("/api/v1/bookmarks/**").authenticated()
-    // Problem: JWT validation attempted on all endpoints
-)
-
-// After: Two separate chains
-@Bean @Order(1)
-SecurityFilterChain publicFilterChain(...) { 
-    // /api/v1/stocks/**, /api/v1/market/** → permitAll()
-    // No JWT validation
-}
-
-@Bean @Order(2)
-SecurityFilterChain protectedFilterChain(...) {
-    // /api/v1/bookmarks/**, /api/v1/push/**, etc. → authenticated()
-    // JWT validation via JWKS
-}
-```
-
-**Benefit**: Public API requests skip expensive JWT JWKS validation
-
-### Intentional Design Improvements
-
-| Item | Design | Implementation | Reason |
-|------|--------|----------------|--------|
-| Chain Strategy | Single | Two-chain | Performance |
-| JWT Algorithms | RS256 only | ES256 + RS256 | Compatibility |
-| OAuth Callback | page.tsx | route.ts | Security |
-| VAPID Scope | Env vars | API endpoint | FE Security |
-| AuthGuard | Redirect | Modal | UX |
-| Price Type | double | BigDecimal | Precision |
-
----
-
-## Breaking Changes
-
-None. Phase 4 is additive:
-- All existing APIs (`/api/v1/stocks/**`, `/api/v1/market/**`) remain unchanged
-- Non-authenticated users can still use public endpoints
-- Protected endpoints are new, don't affect existing code
-
----
-
-## Migration Guide
-
-### For Users (Upgrade from Phase 3)
-
-1. **No breaking changes** — existing features work as before
-2. **New login option**: Visit `/auth/login` or `/auth/signup`
-3. **New features**:
-   - Bookmark stocks: Click ★ on stock detail page
-   - My page: View your bookmarks at `/my`
-   - Notifications: Set conditions in My page → Notifications
-
-### For Developers
-
-1. **Environment Variables**: Add `NEXT_PUBLIC_SUPABASE_*` and `SUPABASE_JWT_SECRET`
-2. **Protected Endpoints**: Use `@Authenticated` principal parameter
-3. **FE Auth**: Use `useAuth()` hook to check login status
-4. **API Calls**: JWT auto-attached by fetch interceptor
-
----
-
-## Upcoming in Phase 5
-
-- [ ] Portfolio simulation (virtual trading)
-- [ ] AI-powered personalized recommendations
-- [ ] Portfolio performance tracking
-- [ ] Manual trade logging
-- [ ] Additional OAuth providers (Apple, GitHub)
-- [ ] FCM support for mobile
-- [ ] Advanced notification filters
-
----
-
-## Known Issues / Limitations
-
-- Web Push in Safari requires 17.0+ (earlier versions not supported)
-- VAPID key rotation requires BE deployment
-- Notification checker runs every 15 min (not real-time)
-- 50K MAU free tier on Supabase Auth (escalate plan if exceeded)
+## [0.1.0] - 2026-04-20
+
+최초 베타 릴리즈. 인증·북마크·알림·캔들 DB·마이페이지·계정관리 완성.
+
+### Added — Authentication & Personalization
+
+- **Supabase Auth 통합**
+  - 이메일/비밀번호 로그인·회원가입 + Google OAuth
+  - JWT 토큰 관리 (access + refresh)
+  - Spring Security JWT Resource Server (RS256 + ES256)
+  - Two-chain SecurityFilterChain (public/protected 분리)
+
+- **북마크** — `POST/DELETE/GET /api/v1/bookmarks`
+  - Optimistic UI + BookmarkButton 토글
+  - 마이페이지 BookmarkGrid 카드 레이아웃
+
+- **Web Push 알림**
+  - VAPID 기반 구독 (`/api/v1/push/subscribe`)
+  - 종목별 조건 설정 (가격 변동 ±%, 뉴스, 시그널)
+  - `@Scheduled` 15분 주기 체크 + 알림 발송
+  - Notification dedup: Hysteresis + 4시간 cooldown (스팸 방지)
+
+- **마이페이지 & 계정관리**
+  - ProfileSection, BookmarkGrid, NotificationSection, AccountSection
+  - 계정 삭제 (Soft Delete, 2년 보관, Supabase Auth ban)
+  - 재활성화: `POST /api/v1/auth/reactivate`
+
+### Added — Data Layer & Charts
+
+- **Candle DB (on-demand)**
+  - `candles` 테이블 (Flyway V8) + Yahoo Finance v8 API
+  - DB-first → Yahoo fallback → async persist
+  - 일봉 배치 스케줄러 (MON-FRI 22:00 UTC)
+
+- **차트 개선**
+  - 볼륨 히스토그램 (green up / red down)
+  - 1W: 일봉 × 5일, 1M/3M/1Y: DB 일봉, 5Y: 주간 집계
+
+- **Rate Limiter** — IP 기반 Token Bucket (60 req/min)
+
+### Fixed
+
+- Public API 401 오류 → Two-chain 분리로 해결
+- Hibernate `ddl-auto=create-drop` → `validate` 전환 (데이터 유실 방지)
+- Supabase Bulk Insert timeout → 배치 1000건 분할
+- CORS protected endpoint 미적용 → WebCorsConfig bean
+- OAuth callback client-side → server-side code exchange (보안)
+- Notification 중복 발송 → Hysteresis + cooldown 메커니즘
+
+### Security
+
+- Two-chain SecurityFilterChain (public API는 JWT 검증 건너뜀)
+- VAPID key → BE API endpoint 제공 (FE env 노출 방지)
+- Server-side OAuth code exchange (XSS 방지)
+- CORS origin whitelist + JWT JWKS 서명 검증
+
+### Database Migrations
+
+- V6: `bookmarks` (user_id, ticker)
+- V7: `push_subscriptions`, `notification_settings`
+- V8: `candles` (ticker, trade_date, OHLCV)
+- V9: `deleted_accounts`
+- V10: `notification_settings` + `last_notified_at`, `last_triggered_above`
 
 ---
 
