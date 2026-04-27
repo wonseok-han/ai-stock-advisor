@@ -40,16 +40,17 @@ pnpm dev                            # http://localhost:3000
 
 ```bash
 # API 연결
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
 
-# Supabase (anon 키만 브라우저 노출 — service-role 키는 BE 전용)
+# 사이트 URL
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Supabase (publishable 키만 브라우저 노출 — service-role 키는 BE 전용)
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 
 # 웹 푸시 (VAPID 공개 키만 브라우저에 필요)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=<base64url-encoded-public-key>
-
-# Vercel Analytics (선택)
 ```
 
 ## 디렉토리 구조

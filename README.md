@@ -8,34 +8,37 @@
 
 ## 주요 기능
 
-- 티커/종목명 입력 → 차트·뉴스·기술적 지표를 종합해 AI 시그널 제공 (매수/중립/매도 참고용)
-- TradingView Lightweight Charts 기반 캔들 + 보조지표(MACD / Bollinger / RSI)
-- 종목별 최신 뉴스 LLM 번역·요약 (Gemini 2.5 Flash)
-- 시장 대시보드: 주요 지수, VIX, USD/KRW, 시장 뉴스
-- 계정(Supabase Auth), 북마크, 웹 푸시 알림(뉴스 기반 포함)
-- 베타 피드백 채널 (`/feedback`)
+- **AI 시그널**: 차트·뉴스·기술 지표를 종합한 단기/장기 이중관점 참고 분석 (매수/중립/매도)
+- **차트**: TradingView Lightweight Charts 기반 캔들 + 보조지표 (MACD / Bollinger / RSI)
+- **뉴스**: 종목별 최신 뉴스 LLM 번역·요약 (Gemini 2.5 Flash)
+- **시장 대시보드**: 주요 지수 (S&P500, Nasdaq, Dow, VIX), USD/KRW, 섹터 퍼포먼스, 매크로 지표
+- **종목 상세**: 기업 정보, 시가총액, P/E, EPS, 52주 고저, 애널리스트 평점·목표가, 분기 실적
+- **인증**: Supabase Auth (이메일/비밀번호 + Google OAuth)
+- **북마크 & 알림**: 종목별 조건 설정 (가격 변동 %, 뉴스, 시그널) + Web Push
+- **피드백**: `/feedback` 페이지 → DB 저장 + Resend 이메일 알림
+- **3-테마 시스템**: Light / Dark / Brand (에메랄드)
 
 ## 아키텍처
 
-Monorepo (pnpm workspace / turbo / nx 미도입, 단순 `apps/*` 네이티브 빌드).
+Monorepo — 단일 repo, `apps/web` + `apps/api` 네이티브 빌드 (pnpm workspace / turbo / nx 미도입).
 
 ```
 nowini/
 ├── apps/
-│   ├── web/          Next.js 16 (App Router) + React 19 + Tailwind 4
-│   └── api/          Spring Boot 3.5 (Java 21, 가상 스레드)
+│   ├── web/               Next.js 16 (App Router) + React 19 + Tailwind 4
+│   └── api/               Spring Boot 3.5.13 (Java 21, 가상 스레드)
 ├── docs/
-│   ├── planning/     초기 기획 고정본 (01-overview ~ 07-legal-compliance)
-│   ├── 01-plan/      bkit PDCA: 기능별 Plan
-│   ├── 02-design/    bkit PDCA: 기능별 Design
-│   ├── 03-analysis/  bkit PDCA: Gap Analysis
-│   ├── 04-report/    bkit PDCA: 완료 리포트
-│   └── archive/      완료된 기능 PDCA 히스토리
+│   ├── planning/          초기 기획 고정본 (01-overview ~ 07-legal-compliance)
+│   ├── 01-plan/           bkit PDCA: 기능별 Plan
+│   ├── 02-design/         bkit PDCA: 기능별 Design
+│   ├── 03-analysis/       bkit PDCA: Gap Analysis
+│   ├── 04-report/         bkit PDCA: 완료 리포트 + Changelog
+│   └── archive/           완료된 기능 PDCA 히스토리
 ├── .github/workflows/
-│   ├── ci.yml              Web typecheck/lint/build + API check + Forbidden-terms
-│   └── forbidden-terms.yml 4단계 가드 중 Level 4 (투자 자문 표현 방지)
-├── Makefile          FE + BE 통합 실행 (cd 래퍼)
-└── bkit.config.json  bkit Level: Dynamic
+│   ├── ci.yml             Web typecheck/lint/build + API check
+│   └── forbidden-terms.yml  투자 자문 표현 방지 가드
+├── Makefile               FE + BE 통합 실행 (cd 래퍼)
+└── bkit.config.json       bkit Level: Dynamic
 ```
 
 ### 기술 스택
@@ -45,18 +48,29 @@ nowini/
 | Frontend | Next.js 16 (App Router, TypeScript) + React 19 + Tailwind 4 |
 | FE State | React Query (서버) + Zustand (클라) |
 | Chart | TradingView Lightweight Charts |
-| Backend | Spring Boot 3.5 / Java 21 |
+| Backend | Spring Boot 3.5.13 / Java 21 (가상 스레드) |
 | Build | Gradle (Kotlin DSL) |
 | DB | PostgreSQL — Supabase |
 | Cache | Redis — Upstash |
 | Migration | Flyway |
-| Auth | Supabase Auth + Spring Security JWT Resource Server |
+| Auth | Supabase Auth (발급) + Spring Security JWT Resource Server (검증) |
 | AI | Google Gemini 2.5 Flash (RAG) |
-| Tech Indicators | ta4j |
+| Tech Indicators | ta4j (MACD / Bollinger / RSI) |
+| Data Sources | Yahoo Finance (1차) + Finnhub + TwelveData (fallback) + FMP |
+| Email | Resend (피드백 알림) |
+| Push | Web Push (VAPID) |
+| Monitoring | Actuator + Micrometer + Prometheus |
 | Deploy (FE) | Vercel |
-| Deploy (BE) | Fly.io or Oracle Cloud Free Tier (ARM) |
+| Deploy (BE) | Render |
 
-자세한 배경은 [`docs/planning/03-architecture.md`](docs/planning/03-architecture.md).
+### 데이터 소스 Fallback 체인
+
+| 데이터 | 1차 | 2차 | 3차 |
+|---|---|---|---|
+| 시세 (Quote) | Finnhub | Yahoo Finance | TwelveData |
+| 인트라데이 캔들 | Yahoo Finance (5m) | TwelveData (5min) | — |
+| 일봉 (DB-backed) | DB (candles 테이블) | Yahoo Finance (on-demand) | — |
+| 뉴스 | Finnhub | — | — |
 
 ## 빠른 시작
 
@@ -76,7 +90,8 @@ make install            # FE 의존성 + BE 툴체인 확인
 
 ```bash
 make infra-up           # 로컬 Postgres + Redis 컨테이너 기동
-cp apps/api/application.example.yml apps/api/.env.local  # 또는 .env.local 에 키 직접 작성
+cp apps/api/.env.example apps/api/.env.local   # API 키 설정
+cp apps/web/.env.example apps/web/.env.local   # FE 환경변수 설정
 make dev                # FE(:3000) + BE(:8080) 동시 기동
 ```
 
@@ -85,43 +100,62 @@ make dev                # FE(:3000) + BE(:8080) 동시 기동
 ### 검증
 
 ```bash
-make check              # FE typecheck/lint + BE check (CI 와 동등)
+make check              # FE typecheck/lint + BE check (CI 동등)
 make test               # FE + BE 테스트
 ```
 
-세부 명령은 각 앱 README 참조:
-
-- [apps/web/README.md](apps/web/README.md) — 프론트엔드
-- [apps/api/README.md](apps/api/README.md) — 백엔드
-
 ## 환경 변수
 
-| Prefix | Scope | 예시 |
-|---|---|---|
-| `NEXT_PUBLIC_` | 브라우저 노출 | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` |
-| `SUPABASE_` | 서버 전용 | `SUPABASE_SERVICE_ROLE_KEY` |
-| `GEMINI_` | 서버 전용 | `GEMINI_API_KEY` |
-| `REDIS_` / `UPSTASH_` | 서버 전용 | `UPSTASH_REDIS_REST_URL` |
-| `FINNHUB_` / `ALPHAVANTAGE_` / `TWELVE_DATA_` / `FMP_` | 서버 전용 | `FINNHUB_API_KEY` |
-| `VAPID_` | 서버 전용 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` |
+### Frontend (`apps/web/.env.local`)
 
-FE: `apps/web/.env.local`, BE: `apps/api/.env.local` (Makefile `api-dev`가 자동 source).
+| 변수 | 설명 |
+|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | API 엔드포인트 (기본: `http://localhost:8080/api/v1`) |
+| `NEXT_PUBLIC_SITE_URL` | 사이트 URL (기본: `http://localhost:3000`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase anon key |
+
+### Backend (`apps/api/.env.local`)
+
+| 변수 | 설명 |
+|---|---|
+| `DATABASE_URL` | PostgreSQL 접속 URL |
+| `REDIS_URL` | Redis 접속 URL |
+| `FINNHUB_API_KEY` | Finnhub API 키 (시세/뉴스) |
+| `TWELVE_DATA_API_KEY` | TwelveData API 키 (fallback 캔들) |
+| `FMP_API_KEY` | Financial Modeling Prep API 키 (섹터/movers) |
+| `GEMINI_API_KEY` | Google Gemini API 키 (AI 분석) |
+| `SUPABASE_URL` | Supabase 프로젝트 URL (JWT 검증) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push VAPID 키 |
+| `RESEND_API_KEY` | Resend API 키 (피드백 이메일) |
+| `CONTACT_EMAIL` | 피드백 수신 이메일 |
+
+전체 목록: [`apps/api/.env.example`](apps/api/.env.example), [`apps/web/.env.example`](apps/web/.env.example)
 
 ## 개발 프로세스
 
-- Trunk-based — `main` 보호, `develop` 에서 기능 통합
-- 기능 브랜치: `feat/<feature>` → PR (squash merge)
-- 릴리스: `develop` → `main` PR (일반 merge)
+### Git 워크플로
+
+```
+main (배포) ← develop (통합) ← feat/xxx (작업)
+```
+
+- 기능 브랜치: `feat/<feature>` → PR to `develop` (squash merge)
+- 릴리즈: `develop` → `main` PR (일반 merge)
 - PDCA 사이클 (bkit): Plan → Design → Do → Analyze → Report → Archive
 
-자세한 개발 가이드 / 컨벤션은 [`CLAUDE.md`](CLAUDE.md).
+### 릴리즈
+
+- `docs/04-report/changelog.md`에 릴리즈 노트 작성 후 GitHub Release 생성
+- 시맨틱 버전: `v{major}.{minor}.{patch}-beta`
 
 ## 문서
 
 | 종류 | 경로 |
 |---|---|
 | 기획 고정본 | [`docs/planning/`](docs/planning/) |
-| 진행 중 PDCA | `docs/01-plan/` / `docs/02-design/` / `docs/03-analysis/` / `docs/04-report/` |
+| 진행 중 PDCA | `docs/01-plan/` ~ `docs/04-report/` |
+| Changelog | [`docs/04-report/changelog.md`](docs/04-report/changelog.md) |
 | 완료 아카이브 | [`docs/archive/`](docs/archive/) |
 
 ## 법적 고지
@@ -129,3 +163,7 @@ FE: `apps/web/.env.local`, BE: `apps/api/.env.local` (Makefile `api-dev`가 자�
 - 이용약관: `/legal/terms`
 - 개인정보처리방침: `/legal/privacy`
 - 면책 원칙: [`docs/planning/07-legal-compliance.md`](docs/planning/07-legal-compliance.md)
+
+## License
+
+Proprietary — 지금이니?! (Nowini)

@@ -1,6 +1,6 @@
 # apps/api — 지금이니?! Backend
 
-Spring Boot 3.5 / Java 21 / Gradle (Kotlin DSL). 가상 스레드 + WebFlux(외부 API 전용) 혼합.
+Spring Boot 3.5.13 / Java 21 / Gradle (Kotlin DSL). 가상 스레드 + WebFlux(외부 API 전용) 혼합.
 
 > 루트 개요: [`../../README.md`](../../README.md) · 프로젝트 규칙: [`../../CLAUDE.md`](../../CLAUDE.md)
 
@@ -64,6 +64,7 @@ Makefile 의 `api-dev` 타깃이 `.env.local` 을 자동 source 합니다.
 | 시세 API | `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, `FMP_API_KEY`, `ALPHAVANTAGE_API_KEY` | 시세·뉴스·펀더멘털 |
 | CORS | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` 외에 프로덕션 FE origin 추가 |
 | 웹 푸시 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push (mailto 포함) |
+| 이메일 | `RESEND_API_KEY`, `CONTACT_EMAIL` | 피드백 이메일 알림 (Resend) |
 | 알림 튜닝 | `NOTIFICATION_DEDUP_RESET_RATIO`, `NOTIFICATION_DEDUP_COOLDOWN` | 히스테리시스 + 쿨다운 |
 | 캐시 TTL | `NEWS_CACHE_TTL_HOURS`, `AI_SIGNAL_CACHE_TTL_MINUTES` | Redis TTL |
 | 레이트 리밋 | `AI_SIGNAL_RATE_LIMIT_RPM` | AI 시그널 분당 호출 상한 |
@@ -84,6 +85,7 @@ com.aistockadvisor/
 ├── legal/         투자 자문 금지어 가드 (4-level guard: forbidden-terms.json)
 ├── market/        시장 대시보드 (지수, VIX, FX, 뉴스)
 ├── news/          뉴스 수집·번역·캐시
+├── feedback/      피드백 CRUD + Resend 이메일 알림
 ├── notification/  Web Push + 알림 중복 제거 (dedup + news)
 └── stock/         시세(Yahoo primary / Finnhub fallback) + 지표(ta4j) + 시장 상태
 ```
@@ -120,7 +122,7 @@ com.aistockadvisor/
 
 ## 배포
 
-- **플랫폼**: Fly.io 또는 Oracle Cloud Free Tier (ARM) — [`Dockerfile`](Dockerfile) 기반
+- **플랫폼**: Render — [`Dockerfile`](Dockerfile) 기반
 - **DB**: Supabase (PostgreSQL). Flyway 가 기동 시 자동 적용
 - **Cache**: Upstash Redis (TLS)
 - **관측**: Actuator `/actuator/health`, `/actuator/prometheus`
