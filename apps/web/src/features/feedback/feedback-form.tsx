@@ -4,24 +4,17 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/features/auth/auth-provider';
-import { createClient } from '@/lib/supabase/client';
+import { apiFetch } from '@/lib/api/client';
 
 import {
   FEEDBACK_COOLDOWN_KEY,
   FEEDBACK_LIMITS,
   FEEDBACK_TYPE_LABELS,
-  type FeedbackInsert,
   type FeedbackType,
 } from './types';
 
 type Status = 'idle' | 'loading' | 'sent' | 'error';
 
-/**
- * 피드백 제출 폼.
- * 유형/제목/본문/이메일 입력 → Supabase `feedback` 테이블 INSERT.
- * 로그인 시 user_id + email 자동 주입, 비로그인 시 email 수기 입력.
- * 허니팟 + 60초 쿨다운 + 길이 제한으로 스팸 방어.
- */
 export function FeedbackForm() {
   const { user } = useAuth();
   const [type, setType] = useState<FeedbackType>('bug');
@@ -75,33 +68,28 @@ export function FeedbackForm() {
     }
 
     setStatus('loading');
-    const supabase = createClient();
-    if (!supabase) {
-      setErrorMessage('피드백 서비스가 일시적으로 사용 불가능합니다.');
+
+    try {
+      await apiFetch('/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id ?? null,
+          type,
+          subject: subject.trim(),
+          body: body.trim(),
+          email: email.trim(),
+          url: typeof window !== 'undefined' ? window.location.href : null,
+          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : null,
+        }),
+      });
+
+      localStorage.setItem(FEEDBACK_COOLDOWN_KEY, Date.now().toString());
+      setStatus('sent');
+    } catch {
+      setErrorMessage('일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
       setStatus('error');
-      return;
     }
-
-    const payload: FeedbackInsert = {
-      user_id: user?.id ?? null,
-      email: email.trim(),
-      type,
-      subject: subject.trim(),
-      body: body.trim(),
-      url: typeof window !== 'undefined' ? window.location.href : null,
-      user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : null,
-    };
-
-    const { error } = await supabase.from('feedback').insert(payload);
-
-    if (error) {
-      setErrorMessage(mapErrorMessage(error.message));
-      setStatus('error');
-      return;
-    }
-
-    localStorage.setItem(FEEDBACK_COOLDOWN_KEY, Date.now().toString());
-    setStatus('sent');
   };
 
   if (status === 'sent') {
@@ -239,21 +227,4 @@ export function FeedbackForm() {
       </p>
     </form>
   );
-}
-
-function mapErrorMessage(message: string): string {
-  const lower = message.toLowerCase();
-  if (lower.includes('row-level security') || lower.includes('rls')) {
-    return '피드백 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
-  }
-  if (lower.includes('check constraint')) {
-    return '입력 값이 유효하지 않습니다. 유형/내용을 확인해 주세요.';
-  }
-  if (lower.includes('violates') && lower.includes('foreign key')) {
-    return '세션이 만료되었습니다. 다시 로그인 후 시도해 주세요.';
-  }
-  if (lower.includes('network') || lower.includes('failed to fetch')) {
-    return '네트워크 연결을 확인해 주세요.';
-  }
-  return '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
 }

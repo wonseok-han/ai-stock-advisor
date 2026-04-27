@@ -99,6 +99,9 @@ app:
       cooldown: ${NOTIFICATION_DEDUP_COOLDOWN:PT4H}
   yahoo:
     proxy-url: ${YAHOO_PROXY_URL:}
+  resend:
+    api-key: ${RESEND_API_KEY:}
+    contact-email: ${CONTACT_EMAIL:}
   cache:
     news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
     ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:60}

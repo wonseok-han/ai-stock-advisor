@@ -16,6 +16,9 @@
 | **AI** | Google Gemini 2.5 Flash (RAG) |
 | **Tech Indicators** | ta4j (MACD / Bollinger / RSI) |
 | **Data Sources** | Yahoo Finance (1차) + Finnhub + TwelveData (fallback) + FMP |
+| **Email** | Resend (피드백 알림 발송, Java HttpClient 직접 호출) |
+| **Push** | Web Push (VAPID, nl.martijndwars/web-push) |
+| **Monitoring** | Actuator + Micrometer + Prometheus |
 | **Deploy (FE)** | Vercel |
 | **Deploy (BE)** | Render |
 
