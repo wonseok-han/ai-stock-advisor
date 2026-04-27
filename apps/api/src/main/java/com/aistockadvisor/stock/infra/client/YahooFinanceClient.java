@@ -91,12 +91,14 @@ public class YahooFinanceClient {
     private final AtomicInteger hostIndex = new AtomicInteger(0);
 
     private final ReentrantLock crumbLock = new ReentrantLock();
+    private final java.util.concurrent.ConcurrentHashMap<String, Object> summaryLocks = new java.util.concurrent.ConcurrentHashMap<>();
     private volatile String crumb;
     private volatile String cookie;
     private volatile int activeProxyIndex;
     private volatile long crumbExpiresAt;
     private volatile long lastYahooRequestAt;
     private volatile long lastChartRequestAt;
+    private volatile boolean crumbRotated;
 
     @Autowired
     public YahooFinanceClient(RedisCacheAdapter cache,
@@ -492,6 +494,7 @@ public class YahooFinanceClient {
 
     private boolean loadCrumbFromRedis() {
         if (cache == null) return false;
+        if (crumbRotated) return false;
         try {
             Map<String, String> data = cache.get(REDIS_CRUMB_KEY, CRUMB_MAP_TYPE);
             if (data == null || data.get("crumb") == null || data.get("cookie") == null) return false;
@@ -507,7 +510,7 @@ public class YahooFinanceClient {
             }
             return true;
         } catch (Exception ex) {
-            log.debug("redis crumb load failed: {}", ex.getMessage());
+            log.warn("redis crumb load failed: {}", ex.getMessage());
             return false;
         }
     }
@@ -522,8 +525,9 @@ public class YahooFinanceClient {
                 map.put("proxyIndex", String.valueOf(activeProxyIndex));
             }
             cache.set(REDIS_CRUMB_KEY, map, CRUMB_TTL);
+            log.info("yahoo crumb persisted to redis (proxy index={})", activeProxyIndex);
         } catch (Exception ex) {
-            log.debug("redis crumb persist failed: {}", ex.getMessage());
+            log.warn("redis crumb persist failed: {}", ex.getMessage());
         }
     }
 
@@ -594,6 +598,7 @@ public class YahooFinanceClient {
                     this.crumb = body;
                     this.cookie = cookies;
                     this.crumbExpiresAt = System.currentTimeMillis() + CRUMB_TTL.toMillis();
+                    this.crumbRotated = false;
                     persistCrumb(body, cookies);
                     log.info("yahoo crumb refreshed via curl (proxy {}, attempt {})", proxy, attempt + 1);
                     return;
@@ -634,17 +639,28 @@ public class YahooFinanceClient {
         this.crumb = null;
         this.cookie = null;
         this.crumbExpiresAt = 0;
-        if (cache != null) {
-            try { cache.evict(REDIS_CRUMB_KEY); } catch (Exception ignored) {}
-        }
+        this.crumbRotated = true;
     }
 
     // ── quoteSummary (Redis 24h 캐시 + curl) ──
 
     private JsonNode fetchQuoteSummaryRaw(String ticker) {
         if (cache == null) return fetchQuoteSummaryFromYahoo(ticker);
-        return cache.getOrLoad("yahoo:summary:" + ticker, JSON_NODE_TYPE, SUMMARY_CACHE_TTL,
-                () -> fetchQuoteSummaryFromYahoo(ticker));
+        String cacheKey = "yahoo:summary:" + ticker;
+        JsonNode cached = cache.get(cacheKey, JSON_NODE_TYPE);
+        if (cached != null) return cached;
+
+        Object lock = summaryLocks.computeIfAbsent(ticker, k -> new Object());
+        synchronized (lock) {
+            cached = cache.get(cacheKey, JSON_NODE_TYPE);
+            if (cached != null) return cached;
+
+            JsonNode result = fetchQuoteSummaryFromYahoo(ticker);
+            if (result != null) {
+                cache.set(cacheKey, result, SUMMARY_CACHE_TTL);
+            }
+            return result;
+        }
     }
 
     private JsonNode fetchQuoteSummaryFromYahoo(String ticker) {
@@ -658,9 +674,9 @@ public class YahooFinanceClient {
 
             String json = curlFetch(url, cookie);
             if (json == null || json.isBlank()) {
-                if (attempt < MAX_CHART_RETRIES && proxyUrls.length > 1) {
+                if (attempt < MAX_CHART_RETRIES) {
                     long delay = CHART_BACKOFF_MS * (attempt + 1);
-                    log.warn("yahoo quoteSummary 429/fail for {} (attempt {}), retrying in {}ms", ticker, attempt + 1, delay);
+                    log.warn("yahoo quoteSummary fail for {} (attempt {}), retrying in {}ms", ticker, attempt + 1, delay);
                     try { Thread.sleep(delay); } catch (InterruptedException ignored) {
                         Thread.currentThread().interrupt();
                     }
@@ -722,10 +738,6 @@ public class YahooFinanceClient {
 
             if ("200".equals(status)) return body;
             log.warn("curlFetch status={} for {}", status, url);
-            if ("429".equals(status)) {
-                rotateProxy();
-                crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(2).toMillis();
-            }
             return null;
         } catch (Exception ex) {
             log.warn("curlFetch failed for {}: {}", url, ex.getMessage());
