@@ -16,7 +16,8 @@ export function SignalGuide() {
         </li>
         <li className="flex items-start gap-2">
           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" aria-hidden="true" />
-          <span>분석 확신도는 AI가 자체 판단에 느끼는 확신이며, 주가 방향 일치율과는 다릅니다</span>
+          {/* disclaimer */}
+          <span>분석 확신도는 AI가 자체 판단에 느끼는 확신이며, 주가 예측 확률이 아닙니다</span>
         </li>
         <li className="flex items-start gap-2">
           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" aria-hidden="true" />

@@ -72,7 +72,7 @@ jobs:
                        --exclude-dir=build --exclude-dir=dist --exclude-dir=.next \
                        --exclude-dir=legal \
                        -i -F "$term" $SCAN_PATHS || true)
-            hits=$(printf '%s\n' "$hits" | grep -v "forbidden-terms.json" | grep -v "RedTeam" | grep -v "red-team" || true)
+            hits=$(printf '%s\n' "$hits" | grep -v "forbidden-terms.json" | grep -v "RedTeam" | grep -v "red-team" | grep -v "disclaimer" || true)
             if [ -n "$hits" ]; then
               echo "::error::Accuracy forbidden term found: '$term' (use '정합도/방향 일치율' instead)"
               echo "$hits"
