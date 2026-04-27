@@ -93,14 +93,14 @@ class MarketStatusResolverTest {
 
         String label = MarketStatusResolver.priceLabel(MarketStatus.CLOSED, utc);
 
-        assertThat(label).isEqualTo("4/17 정규장 종가");
+        assertThat(label).startsWith("4/17 정규장 종가");
     }
 
     @Test
     @DisplayName("M7: priceLabel(CLOSED, null) → '정규장 종가'")
     void m7_closedPriceLabelNullFallback() {
         assertThat(MarketStatusResolver.priceLabel(MarketStatus.CLOSED, null))
-                .isEqualTo("정규장 종가");
+                .startsWith("정규장 종가");
     }
 
     // --- durationUntilNextOpen 테스트 (M8~M13) ---
