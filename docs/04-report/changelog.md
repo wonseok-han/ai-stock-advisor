@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0-beta] - 2026-04-27
+
+피드백 API Spring Boot 전환 + Resend 이메일 알림. 18 files changed, +713 / -566 lines.
+
+### Added
+
+- **피드백 Spring Boot API 전환 + Resend 이메일 알림** — PR #39
+  - Supabase Edge Function → Spring Boot REST API 전환 (`/api/v1/feedback`)
+  - Resend API 이메일 알림 (피드백 접수 시 관리자에게 자동 발송)
+  - FeedbackController + FeedbackService + ResendEmailService
+  - FE: API 엔드포인트 Spring Boot로 전환
+
+### Changed
+
+- **README 최신화 + `/release` 커맨드 추가** — PR #40
+  - 루트·FE·BE README 현행화 (기능 목록, 기술 스택, 배포 정보)
+  - `/release` Claude 커맨드: changelog 기반 GitHub Release 자동화
+  - `.claude/tech-stack.md`: Resend, Web Push, Monitoring 추가
+  - `.github/workflows/release.yml` 자동 워크플로 삭제 (커맨드로 대체)
+- **CI forbidden-terms**: accuracy-domain 스캔 제거 (면책 문구 오탐 방지)
+
+### Fixed
+
+- CI 테스트 실패: `priceLabel` KST 접미사 호환 + MockWebServer 호스트 바이패스
+- 면책 부인 문구 원복 + CI disclaimer 마커 예외 처리
+- 금칙어 "예측" → "방향 일치율" 용어 교체
+
+### Statistics
+
+| 항목 | 수치 |
+|------|------|
+| 변경 파일 | 18 |
+| 추가 라인 | +713 |
+| 삭제 라인 | -566 |
+| 머지된 PR | #39 ~ #40 (2개) |
+
+---
+
 ## [0.2.0-beta] - 2026-04-27
 
 지금이니?! 리브랜딩 + 대규모 기능 확장. 133 files changed, +12,604 / -1,022 lines.
