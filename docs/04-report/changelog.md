@@ -98,43 +98,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-04-20
 
-최초 베타 릴리즈. 인증·북마크·알림·캔들 DB·마이페이지·계정관리 완성.
+최초 베타 릴리즈. 인증·북마크·알림·캔들 DB·마이페이지·계정관리 완성. 75 files changed, +3,424 / -50 lines.
 
-### Added — Authentication & Personalization
+### Added
 
-- **Supabase Auth 통합**
+- **Supabase Auth 통합** — PR #24
   - 이메일/비밀번호 로그인·회원가입 + Google OAuth
   - JWT 토큰 관리 (access + refresh)
   - Spring Security JWT Resource Server (RS256 + ES256)
   - Two-chain SecurityFilterChain (public/protected 분리)
+  - FE: AuthProvider, LoginForm, SignupForm, SocialLogin, UserMenu, AuthGuardModal
 
-- **북마크** — `POST/DELETE/GET /api/v1/bookmarks`
+- **북마크** — PR #24
+  - `POST/DELETE/GET /api/v1/bookmarks` + check 엔드포인트
   - Optimistic UI + BookmarkButton 토글
   - 마이페이지 BookmarkGrid 카드 레이아웃
 
-- **Web Push 알림**
+- **Web Push 알림** — PR #24
   - VAPID 기반 구독 (`/api/v1/push/subscribe`)
   - 종목별 조건 설정 (가격 변동 ±%, 뉴스, 시그널)
   - `@Scheduled` 15분 주기 체크 + 알림 발송
   - Notification dedup: Hysteresis + 4시간 cooldown (스팸 방지)
 
-- **마이페이지 & 계정관리**
+- **마이페이지 & 계정관리** — PR #24
   - ProfileSection, BookmarkGrid, NotificationSection, AccountSection
   - 계정 삭제 (Soft Delete, 2년 보관, Supabase Auth ban)
   - 재활성화: `POST /api/v1/auth/reactivate`
 
-### Added — Data Layer & Charts
-
-- **Candle DB (on-demand)**
+- **Candle DB (on-demand)** — PR #24
   - `candles` 테이블 (Flyway V8) + Yahoo Finance v8 API
   - DB-first → Yahoo fallback → async persist
   - 일봉 배치 스케줄러 (MON-FRI 22:00 UTC)
 
-- **차트 개선**
+- **차트 개선** — PR #24
   - 볼륨 히스토그램 (green up / red down)
   - 1W: 일봉 × 5일, 1M/3M/1Y: DB 일봉, 5Y: 주간 집계
 
 - **Rate Limiter** — IP 기반 Token Bucket (60 req/min)
+
+### Changed
+
+- SecurityFilterChain: 단일 체인 → Two-chain (@Order 1, 2) 분리
+  - public API는 JWT 검증 건너뜀 (성능)
+- VAPID key: FE 환경변수 → BE API endpoint (`/api/v1/push/vapid-key`)
+- OAuth callback: client-side `page.tsx` → server-side `route.ts` (보안)
+- BookmarkResponse `price`: double → BigDecimal (금융 정밀도)
 
 ### Fixed
 
@@ -142,23 +150,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hibernate `ddl-auto=create-drop` → `validate` 전환 (데이터 유실 방지)
 - Supabase Bulk Insert timeout → 배치 1000건 분할
 - CORS protected endpoint 미적용 → WebCorsConfig bean
-- OAuth callback client-side → server-side code exchange (보안)
 - Notification 중복 발송 → Hysteresis + cooldown 메커니즘
 
-### Security
+### Statistics
 
-- Two-chain SecurityFilterChain (public API는 JWT 검증 건너뜀)
-- VAPID key → BE API endpoint 제공 (FE env 노출 방지)
-- Server-side OAuth code exchange (XSS 방지)
-- CORS origin whitelist + JWT JWKS 서명 검증
-
-### Database Migrations
-
-- V6: `bookmarks` (user_id, ticker)
-- V7: `push_subscriptions`, `notification_settings`
-- V8: `candles` (ticker, trade_date, OHLCV)
-- V9: `deleted_accounts`
-- V10: `notification_settings` + `last_notified_at`, `last_triggered_above`
+| 항목 | 수치 |
+|------|------|
+| 변경 파일 | 75 |
+| 추가 라인 | +3,424 |
+| 삭제 라인 | -50 |
+| BE 엔드포인트 | 9개 |
+| FE 컴포넌트 | 7개 |
+| DB 마이그레이션 | V6 ~ V10 (5개) |
 
 ---
 
