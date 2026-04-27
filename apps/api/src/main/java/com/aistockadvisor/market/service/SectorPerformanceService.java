@@ -94,7 +94,6 @@ public class SectorPerformanceService {
 
     private List<SectorPerformance> fetchFromYahooEtfs() {
         return java.util.Arrays.stream(SECTOR_ETFS)
-                .parallel()
                 .map(etf -> {
                     try {
                         Quote q = yahooClient.quote(etf[0]);

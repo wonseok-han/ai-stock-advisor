@@ -104,7 +104,6 @@ public class MarketOverviewService {
 
     private List<MarketIndex> fetchMacro() {
         return java.util.Arrays.stream(MACRO_SYMBOLS)
-                .parallel()
                 .map(sym -> fetchIndex(sym[0], sym[1], sym[2], sym[3]))
                 .filter(Objects::nonNull)
                 .toList();
@@ -112,7 +111,6 @@ public class MarketOverviewService {
 
     private List<MarketIndex> fetchIndices() {
         return java.util.Arrays.stream(INDEX_SYMBOLS)
-                .parallel()
                 .map(sym -> fetchIndex(sym[0], sym[1], sym[2], sym[3]))
                 .filter(Objects::nonNull)
                 .toList();

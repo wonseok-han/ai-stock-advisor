@@ -21,9 +21,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import reactor.netty.transport.ProxyProvider;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -34,7 +37,10 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -54,45 +60,147 @@ public class YahooFinanceClient {
     private static final String QUERY2_URL = "https://query2.finance.yahoo.com";
     private static final String CRUMB_INIT_URL = "https://fc.yahoo.com";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
-    private static final String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+    private static final String[] CHART_HOSTS = {BASE_URL, QUERY2_URL};
+    private static final String[] USER_AGENTS = {
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
+    };
+    private static final String DEFAULT_UA = USER_AGENTS[0];
     private static final String ALL_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory";
     private static final Duration SUMMARY_CACHE_TTL = Duration.ofHours(24);
-    private static final Duration TTL_CHART_OPEN = Duration.ofSeconds(30);
+    private static final Duration TTL_CHART_OPEN = Duration.ofMinutes(2);
     private static final Duration TTL_INTRADAY_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<JsonNode> JSON_NODE_TYPE = new TypeReference<>() {};
     private static final long MIN_REQUEST_INTERVAL_MS = 2_000;
+    private static final long MIN_CHART_INTERVAL_MS = 300;
+    private static final int MAX_CHART_RETRIES = 2;
+    private static final long CHART_BACKOFF_MS = 3_000;
+    private static final Duration CRUMB_TTL = Duration.ofHours(24);
+    private static final Duration CRUMB_EXTEND_ON_429 = Duration.ofHours(1);
+    private static final Duration CRUMB_COOLDOWN_NO_CRUMB = Duration.ofMinutes(1);
+    private static final String REDIS_CRUMB_KEY = "yahoo:crumb";
+    private static final TypeReference<Map<String, String>> CRUMB_MAP_TYPE = new TypeReference<>() {};
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final WebClient webClient;
+    private final WebClient[] webClients;
     private final RedisCacheAdapter cache;
+    private final String[] proxyUrls;
+    private final AtomicInteger hostIndex = new AtomicInteger(0);
 
     private final ReentrantLock crumbLock = new ReentrantLock();
     private volatile String crumb;
     private volatile String cookie;
+    private volatile int activeProxyIndex;
     private volatile long crumbExpiresAt;
     private volatile long lastYahooRequestAt;
+    private volatile long lastChartRequestAt;
 
     @Autowired
-    public YahooFinanceClient(RedisCacheAdapter cache) {
-        this(BASE_URL, cache);
+    public YahooFinanceClient(RedisCacheAdapter cache,
+                              @Value("${app.yahoo.proxy-url:}") String proxyUrlCsv) {
+        this(BASE_URL, cache, proxyUrlCsv);
     }
 
     YahooFinanceClient(String baseUrl) {
-        this(baseUrl, null);
+        this(baseUrl, null, null);
     }
 
     YahooFinanceClient(String baseUrl, RedisCacheAdapter cache) {
+        this(baseUrl, cache, null);
+    }
+
+    private YahooFinanceClient(String baseUrl, RedisCacheAdapter cache, String proxyUrlCsv) {
         this.cache = cache;
+        this.proxyUrls = parseProxyUrls(proxyUrlCsv);
+        if (proxyUrls.length > 0) {
+            this.webClients = new WebClient[proxyUrls.length];
+            for (int i = 0; i < proxyUrls.length; i++) {
+                this.webClients[i] = buildWebClient(baseUrl, proxyUrls[i]);
+            }
+            log.info("yahoo proxy pool: {} proxies configured", proxyUrls.length);
+        } else {
+            this.webClients = new WebClient[]{ buildWebClient(baseUrl, null) };
+        }
+    }
+
+    private static String[] parseProxyUrls(String csv) {
+        if (csv == null || csv.isBlank()) return new String[0];
+        return java.util.Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
+    }
+
+    private static WebClient buildWebClient(String baseUrl, String proxyUrl) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
                         new ReadTimeoutHandler(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)))
                 .responseTimeout(TIMEOUT);
-        this.webClient = WebClient.builder()
+        if (proxyUrl != null) {
+            httpClient = applyProxy(httpClient, proxyUrl);
+        }
+        return WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader("User-Agent", USER_AGENT)
+                .defaultHeader("User-Agent", DEFAULT_UA)
+                .defaultHeader("Referer", "https://finance.yahoo.com/")
+                .defaultHeader("Origin", "https://finance.yahoo.com")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
+    }
+
+    private static HttpClient applyProxy(HttpClient httpClient, String proxyUrl) {
+        try {
+            URI uri = URI.create(proxyUrl);
+            String host = uri.getHost();
+            int port = uri.getPort() > 0 ? uri.getPort() : 8080;
+            boolean isSocks = "socks5".equalsIgnoreCase(uri.getScheme());
+            log.info("yahoo proxy: {} ({})", host + ":" + port, isSocks ? "SOCKS5" : "HTTP");
+            return httpClient.proxy(p -> {
+                var spec = p.type(isSocks ? ProxyProvider.Proxy.SOCKS5 : ProxyProvider.Proxy.HTTP)
+                        .host(host).port(port);
+                String userInfo = uri.getUserInfo();
+                if (userInfo != null && userInfo.contains(":")) {
+                    String[] parts = userInfo.split(":", 2);
+                    spec.username(parts[0]).password(pw -> parts[1]);
+                }
+            });
+        } catch (Exception ex) {
+            log.warn("invalid yahoo proxy URL '{}': {}", proxyUrl, ex.getMessage());
+            return httpClient;
+        }
+    }
+
+    private WebClient activeClient() {
+        return webClients[activeProxyIndex % webClients.length];
+    }
+
+    private String activeProxy() {
+        if (proxyUrls.length == 0) return null;
+        return proxyUrls[activeProxyIndex % proxyUrls.length];
+    }
+
+    private synchronized void rotateProxy() {
+        if (proxyUrls.length <= 1) return;
+        int prev = activeProxyIndex;
+        activeProxyIndex = (activeProxyIndex + 1) % proxyUrls.length;
+        if (activeProxyIndex != prev) {
+            invalidateCrumb();
+            log.info("yahoo proxy rotated: {} → {}",
+                    URI.create(proxyUrls[prev]).getHost(),
+                    URI.create(proxyUrls[activeProxyIndex]).getHost());
+        }
+    }
+
+    private static String randomUserAgent() {
+        return USER_AGENTS[ThreadLocalRandom.current().nextInt(USER_AGENTS.length)];
+    }
+
+    private String nextChartHost() {
+        return CHART_HOSTS[Math.abs(hostIndex.getAndIncrement()) % CHART_HOSTS.length];
     }
 
     /**
@@ -175,20 +283,47 @@ public class YahooFinanceClient {
         return parseIntradayResponse(root);
     }
 
-    private JsonNode fetchChart(String ticker, String interval, String range) {
-        try {
-            return webClient.get()
-                    .uri(b -> b.path("/v8/finance/chart/{symbol}")
-                            .queryParam("interval", interval)
-                            .queryParam("range", range)
-                            .build(ticker))
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(TIMEOUT);
-        } catch (Exception ex) {
-            log.warn("yahoo finance chart {} interval={} failed: {}", ticker, interval, ex.getMessage());
-            return null;
+    private synchronized void chartThrottle() {
+        long elapsed = System.currentTimeMillis() - lastChartRequestAt;
+        if (elapsed < MIN_CHART_INTERVAL_MS) {
+            try { Thread.sleep(MIN_CHART_INTERVAL_MS - elapsed); } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
         }
+        lastChartRequestAt = System.currentTimeMillis();
+    }
+
+    private JsonNode fetchChart(String ticker, String interval, String range) {
+        for (int attempt = 0; attempt <= MAX_CHART_RETRIES; attempt++) {
+            chartThrottle();
+            String host = nextChartHost();
+            String ua = randomUserAgent();
+            try {
+                String url = host + "/v8/finance/chart/"
+                        + URLEncoder.encode(ticker, StandardCharsets.UTF_8)
+                        + "?interval=" + interval + "&range=" + range;
+                return activeClient().get()
+                        .uri(url)
+                        .header("User-Agent", ua)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .block(TIMEOUT);
+            } catch (Exception ex) {
+                String msg = ex.getMessage();
+                if (msg != null && msg.contains("429") && attempt < MAX_CHART_RETRIES) {
+                    rotateProxy();
+                    long delay = CHART_BACKOFF_MS * (attempt + 1);
+                    log.warn("yahoo chart 429 for {} (attempt {}), backing off {}ms", ticker, attempt + 1, delay);
+                    try { Thread.sleep(delay); } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                    continue;
+                }
+                log.warn("yahoo finance chart {} interval={} failed: {}", ticker, interval, msg);
+                return null;
+            }
+        }
+        return null;
     }
 
     private List<Candle> parseIntradayResponse(JsonNode root) {
@@ -240,23 +375,39 @@ public class YahooFinanceClient {
         long period1 = from.atStartOfDay(ZoneOffset.UTC).toEpochSecond();
         long period2 = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toEpochSecond();
 
-        try {
-            JsonNode root = webClient.get()
-                    .uri(b -> b.path("/v8/finance/chart/{symbol}")
-                            .queryParam("period1", period1)
-                            .queryParam("period2", period2)
-                            .queryParam("interval", "1d")
-                            .queryParam("events", "div,splits")
-                            .build(ticker))
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(TIMEOUT);
+        for (int attempt = 0; attempt <= MAX_CHART_RETRIES; attempt++) {
+            chartThrottle();
+            String host = nextChartHost();
+            String ua = randomUserAgent();
+            try {
+                String url = host + "/v8/finance/chart/"
+                        + URLEncoder.encode(ticker, StandardCharsets.UTF_8)
+                        + "?period1=" + period1 + "&period2=" + period2
+                        + "&interval=1d&events=div,splits";
+                JsonNode root = activeClient().get()
+                        .uri(url)
+                        .header("User-Agent", ua)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .block(TIMEOUT);
 
-            return parseChartResponse(ticker, root);
-        } catch (Exception ex) {
-            log.warn("yahoo finance {} fetch failed: {}", ticker, ex.getMessage());
-            return Collections.emptyList();
+                return parseChartResponse(ticker, root);
+            } catch (Exception ex) {
+                String msg = ex.getMessage();
+                if (msg != null && msg.contains("429") && attempt < MAX_CHART_RETRIES) {
+                    rotateProxy();
+                    long delay = CHART_BACKOFF_MS * (attempt + 1);
+                    log.warn("yahoo dailyCandles 429 for {} (attempt {}), backing off {}ms", ticker, attempt + 1, delay);
+                    try { Thread.sleep(delay); } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                    continue;
+                }
+                log.warn("yahoo finance {} fetch failed: {}", ticker, msg);
+                return Collections.emptyList();
+            }
         }
+        return Collections.emptyList();
     }
 
     private List<CandleEntity> parseChartResponse(String ticker, JsonNode root) {
@@ -326,88 +477,166 @@ public class YahooFinanceClient {
     private void ensureCrumb() {
         long now = System.currentTimeMillis();
         if (crumb != null && now < crumbExpiresAt) return;
-        // 429 쿨다운 중에는 crumb 갱신 시도하지 않음
         if (crumb == null && now < crumbExpiresAt) return;
         crumbLock.lock();
         try {
             now = System.currentTimeMillis();
             if (crumb != null && now < crumbExpiresAt) return;
             if (crumb == null && now < crumbExpiresAt) return;
+            if (crumb == null && loadCrumbFromRedis()) return;
             refreshCrumb();
         } finally {
             crumbLock.unlock();
         }
     }
 
+    private boolean loadCrumbFromRedis() {
+        if (cache == null) return false;
+        try {
+            Map<String, String> data = cache.get(REDIS_CRUMB_KEY, CRUMB_MAP_TYPE);
+            if (data == null || data.get("crumb") == null || data.get("cookie") == null) return false;
+            this.crumb = data.get("crumb");
+            this.cookie = data.get("cookie");
+            this.crumbExpiresAt = System.currentTimeMillis() + CRUMB_TTL.toMillis();
+            String idx = data.get("proxyIndex");
+            if (idx != null && proxyUrls.length > 0) {
+                this.activeProxyIndex = Integer.parseInt(idx) % proxyUrls.length;
+                log.info("yahoo crumb restored from redis (proxy index={})", activeProxyIndex);
+            } else {
+                log.info("yahoo crumb restored from redis");
+            }
+            return true;
+        } catch (Exception ex) {
+            log.debug("redis crumb load failed: {}", ex.getMessage());
+            return false;
+        }
+    }
+
+    private void persistCrumb(String crumbVal, String cookieVal) {
+        if (cache == null) return;
+        try {
+            Map<String, String> map = new java.util.HashMap<>();
+            map.put("crumb", crumbVal);
+            map.put("cookie", cookieVal);
+            if (proxyUrls.length > 0) {
+                map.put("proxyIndex", String.valueOf(activeProxyIndex));
+            }
+            cache.set(REDIS_CRUMB_KEY, map, CRUMB_TTL);
+        } catch (Exception ex) {
+            log.debug("redis crumb persist failed: {}", ex.getMessage());
+        }
+    }
+
     // curl 사용 — Java HttpClient는 Yahoo TLS fingerprinting에 의해 429 차단됨
     private void refreshCrumb() {
-        try {
-            var pb1 = new ProcessBuilder(
-                    "curl", "-s", "-L", "-D", "-", "-o", "/dev/null",
-                    "-A", USER_AGENT, CRUMB_INIT_URL
-            );
-            var p1 = pb1.start();
-            String headers = new String(p1.getInputStream().readAllBytes());
-            if (!p1.waitFor(10, TimeUnit.SECONDS)) {
-                p1.destroyForcibly();
-                log.warn("yahoo crumb: cookie request timed out");
-                return;
-            }
+        String prevCrumb = this.crumb;
+        String prevCookie = this.cookie;
 
-            StringBuilder cookieBuilder = new StringBuilder();
-            for (String line : headers.split("\\r?\\n")) {
-                if (line.regionMatches(true, 0, "set-cookie:", 0, 11)) {
-                    String nameVal = line.substring(11).trim().split(";")[0];
-                    if (!cookieBuilder.isEmpty()) cookieBuilder.append("; ");
-                    cookieBuilder.append(nameVal);
+        int maxAttempts = Math.max(proxyUrls.length, 1);
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                String ua = randomUserAgent();
+                String proxy = activeProxy();
+                List<String> cmd1 = new ArrayList<>(List.of(
+                        "curl", "-s", "-L", "-D", "-", "-o", "/dev/null",
+                        "-A", ua,
+                        "-H", "Referer: https://finance.yahoo.com/",
+                        "-H", "Origin: https://finance.yahoo.com"));
+                if (proxy != null) { cmd1.add("-x"); cmd1.add(proxy); }
+                cmd1.add(CRUMB_INIT_URL);
+                var pb1 = new ProcessBuilder(cmd1);
+                var p1 = pb1.start();
+                String headers = new String(p1.getInputStream().readAllBytes());
+                if (!p1.waitFor(10, TimeUnit.SECONDS)) {
+                    p1.destroyForcibly();
+                    log.warn("yahoo crumb: cookie request timed out (proxy {})", proxy);
+                    rotateProxy();
+                    continue;
                 }
-            }
-            String cookies = cookieBuilder.toString();
-            if (cookies.isBlank()) {
-                log.warn("yahoo crumb: no cookies from init");
-                this.crumb = null;
-                return;
-            }
 
-            var pb2 = new ProcessBuilder(
-                    "curl", "-s", "-w", "\n%{http_code}",
-                    "-A", USER_AGENT,
-                    "-b", cookies,
-                    QUERY2_URL + "/v1/test/getcrumb"
-            );
-            var p2 = pb2.start();
-            String output = new String(p2.getInputStream().readAllBytes()).trim();
-            if (!p2.waitFor(10, TimeUnit.SECONDS)) {
-                p2.destroyForcibly();
-                log.warn("yahoo crumb: crumb request timed out");
-                return;
-            }
+                StringBuilder cookieBuilder = new StringBuilder();
+                for (String line : headers.split("\\r?\\n")) {
+                    if (line.regionMatches(true, 0, "set-cookie:", 0, 11)) {
+                        String nameVal = line.substring(11).trim().split(";")[0];
+                        if (!cookieBuilder.isEmpty()) cookieBuilder.append("; ");
+                        cookieBuilder.append(nameVal);
+                    }
+                }
+                String cookies = cookieBuilder.toString();
+                if (cookies.isBlank()) {
+                    log.warn("yahoo crumb: no cookies from init (proxy {})", proxy);
+                    rotateProxy();
+                    continue;
+                }
 
-            int lastNl = output.lastIndexOf('\n');
-            String status = lastNl >= 0 ? output.substring(lastNl + 1).trim() : "";
-            String body = lastNl >= 0 ? output.substring(0, lastNl).trim() : output;
+                List<String> cmd2 = new ArrayList<>(List.of(
+                        "curl", "-s", "-w", "\n%{http_code}",
+                        "-A", ua, "-b", cookies,
+                        "-H", "Referer: https://finance.yahoo.com/",
+                        "-H", "Origin: https://finance.yahoo.com"));
+                if (proxy != null) { cmd2.add("-x"); cmd2.add(proxy); }
+                cmd2.add(QUERY2_URL + "/v1/test/getcrumb");
+                var pb2 = new ProcessBuilder(cmd2);
+                var p2 = pb2.start();
+                String output = new String(p2.getInputStream().readAllBytes()).trim();
+                if (!p2.waitFor(10, TimeUnit.SECONDS)) {
+                    p2.destroyForcibly();
+                    log.warn("yahoo crumb: crumb request timed out (proxy {})", proxy);
+                    rotateProxy();
+                    continue;
+                }
 
-            if ("200".equals(status) && !body.isBlank() && !body.contains(" ")) {
-                this.crumb = body;
-                this.cookie = cookies;
-                this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofHours(4).toMillis();
-                log.info("yahoo crumb refreshed via curl");
-            } else {
-                log.warn("yahoo crumb via curl: status={} body={}", status, body);
-                this.crumb = null;
+                int lastNl = output.lastIndexOf('\n');
+                String status = lastNl >= 0 ? output.substring(lastNl + 1).trim() : "";
+                String body = lastNl >= 0 ? output.substring(0, lastNl).trim() : output;
+
+                if ("200".equals(status) && !body.isBlank() && !body.contains(" ")) {
+                    this.crumb = body;
+                    this.cookie = cookies;
+                    this.crumbExpiresAt = System.currentTimeMillis() + CRUMB_TTL.toMillis();
+                    persistCrumb(body, cookies);
+                    log.info("yahoo crumb refreshed via curl (proxy {}, attempt {})", proxy, attempt + 1);
+                    return;
+                }
+
+                log.warn("yahoo crumb via curl: status={} proxy={} attempt={}/{}", status, proxy, attempt + 1, maxAttempts);
                 if ("429".equals(status)) {
-                    this.crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
+                    rotateProxy();
+                    continue;
                 }
+                preserveExistingCrumb(prevCrumb, prevCookie);
+                return;
+            } catch (Exception ex) {
+                log.warn("yahoo crumb via curl error (attempt {}): {}", attempt + 1, ex.getMessage());
+                rotateProxy();
             }
-        } catch (Exception ex) {
-            log.warn("yahoo crumb via curl error: {}", ex.getMessage());
-            this.crumb = null;
+        }
+
+        log.warn("yahoo crumb: all {} proxies exhausted", maxAttempts);
+        if (prevCrumb != null) {
+            this.crumb = prevCrumb;
+            this.cookie = prevCookie;
+            this.crumbExpiresAt = System.currentTimeMillis() + CRUMB_EXTEND_ON_429.toMillis();
+            log.info("yahoo crumb — reusing existing crumb for {}h", CRUMB_EXTEND_ON_429.toHours());
+        } else {
+            this.crumbExpiresAt = System.currentTimeMillis() + CRUMB_COOLDOWN_NO_CRUMB.toMillis();
+        }
+    }
+
+    private void preserveExistingCrumb(String prevCrumb, String prevCookie) {
+        if (prevCrumb != null) {
+            this.crumb = prevCrumb;
+            this.cookie = prevCookie;
         }
     }
 
     private void invalidateCrumb() {
         this.crumb = null;
+        this.cookie = null;
         this.crumbExpiresAt = 0;
+        if (cache != null) {
+            try { cache.evict(REDIS_CRUMB_KEY); } catch (Exception ignored) {}
+        }
     }
 
     // ── quoteSummary (Redis 24h 캐시 + curl) ──
@@ -419,30 +648,43 @@ public class YahooFinanceClient {
     }
 
     private JsonNode fetchQuoteSummaryFromYahoo(String ticker) {
-        ensureCrumb();
-        if (crumb == null || cookie == null) return null;
+        for (int attempt = 0; attempt <= MAX_CHART_RETRIES; attempt++) {
+            ensureCrumb();
+            if (crumb == null || cookie == null) return null;
 
-        String url = QUERY2_URL + "/v10/finance/quoteSummary/" + ticker
-                + "?modules=" + ALL_MODULES
-                + "&crumb=" + URLEncoder.encode(crumb, StandardCharsets.UTF_8);
+            String url = QUERY2_URL + "/v10/finance/quoteSummary/" + ticker
+                    + "?modules=" + ALL_MODULES
+                    + "&crumb=" + URLEncoder.encode(crumb, StandardCharsets.UTF_8);
 
-        String json = curlFetch(url, cookie);
-        if (json == null || json.isBlank()) return null;
-
-        try {
-            JsonNode root = MAPPER.readTree(json);
-            JsonNode result = root.path("quoteSummary").path("result");
-            if (!result.isArray() || result.isEmpty()) {
-                if ("401".equals(root.path("quoteSummary").path("error").path("code").asText())) {
-                    invalidateCrumb();
+            String json = curlFetch(url, cookie);
+            if (json == null || json.isBlank()) {
+                if (attempt < MAX_CHART_RETRIES && proxyUrls.length > 1) {
+                    long delay = CHART_BACKOFF_MS * (attempt + 1);
+                    log.warn("yahoo quoteSummary 429/fail for {} (attempt {}), retrying in {}ms", ticker, attempt + 1, delay);
+                    try { Thread.sleep(delay); } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                    continue;
                 }
                 return null;
             }
-            return result.get(0);
-        } catch (Exception ex) {
-            log.warn("yahoo quoteSummary parse error for {}: {}", ticker, ex.getMessage());
-            return null;
+
+            try {
+                JsonNode root = MAPPER.readTree(json);
+                JsonNode result = root.path("quoteSummary").path("result");
+                if (!result.isArray() || result.isEmpty()) {
+                    if ("401".equals(root.path("quoteSummary").path("error").path("code").asText())) {
+                        invalidateCrumb();
+                    }
+                    return null;
+                }
+                return result.get(0);
+            } catch (Exception ex) {
+                log.warn("yahoo quoteSummary parse error for {}: {}", ticker, ex.getMessage());
+                return null;
+            }
         }
+        return null;
     }
 
     private synchronized void throttle() {
@@ -456,9 +698,15 @@ public class YahooFinanceClient {
     private String curlFetch(String url, String cookies) {
         try {
             throttle();
-            var pb = new ProcessBuilder(
+            List<String> cmd = new ArrayList<>(List.of(
                     "curl", "-s", "-w", "\n%{http_code}",
-                    "-A", USER_AGENT, "-b", cookies, url);
+                    "-A", randomUserAgent(), "-b", cookies,
+                    "-H", "Referer: https://finance.yahoo.com/",
+                    "-H", "Origin: https://finance.yahoo.com"));
+            String px = activeProxy();
+            if (px != null) { cmd.add("-x"); cmd.add(px); }
+            cmd.add(url);
+            var pb = new ProcessBuilder(cmd);
             var p = pb.start();
             String output = new String(p.getInputStream().readAllBytes());
             if (!p.waitFor(15, TimeUnit.SECONDS)) {
@@ -475,7 +723,8 @@ public class YahooFinanceClient {
             if ("200".equals(status)) return body;
             log.warn("curlFetch status={} for {}", status, url);
             if ("429".equals(status)) {
-                crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
+                rotateProxy();
+                crumbExpiresAt = System.currentTimeMillis() + Duration.ofMinutes(2).toMillis();
             }
             return null;
         } catch (Exception ex) {
