@@ -25,7 +25,7 @@ export function ConfidenceTooltip() {
           className="absolute right-0 top-full z-10 mt-1 w-56 rounded-md border border-border bg-bg-surface p-2.5 shadow-lg"
         >
           <p className="text-[11px] leading-relaxed text-fg-secondary">
-            AI가 자체 분석에 대해 느끼는 확신 수준입니다. 주가 예측 확률이 아닙니다.
+            AI가 자체 분석에 대해 느끼는 확신 수준입니다. 주가 방향 일치율과는 다릅니다.
           </p>
         </div>
       )}
