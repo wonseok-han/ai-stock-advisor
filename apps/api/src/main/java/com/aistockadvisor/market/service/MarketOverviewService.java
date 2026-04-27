@@ -111,14 +111,33 @@ public class MarketOverviewService {
 
     private List<MarketIndex> fetchIndices() {
         return java.util.Arrays.stream(INDEX_SYMBOLS)
-                .map(sym -> fetchIndex(sym[0], sym[1], sym[2], sym[3]))
+                .map(sym -> fetchIndexTwelveFirst(sym[0], sym[1], sym[2], sym[3]))
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     /**
-     * Finnhub → Yahoo Finance → TwelveData 3단 fallback.
-     * 모두 실패 시 null (해당 지수만 응답에서 제외).
+     * TwelveData → Yahoo → Finnhub fallback (지수 전용).
+     * Finnhub 무료 플랜은 지수(^GSPC 등)를 지원하지 않아 항상 실패하므로,
+     * TwelveData(800 req/day 여유)를 1차로 사용하여 Yahoo 요청량을 줄인다.
+     */
+    private MarketIndex fetchIndexTwelveFirst(String finnhubSymbol, String yahooSymbol,
+                                               String twelveSymbol, String displayName) {
+        Quote q = tryQuote(() -> twelveDataClient.quote(twelveSymbol));
+        if (q != null) return toMarketIndex(twelveSymbol, displayName, q);
+
+        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
+        if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
+
+        q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
+        if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
+
+        log.warn("index {} unavailable from all sources", displayName);
+        return null;
+    }
+
+    /**
+     * Finnhub → Yahoo Finance → TwelveData 3단 fallback (매크로/환율용).
      */
     private MarketIndex fetchIndex(String finnhubSymbol, String yahooSymbol,
                                     String twelveSymbol, String displayName) {
