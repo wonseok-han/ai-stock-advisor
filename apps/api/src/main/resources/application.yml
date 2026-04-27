@@ -1,4 +1,7 @@
 spring:
+  output:
+    ansi:
+      enabled: always
   application:
     name: api
   profiles:
@@ -79,7 +82,7 @@ app:
       api-key: ${GEMINI_API_KEY:}
       model: ${GEMINI_MODEL:gemini-2.5-flash}
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-      timeout-ms: ${GEMINI_TIMEOUT_MS:8000}
+      timeout-ms: ${GEMINI_TIMEOUT_MS:20000}
   supabase:
     url: ${SUPABASE_URL:}
     service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
@@ -94,6 +97,8 @@ app:
     dedup:
       reset-ratio: ${NOTIFICATION_DEDUP_RESET_RATIO:0.6}
       cooldown: ${NOTIFICATION_DEDUP_COOLDOWN:PT4H}
+  yahoo:
+    proxy-url: ${YAHOO_PROXY_URL:}
   cache:
     news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
     ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:60}

@@ -6,7 +6,7 @@ import Link from 'next/link';
  */
 export function DisclaimerFooter() {
   return (
-    <footer className="mt-auto border-t border-border bg-bg-surface text-fg-secondary">
+    <footer className="mt-auto border-t border-border text-fg-secondary">
       <div className="mx-auto w-full max-w-5xl px-4 py-6 text-xs leading-relaxed sm:px-6">
         <p className="mb-3">
           본 서비스에서 제공되는 모든 정보는 <strong>투자 참고용</strong>이며,
@@ -14,7 +14,7 @@ export function DisclaimerFooter() {
           책임은 사용자 본인에게 있습니다. 과거 성과는 미래 수익을 보장하지
           않습니다.
         </p>
-        <nav className="flex flex-wrap gap-4" aria-label="법적 고지 및 피드백">
+        <nav className="flex flex-wrap gap-4" aria-label="법적 고지">
           <Link href="/legal/disclaimer" className="hover:underline">
             면책 고지
           </Link>
@@ -24,13 +24,11 @@ export function DisclaimerFooter() {
           <Link href="/legal/privacy" className="hover:underline">
             개인정보 처리방침
           </Link>
-          <Link href="/feedback" className="hover:underline">
-            피드백 보내기
-          </Link>
         </nav>
         <p className="mt-4 text-[11px] text-fg-muted">
-          © {new Date().getFullYear()} 지금이니?! 시세: Finnhub · Twelve
-          Data · FMP · AI: Google Gemini · 차트: TradingView Lightweight Charts.
+          © {new Date().getFullYear()} 지금이니?! 시세: Yahoo Finance ·
+          Finnhub · Twelve Data · FMP · AI: Google Gemini · 차트: TradingView
+          Lightweight Charts.
         </p>
       </div>
     </footer>

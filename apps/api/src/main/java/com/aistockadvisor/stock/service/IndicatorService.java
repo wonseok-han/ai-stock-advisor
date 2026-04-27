@@ -5,6 +5,8 @@ import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.TimeFrame;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,7 @@ import java.util.List;
 @Service
 public class IndicatorService {
 
-    private static final Duration TTL = Duration.ofMinutes(5);
+    private static final Duration TTL_OPEN = Duration.ofMinutes(5);
     private static final TimeFrame SOURCE = TimeFrame.Y1;
     private static final TypeReference<IndicatorSnapshot> TYPE = new TypeReference<>() {
     };
@@ -46,7 +48,9 @@ public class IndicatorService {
     }
 
     public IndicatorSnapshot compute(String ticker) {
-        return cache.getOrLoad("ind:" + ticker, TYPE, TTL, () -> doCompute(ticker));
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        return cache.getOrLoad("ind:" + ticker, TYPE, ttl, () -> doCompute(ticker));
     }
 
     private IndicatorSnapshot doCompute(String ticker) {

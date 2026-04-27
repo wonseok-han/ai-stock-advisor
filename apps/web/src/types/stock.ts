@@ -37,6 +37,24 @@ export interface Quote {
   updatedAt: string; // ISO 8601
   marketStatus: MarketStatus;
   priceLabel: string;
+  week52High: number | null;
+  week52Low: number | null;
+}
+
+export interface CompanyOverview {
+  sector: string | null;
+  industry: string | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  eps: number | null;
+  dividendPerShare: number | null;
+  beta: number | null;
+  week52High: number | null;
+  week52Low: number | null;
+  description: string | null;
+  employees: number | null;
+  website: string | null;
+  ipoDate: string | null;
 }
 
 export interface Candle {
@@ -73,6 +91,7 @@ export interface IndicatorSnapshot {
 export interface StockDetail {
   profile: StockProfile | null;
   quote: Quote | null;
+  overview: CompanyOverview | null;
   candles: Candle[] | null;
   indicators: IndicatorSnapshot | null;
   news: import('./news').NewsItem[] | null;
@@ -88,6 +107,37 @@ export interface StockDetail {
     requestId: string;
     timestamp: string;
   };
+}
+
+export interface AnalystEstimates {
+  rating: {
+    score: number;
+    label: string;
+    labelKo: string;
+    totalAnalysts: number;
+    distribution: {
+      strongBuy: number;
+      buy: number;
+      hold: number;
+      sell: number;
+      strongSell: number;
+    };
+  } | null;
+  priceTarget: {
+    current: number;
+    high: number;
+    low: number;
+    mean: number;
+    median: number;
+    upsidePercent: number;
+  } | null;
+  earnings: {
+    quarter: string;
+    epsActual: number;
+    epsEstimate: number;
+    surprisePercent: number;
+    result: 'BEAT' | 'MISS' | 'MEET' | 'EST';
+  }[];
 }
 
 export interface ApiErrorBody {

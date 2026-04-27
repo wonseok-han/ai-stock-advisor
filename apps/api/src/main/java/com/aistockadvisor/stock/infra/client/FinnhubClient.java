@@ -1,5 +1,6 @@
 package com.aistockadvisor.stock.infra.client;
 
+import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
 import com.aistockadvisor.stock.domain.MarketStatus;
@@ -7,6 +8,7 @@ import com.aistockadvisor.stock.domain.MarketStatusResolver;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.StockProfile;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
@@ -39,12 +41,18 @@ public class FinnhubClient {
 
     private static final Logger log = LoggerFactory.getLogger(FinnhubClient.class);
     private static final Duration TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration TTL_QUOTE_OPEN = Duration.ofSeconds(30);
+    private static final Duration TTL_PROFILE = Duration.ofHours(24);
+    private static final TypeReference<QuoteResponse> QUOTE_TYPE = new TypeReference<>() {};
+    private static final TypeReference<ProfileResponse> PROFILE_RESP_TYPE = new TypeReference<>() {};
 
     private final WebClient webClient;
     private final String apiKey;
+    private final RedisCacheAdapter cache;
 
-    public FinnhubClient(FinnhubProperties props) {
+    public FinnhubClient(FinnhubProperties props, RedisCacheAdapter cache) {
         this.apiKey = props.apiKey();
+        this.cache = cache;
         HttpClient httpClient = HttpClient.create()
                 .followRedirect(true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TIMEOUT.toMillis())
@@ -67,9 +75,10 @@ public class FinnhubClient {
 
     /** CompanyProfile2. 데이터 없으면 null. */
     public StockProfile profile(String ticker) {
-        ProfileResponse resp = call("/stock/profile2", uri -> uri
-                .queryParam("symbol", ticker)
-                .queryParam("token", apiKey), ProfileResponse.class);
+        ProfileResponse resp = cache.getOrLoad("finnhub:profile:" + ticker, PROFILE_RESP_TYPE,
+                TTL_PROFILE, () -> call("/stock/profile2", uri -> uri
+                        .queryParam("symbol", ticker)
+                        .queryParam("token", apiKey), ProfileResponse.class));
         if (resp == null || resp.ticker() == null) {
             return null;
         }
@@ -86,9 +95,12 @@ public class FinnhubClient {
 
     /** Quote. 데이터 없으면 null (timestamp 0 케이스 포함). */
     public Quote quote(String ticker) {
-        QuoteResponse resp = call("/quote", uri -> uri
-                .queryParam("symbol", ticker)
-                .queryParam("token", apiKey), QuoteResponse.class);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_QUOTE_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        QuoteResponse resp = cache.getOrLoad("finnhub:quote:" + ticker, QUOTE_TYPE,
+                ttl, () -> call("/quote", uri -> uri
+                        .queryParam("symbol", ticker)
+                        .queryParam("token", apiKey), QuoteResponse.class));
         if (resp == null || resp.t() == 0L) {
             return null;
         }
@@ -103,10 +115,12 @@ public class FinnhubClient {
                 resp.l(),
                 resp.o(),
                 resp.pc(),
-                0L, // Finnhub free /quote 는 volume 미제공.
+                0L,
                 updatedAt,
                 status,
-                MarketStatusResolver.priceLabel(status, updatedAt)
+                MarketStatusResolver.priceLabel(status, updatedAt),
+                null,
+                null
         );
     }
 

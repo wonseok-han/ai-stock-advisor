@@ -140,7 +140,7 @@ public class GeminiLlmClient implements LlmClient {
                 "generationConfig", Map.of(
                         "temperature", 0.2,
                         "topP", 0.9,
-                        "maxOutputTokens", 2048,
+                        "maxOutputTokens", 4096,
                         "responseMimeType", "application/json",
                         // Gemini 2.5 호환: thinking 토큰이 maxOutputTokens 예산을 소진해
                         // 실제 응답 JSON 이 중간 절단되는 현상 방지. 0=disabled.
@@ -167,6 +167,9 @@ public class GeminiLlmClient implements LlmClient {
             GeminiResponse.Candidate candidate = resp.candidates().get(0);
             if ("MAX_TOKENS".equals(candidate == null ? null : candidate.finishReason())) {
                 log.warn("gemini call truncated feature={} model={} finishReason=MAX_TOKENS", feature, model);
+                recordFailure(feature, LlmMetrics.REASON_PARSE, start);
+                throw new BusinessException(ErrorCode.LLM_VALIDATION_FAILED,
+                        "Gemini response truncated (MAX_TOKENS). Output exceeded maxOutputTokens budget.", null);
             }
             String text = extractText(resp);
             if (text == null || text.isBlank()) {

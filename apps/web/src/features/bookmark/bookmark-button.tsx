@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useBookmarkCheck, useAddBookmark, useRemoveBookmark } from '@/features/bookmark/hooks/use-bookmarks';
 import { AuthGuardModal } from '@/features/auth/auth-guard-modal';
+import { useSnackbarStore } from '@/stores/use-snackbar-store';
 
 export function BookmarkButton({ ticker }: { ticker: string }) {
   const { user } = useAuth();
@@ -12,6 +13,7 @@ export function BookmarkButton({ ticker }: { ticker: string }) {
   const addMutation = useAddBookmark();
   const removeMutation = useRemoveBookmark();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const showSnackbar = useSnackbarStore((s) => s.show);
 
   const isBookmarked = data?.bookmarked ?? false;
   const isPending = addMutation.isPending || removeMutation.isPending;
@@ -22,9 +24,13 @@ export function BookmarkButton({ ticker }: { ticker: string }) {
       return;
     }
     if (isBookmarked) {
-      removeMutation.mutate(ticker);
+      removeMutation.mutate(ticker, {
+        onSuccess: () => showSnackbar('북마크를 해제했습니다'),
+      });
     } else {
-      addMutation.mutate(ticker);
+      addMutation.mutate(ticker, {
+        onSuccess: () => showSnackbar('북마크에 추가했습니다'),
+      });
     }
   }
 

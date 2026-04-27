@@ -2,14 +2,18 @@ package com.aistockadvisor.stock.web;
 
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.stock.domain.AnalystEstimates;
 import com.aistockadvisor.stock.domain.Candle;
+import com.aistockadvisor.stock.domain.CompanyOverview;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.domain.SearchHit;
 import com.aistockadvisor.stock.domain.StockDetailResponse;
 import com.aistockadvisor.stock.domain.StockProfile;
 import com.aistockadvisor.stock.domain.TimeFrame;
+import com.aistockadvisor.stock.service.AnalystEstimatesService;
 import com.aistockadvisor.stock.service.CandleService;
+import com.aistockadvisor.stock.service.CompanyOverviewService;
 import com.aistockadvisor.stock.service.IndicatorService;
 import com.aistockadvisor.stock.service.QuoteService;
 import com.aistockadvisor.stock.service.SearchService;
@@ -45,19 +49,25 @@ public class StockController {
     private final CandleService candleService;
     private final IndicatorService indicatorService;
     private final StockDetailService detailService;
+    private final CompanyOverviewService overviewService;
+    private final AnalystEstimatesService analystService;
 
     public StockController(SearchService searchService,
                            StockProfileService profileService,
                            QuoteService quoteService,
                            CandleService candleService,
                            IndicatorService indicatorService,
-                           StockDetailService detailService) {
+                           StockDetailService detailService,
+                           CompanyOverviewService overviewService,
+                           AnalystEstimatesService analystService) {
         this.searchService = searchService;
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.candleService = candleService;
         this.indicatorService = indicatorService;
         this.detailService = detailService;
+        this.overviewService = overviewService;
+        this.analystService = analystService;
     }
 
     @GetMapping("/search")
@@ -94,6 +104,18 @@ public class StockController {
     public IndicatorSnapshot indicators(
             @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
         return indicatorService.compute(ticker);
+    }
+
+    @GetMapping("/{ticker}/overview")
+    public CompanyOverview overview(
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
+        return overviewService.getOverview(ticker);
+    }
+
+    @GetMapping("/{ticker}/analyst")
+    public AnalystEstimates analyst(
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
+        return analystService.getEstimates(ticker);
     }
 
     @GetMapping("/{ticker}/detail")

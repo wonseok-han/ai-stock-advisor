@@ -10,13 +10,35 @@ import { formatUsd } from '@/lib/format/currency';
 import { formatPercentChange, formatSignedNumber } from '@/lib/format/percent';
 
 export function StockHeader({ ticker }: { ticker: string }) {
-  const { data: profile } = useProfile(ticker);
-  const { data: quote, isFetching: quoteFetching } = useQuote(ticker);
+  const { data: profile, isLoading: profileLoading } = useProfile(ticker);
+  const { data: quote, isLoading: quoteLoading, isFetching: quoteFetching } = useQuote(ticker);
+
+  if (profileLoading || quoteLoading) {
+    return (
+      <header className="flex animate-pulse flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-20 rounded bg-bg-skeleton" />
+            <div className="h-5 w-40 rounded bg-bg-skeleton" />
+          </div>
+          <div className="mt-2 h-4 w-28 rounded bg-bg-skeleton" />
+          <div className="mt-2 flex gap-2">
+            <div className="h-8 w-8 rounded-lg bg-bg-skeleton" />
+            <div className="h-8 w-8 rounded-lg bg-bg-skeleton" />
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="ml-auto h-9 w-32 rounded bg-bg-skeleton" />
+          <div className="mt-2 ml-auto h-5 w-40 rounded bg-bg-skeleton" />
+          <div className="mt-2 ml-auto h-3 w-24 rounded bg-bg-skeleton" />
+        </div>
+      </header>
+    );
+  }
 
   const change = quote?.change ?? 0;
   const up = change > 0;
   const down = change < 0;
-  const colorClass = up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted';
   const changeBg = up
     ? 'bg-emerald-500/10 text-success'
     : down
@@ -29,7 +51,7 @@ export function StockHeader({ ticker }: { ticker: string }) {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-fg">{ticker}</h1>
           {profile?.exchange && (
-            <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-fg-secondary">
+            <span className="rounded-md border border-border bg-bg-surface px-2 py-0.5 text-xs font-medium text-fg-secondary">
               {profile.exchange}
             </span>
           )}

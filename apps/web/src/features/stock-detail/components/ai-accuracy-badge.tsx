@@ -26,7 +26,10 @@ export function AiAccuracyBadge({
   const { data, isLoading, error } = useAccuracy(window);
   const [open, setOpen] = useState(false);
 
-  if (isLoading || error || !data) return null;
+  if (isLoading) {
+    return <div className="inline-block h-5 w-44 animate-pulse rounded-md bg-bg-skeleton" />;
+  }
+  if (error || !data) return null;
   if (!data.sampleSizeSufficient || data.hitRate == null) return null;
 
   const pct = Math.round(data.hitRate * 100);

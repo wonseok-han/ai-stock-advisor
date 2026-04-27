@@ -12,7 +12,9 @@ public record MarketOverviewResponse(
         List<MarketIndex> indices,
         BigDecimal usdKrw,
         BigDecimal usdKrwChange,
+        List<MarketIndex> macro,
         OffsetDateTime updatedAt,
+        String priceLabel,
         String disclaimer
 ) {
 }

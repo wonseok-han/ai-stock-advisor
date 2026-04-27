@@ -33,6 +33,7 @@ dependencies {
 	implementation("nl.martijndwars:web-push:5.1.1")
 	implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 	runtimeOnly("org.postgresql:postgresql")
+	runtimeOnly("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("io.projectreactor:reactor-test")

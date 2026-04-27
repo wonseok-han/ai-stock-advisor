@@ -52,7 +52,7 @@ export function CollapsibleSection({
           open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
         )}
       >
-        <div className="overflow-hidden">
+        <div className={open ? 'overflow-visible' : 'overflow-hidden'}>
           <div
             className={cn(
               'border-t border-border p-3 transition-opacity duration-200 ease-out motion-reduce:transition-none',

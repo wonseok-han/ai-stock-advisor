@@ -17,6 +17,93 @@
 | [password-reset](password-reset/) | Phase 4.5.4 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [feedback](feedback/) | Phase 4.5.5 | 99% | 2026-04-20 | 2026-04-20 | plan, design, analysis, report |
 | [ai-analysis-deepening](ai-analysis-deepening/) | Phase 4.5.6 | 93% | 2026-04-21 | 2026-04-21 | plan, design, analysis, report |
+| [yahoo-migration](yahoo-migration/) | Phase 4.5.7 | 100% | 2026-04-23 | 2026-04-23 | plan, design, report |
+| [stock-detail-enrichment](stock-detail-enrichment/) | Phase 4.5.8 | 92% | 2026-04-10 | 2026-04-23 | plan, design, analysis, report |
+| [dashboard-expansion](dashboard-expansion/) | Phase 4.5.9 | 97.8% | 2026-04-23 | 2026-04-23 | plan, design, analysis, report |
+| [api-cache-optimization](api-cache-optimization/) | Optimization | 98% | 2026-04-23 | 2026-04-24 | plan, design, analysis, report |
+| [ai-signal-ux](ai-signal-ux/) | UX | 98% | 2026-04-24 | 2026-04-24 | plan, design, report |
+| [header-toolbox](header-toolbox/) | UX | 95% | 2026-04-24 | 2026-04-24 | plan, design, analysis, report |
+
+## header-toolbox — 헤더 간소화 + 플로팅 툴박스 + 스낵바 + 마이페이지 리디자인
+
+헤더 버튼 과밀 해소(검색+유저아이콘만 남기고 ThemeSwitcher/UserMenu 제거), 플로팅 툴박스(FAB + 테마/피드백/로그아웃 패널), Zustand 스낵바 토스트(6개 호출 지점), 마이페이지 탭 레이아웃 전환 + UI 리디자인. 추가로 라이트모드 UI 폴리싱(에메랄드 틴트 배경, bg-skeleton 토큰 분리, @layer components, 대시보드 섹션 카드 그룹화, DST 대응 priceLabel, 급등/급락 10개 축소). Match Rate 95%, iteration 0회.
+
+- **범위**: FE 17파일 (신규 5: floating-toolbox, snackbar, use-snackbar-store, search-modal, platform.ts / 수정 12: site-header, user-menu, bookmark-button, bookmark-card, bookmark-grid, notification-section, notification-setting-modal, profile-section, account-section, my/page, globals.css, layout.tsx) + BE 4파일 (MarketOverviewResponse, MarketMoversService, MarketOverviewService, MarketStatusResolver)
+- **결과**: 21파일, +1,955 lines. 설계 148항목 중 141 정확 일치, 2 경미 편차, 12 개선 구현
+- **PR**: #35 squash-merged
+- **핵심 변경**: 헤더→2요소 간소화, FAB 툴박스(스크롤 반투명 + ESC/외부클릭 닫기), 스낵바 Zustand→6 call sites, 마이페이지 수직→탭(URL searchParams 유지), bg-skeleton 토큰 분리, @layer components 이동
+- **Key Decisions**: 마이페이지 수직 섹션→탭 레이아웃 (설계 외 개선, 사용자 직접 요청) · 스낵바 센터링 inset-x-0 flex (translate 기반 애니메이션 버그 회피) · 아바타 이메일 이니셜→SVG 아이콘 (프라이버시 개선) · 플랫폼 인식 단축키 (⌘K / Ctrl K)
+- **Lessons**: bg-muted와 bg-skeleton은 용도가 다르므로 토큰 분리 필수 · @layer components 안의 커스텀 클래스만 Tailwind 유틸리티에 오버라이드 가능 · React Query 캐시 dedup으로 자식 컴포넌트 isLoading이 false 될 수 있음 → 부모에서 로딩 상태 관리
+
+**링크**: [plan](header-toolbox/header-toolbox.plan.md) · [design](header-toolbox/header-toolbox.design.md) · [analysis](header-toolbox/header-toolbox.analysis.md) · [report](header-toolbox/header-toolbox.report.md)
+
+## ai-signal-ux — AI 시그널 UX 개선 (이중관점·tf 분리·로딩 애니메이션·테마 보정)
+
+AI 참고 분석을 v3 이중관점(단기 트레이딩/장기 투자)으로 전환하고 UX 전반을 개선. Gemini 1회 호출로 단기(기술 지표)+장기(펀더멘탈) 동시 출력. 시그널 라벨 방향성 용어화, 분석 확신도 리네이밍, 차트 tf 디커플링, 투자의견 점수 반전(높을수록 매수), 분기실적 카드 레이아웃 재설계, 타이핑 로딩 애니메이션, 라이트 모드 테마 대비 보정. Match Rate 98%, iteration 0회.
+
+- **범위**: BE 13파일 (SignalPerspective 도메인, AiSignal v3 재구조, ContextAssembler 애널리스트+52주 고저 연동, v3 프롬프트, ResponseValidator 듀얼 파싱, maxOutputTokens 4096, MAX_TOKENS 즉시 실패, V17 마이그레이션) + FE 17파일 (이중관점 패널, PanelLoading 공통 컴포넌트, 투자의견 점수 반전, 분기실적 카드, 테마 토큰 보정, React 19 lint 수정)
+- **결과**: 37파일, +1,486/-445 lines. 설계 35/36 항목 매칭, 설계 외 9건 추가 개선
+- **핵심 변경**: 단일 관점→이중관점, tf 파라미터 BE/FE 양쪽 제거, 캐시 키 v2→v3, "강한 긍정/부정"→"강한 상승/하락 신호", "신뢰도"→"분석 확신도"
+- **Key Decisions**: maxOutputTokens 4096 (v3 이중 응답 수용) · MAX_TOKENS finishReason 비재시도 즉시 실패 · 투자의견 display=6-score 반전 (직관적 5점 척도) · 라이트 모드 3단계 반복 조정 (너무 밝음→너무 어두움→균형)
+- **Lessons**: Gemini 토큰 예산은 응답 스키마 복잡도에 비례하여 사전 산정 필요 · lint 오류는 발견 즉시 수정(pre-existing 변명 불가) · 테마 토큰 조정은 디자인 시스템 contrast ratio 기준표로 1회 해결 가능
+- **Follow-up**: PR 생성 및 develop 머지, 운영 환경 이중관점 품질 검증, NYSE 공휴일 캘린더 추가
+
+**링크**: [plan](ai-signal-ux/ai-signal-ux.plan.md) · [design](ai-signal-ux/ai-signal-ux.design.md) · [report](ai-signal-ux/ai-signal-ux.report.md)
+
+## api-cache-optimization — API 캐시 최적화 (적응형 TTL + 2중 캐시 구조)
+
+외부 API 무료 할당량(FMP 250/일) 한계 해소를 위해 `MarketStatusResolver.durationUntilNextOpen()` 기반 적응형 TTL + Client/Service 2중 캐시 구조 도입. 장외시간 캐시를 다음 개장까지 유지하여 불필요한 API 호출 원천 차단. Match Rate 98%, iteration 0회.
+
+- **범위**: BE 14파일 (MarketStatusResolver 확장, Service 7개 적응형 TTL, Client 5개 원본 캐싱 16키, 테스트 M8~M13)
+- **결과**: 14파일, +302/-52 lines. 설계 전 항목 매칭, Critical/Major Gap 0건
+- **PR**: #33
+- **핵심 변경**: 고정 closed TTL(4h/1h/30m) → `durationUntilNextOpen()` 통일 (뉴스만 고정 30분 유지 — 장외에도 발행)
+- **Key Decisions**: 뉴스 TTL 예외 처리 (데이터 특성별 차등) · FmpClient `marketTtl()` DRY 헬퍼 · YahooFinanceClient `cache != null` guard (테스트 호환)
+- **예상 효과**: FMP 288→78/일(-73%), Finnhub 384→96/일(-75%), 전체 930→320/일(-65%)
+- **Follow-up**: NYSE 공휴일 캘린더 추가, 실제 호출량 모니터링, Redis 메모리 사용률 점검
+
+**링크**: [plan](api-cache-optimization/api-cache-optimization.plan.md) · [design](api-cache-optimization/api-cache-optimization.design.md) · [analysis](api-cache-optimization/api-cache-optimization.analysis.md) · [report](api-cache-optimization/api-cache-optimization.report.md)
+
+## dashboard-expansion — Phase 4.5.9 대시보드 확장 (매크로 지표·섹터 퍼포먼스·카테고리 분류)
+
+대시보드를 3개 섹션으로 체계화: 주요 지수(S&P 500, Nasdaq, Dow Jones, Russell 2000) / 변동성·환율·금리(VIX, DXY, 10Y Treasury, USD/KRW) / 원자재(Gold, Silver, WTI Oil, Copper). 섹터 퍼포먼스 위젯 신규(11 GICS 섹터, FMP+Yahoo ETF fallback). Match Rate 97.8%, iteration 0회.
+
+- **범위**: BE 6파일 (MarketOverviewService 7 매크로 심볼 확장, SectorPerformanceService FMP+Yahoo 이중 소스, MarketController /sectors 엔드포인트) + FE 6파일 (MarketOverview 3섹션 분리, SectorPerformance 바 차트, InfoTooltip 전 카드 적용) + PDCA 2파일
+- **결과**: 16파일, +1,702 lines. 설계 45항목 중 39 매칭, 5 개선, 1 변경(SectorChip→SectorBar UX 개선), 0 누락
+- **PR**: #31 squash-merged
+- **핵심 변경**: 설계 후 사용자 요청으로 Russell 2000 추가, VIX 매크로 이동, DXY/Silver/Copper 추가, 매크로 2분류 분리
+- **Key Decisions**: BE macro 단일 배열 유지 + FE에서 name 기반 카테고리 분류 (BE 변경 최소화) · DXY 심볼 DX-Y.NYB (Yahoo Finance 호환) · 3-tier fallback 재활용 (신규 코드 최소화) · Redis 15분 캐시 (섹터/매크로)
+- **Lessons**: 데이터 소스 심볼은 실제 API 테스트 후 확정할 것 (DX=F → DX-Y.NYB) · FE 카테고리 분류가 BE API 구조 변경보다 유연 · InfoTooltip은 초보자 UX에 높은 가치
+- **Follow-up**: 매크로 카드 클릭 → 상세 차트 페이지, 2Y Treasury 추가(안정적 데이터 소스 확보 시)
+
+**링크**: [plan](dashboard-expansion/dashboard-expansion.plan.md) · [design](dashboard-expansion/dashboard-expansion.design.md) · [analysis](dashboard-expansion/dashboard-expansion.analysis.md) · [report](dashboard-expansion/dashboard-expansion.report.md)
+
+## stock-detail-enrichment — Phase 4.5.8 종목 상세 기업 개요 패널 (CompanyOverviewPanel)
+
+종목 상세 페이지에 기업 핵심 펀더멘털(섹터, 시가총액, P/E, EPS, 배당, 베타, 52주 범위) 시각화. Yahoo quoteSummary(primary) + FMP(fallback) 이중 소스, Redis 24h 캐시. Match Rate 92%, iteration 0회.
+
+- **범위**: BE 10 파일 (CompanyOverview record, CompanyOverviewService, FmpClient.companyProfile/ratiosTtm, YahooFinanceClient.quoteSummary crumb/cookie 인증, StockController.overview, Quote week52High/Low 확장) + FE 12 파일 (CompanyOverviewPanel 8셀 그리드 + 52주 바 + 접이식 설명, InfoTooltip @floating-ui/react 공유 컴포넌트, useCompanyOverview, formatMarketCap/formatRatio/formatEmployees)
+- **결과**: 22 파일, +1,568 lines. AC 7/7 (100%) 통과
+- **PR**: 미생성 (feat/stock-detail-enrichment 브랜치)
+- **핵심 변경**: 설계 "FMP 단일 소스" → 구현 "Yahoo primary + FMP fallback" 전환 (FMP 250 req/day 예산 절약), InfoTooltip 공유 컴포넌트 추출 (@floating-ui/react flip+shift), 6셀→8셀 정보 확대 (산업/직원수 추가)
+- **Key Decisions**: Yahoo crumb/cookie 인증 (무제한, API 키 불필요) · FMP stable API 호환 (@JsonProperty 매핑) · graceful degradation (overview=null → 나머지 6블록 정상)
+- **Lessons**: 데이터 소스 다중화를 처음부터 설계할 것 · CSS-only 툴팁 대신 @floating-ui 뷰포트 인식 포지셔닝 · Yahoo Finance v10 quoteSummary가 펀더멘털 정보에 최적
+- **Follow-up**: 베타 피드백 수집, FMP 필드 모니터링, 에러 상태 메시지 개선, 기업 설명 한국어 번역
+
+**링크**: [plan](stock-detail-enrichment/stock-detail-enrichment.plan.md) · [design](stock-detail-enrichment/stock-detail-enrichment.design.md) · [analysis](stock-detail-enrichment/stock-detail-enrichment.analysis.md) · [report](stock-detail-enrichment/stock-detail-enrichment.report.md)
+
+## yahoo-migration — Phase 4.5.7 TwelveData → Yahoo Finance 마이그레이션
+
+TwelveData 무료 플랜(8 req/min, 800 req/day) 제한 해소를 위해 Yahoo Finance v8 chart API를 1차 데이터 소스로 전환. TwelveData는 최후 fallback으로 보존. Match Rate 100%, iteration 0회.
+
+- **범위**: BE 4 파일 (`YahooFinanceClient` +fetchIntradayCandles, `CandleService` +fetchIntradayWithFallback, `MarketOverviewService` 3-tier fallback, `TimeFrame` +yahooInterval)
+- **결과**: +122/-51 lines, 설계 37/37 항목 100% 일치, `./gradlew check` BUILD SUCCESSFUL
+- **PR**: #29 squash-merged (`1d13cb5`)
+- **핵심 변경**: 인트라데이 캔들(Yahoo 1차→TwelveData fallback), 시장 지수/환율(Finnhub→Yahoo→TwelveData 3단 fallback)
+- **Key Decisions**: TwelveData 완전 제거 아님 — 비상 fallback 보존 (사용자 명시적 요청)
+- **Follow-up**: Yahoo hit rate 모니터링, `YAHOO_API_ENABLED` 런타임 토글 검토, 전용 FX API로 USDKRW Finnhub fallback 대체
+
+**링크**: [plan](yahoo-migration/yahoo-migration.plan.md) · [design](yahoo-migration/yahoo-migration.design.md) · [report](yahoo-migration/yahoo-migration.report.md)
 
 ## ai-analysis-deepening — Phase 4.5.6 AI 참고 분석 v2 고도화 (초보자 친화 + 뉴스 신선도)
 

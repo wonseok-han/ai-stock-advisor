@@ -15,10 +15,10 @@ export function MarketMovers() {
   if (isLoading) {
     return (
       <section aria-label="급등/급락 종목" className="card p-5">
-        <div className="h-4 w-32 animate-pulse rounded bg-bg-muted" />
+        <div className="h-4 w-32 animate-pulse rounded bg-bg-skeleton" />
         <div className="mt-4 space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-8 animate-pulse rounded bg-bg-muted" />
+            <div key={i} className="h-8 animate-pulse rounded bg-bg-skeleton" />
           ))}
         </div>
       </section>
@@ -40,15 +40,19 @@ export function MarketMovers() {
   }
 
   return (
-    <section aria-label="급등/급락 종목" className="card p-5">
-      <h2 className="text-sm font-semibold text-fg">급등/급락 종목</h2>
-      <div className="mt-4 space-y-5">
+    <section aria-label="급등/급락 종목" className="card overflow-hidden">
+      <div className="border-b border-border px-5 py-4">
+        <h2 className="text-sm font-semibold text-fg">급등/급락 종목</h2>
+      </div>
+      <div className="divide-y divide-border">
         <MoverList title="급등" movers={data.gainers} variant="gain" />
         <MoverList title="급락" movers={data.losers} variant="loss" />
       </div>
-      <p className="mt-4 text-[11px] text-fg-muted">
-        인기 종목 {data.poolSize}개 기준 · {data.disclaimer}
-      </p>
+      <div className="border-t border-border px-5 py-2.5">
+        <p className="text-[11px] text-fg-muted">
+          인기 종목 {data.poolSize}개 기준 · {data.disclaimer}
+        </p>
+      </div>
     </section>
   );
 }
@@ -67,7 +71,7 @@ function MoverList({
 
   if (movers.length === 0) {
     return (
-      <div>
+      <div className="px-5 py-4">
         <h3 className={cn('mb-2 text-xs font-medium', isGain ? 'text-success' : 'text-danger')}>
           {title}
         </h3>
@@ -77,20 +81,24 @@ function MoverList({
   }
 
   return (
-    <div>
-      <h3 className={cn('mb-2 text-xs font-medium', isGain ? 'text-success' : 'text-danger')}>
+    <div className="px-5 py-4">
+      <h3 className={cn('mb-3 flex items-center gap-1.5 text-xs font-semibold', isGain ? 'text-success' : 'text-danger')}>
+        <span className={cn('inline-block h-2 w-2 rounded-full', isGain ? 'bg-success' : 'bg-danger')} />
         {title}
       </h3>
       <ul className="space-y-0.5">
-        {movers.map((m) => (
+        {movers.map((m, i) => (
           <li key={m.ticker}>
             <button
               onClick={() => router.push(`/stock/${m.ticker}`)}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-bg-muted"
+              className={cn(
+                'flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-bg-muted',
+                i === 0 && 'bg-bg-muted/50',
+              )}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="shrink-0 text-sm font-medium text-fg">{m.ticker}</span>
+                  <span className="shrink-0 text-sm font-semibold text-fg">{m.ticker}</span>
                   <span className="truncate text-xs text-fg-muted">{m.name}</span>
                 </div>
               </div>

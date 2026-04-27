@@ -11,8 +11,16 @@ export interface MarketOverview {
   indices: MarketIndex[];
   usdKrw: number | null;
   usdKrwChange: number | null;
+  macro: MarketIndex[];
   updatedAt: string;
+  priceLabel: string | null;
   disclaimer: string;
+}
+
+export interface SectorPerformance {
+  sector: string;
+  sectorKo: string;
+  changePercent: number;
 }
 
 export interface MarketMover {

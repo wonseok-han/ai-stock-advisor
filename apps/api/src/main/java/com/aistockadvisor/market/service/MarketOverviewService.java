@@ -8,10 +8,14 @@ import com.aistockadvisor.market.domain.MarketOverviewResponse;
 import com.aistockadvisor.stock.domain.Quote;
 import com.aistockadvisor.stock.infra.client.FinnhubClient;
 import com.aistockadvisor.stock.infra.client.TwelveDataClient;
+import com.aistockadvisor.stock.infra.client.YahooFinanceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import com.aistockadvisor.stock.domain.MarketStatus;
+import com.aistockadvisor.stock.domain.MarketStatusResolver;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -19,9 +23,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
- * 시장 개요: 주요 지수(S&P500, Nasdaq, Dow) + VIX + USD/KRW.
+ * 시장 개요: 주요 지수(S&P500, Nasdaq, Dow, Russell 2000) + 매크로(VIX, 국채, 금, 유가) + USD/KRW.
  * 캐시: market:overview (5분).
  * 참조: docs/02-design/features/market-dashboard.design.md §5.1
  */
@@ -29,37 +34,54 @@ import java.util.Objects;
 public class MarketOverviewService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketOverviewService.class);
-    private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+    private static final Duration TTL_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<MarketOverviewResponse> TYPE = new TypeReference<>() {
     };
 
     private final FinnhubClient finnhubClient;
+    private final YahooFinanceClient yahooFinanceClient;
     private final TwelveDataClient twelveDataClient;
     private final RedisCacheAdapter cache;
 
-    /** 지수 심볼 매핑: {Finnhub 심볼, TwelveData 심볼, 표시명} */
+    /** 지수 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
     private static final String[][] INDEX_SYMBOLS = {
-            {"^GSPC", "SPX", "S&P 500"},
-            {"^IXIC", "IXIC", "Nasdaq"},
-            {"^DJI", "DJI", "Dow Jones"},
-            {"^VIX", "VIX", "VIX"},
+            {"^GSPC", "^GSPC", "SPX",  "S&P 500"},
+            {"^IXIC", "^IXIC", "IXIC", "Nasdaq"},
+            {"^DJI",  "^DJI",  "DJI",  "Dow Jones"},
+            {"^RUT",  "^RUT",  "RUT",  "Russell 2000"},
+    };
+
+    /** 매크로 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
+    private static final String[][] MACRO_SYMBOLS = {
+            {"^VIX",  "^VIX",  "VIX",     "VIX"},
+            {"DX-Y.NYB", "DX-Y.NYB", "DXY", "DXY"},
+            {"^TNX",  "^TNX",  "TNX",     "10Y Treasury"},
+            {"GC=F",  "GC=F",  "XAU/USD", "Gold"},
+            {"SI=F",  "SI=F",  "XAG/USD", "Silver"},
+            {"CL=F",  "CL=F",  "WTI/USD", "WTI Oil"},
+            {"HG=F",  "HG=F",  "XCU/USD", "Copper"},
     };
 
     public MarketOverviewService(FinnhubClient finnhubClient,
+                                 YahooFinanceClient yahooFinanceClient,
                                  TwelveDataClient twelveDataClient,
                                  RedisCacheAdapter cache) {
         this.finnhubClient = finnhubClient;
+        this.yahooFinanceClient = yahooFinanceClient;
         this.twelveDataClient = twelveDataClient;
         this.cache = cache;
     }
 
     public MarketOverviewResponse getOverview() {
-        return cache.getOrLoad("market:overview", TYPE, CACHE_TTL, this::fetchOverview);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        return cache.getOrLoad("market:overview", TYPE, ttl, this::fetchOverview);
     }
 
     private MarketOverviewResponse fetchOverview() {
         List<MarketIndex> indices = fetchIndices();
         BigDecimal[] forex = fetchUsdKrw();
+        List<MarketIndex> macro = fetchMacro();
 
         if (indices.isEmpty() && forex[0] == null) {
             throw new BusinessException(
@@ -67,47 +89,66 @@ public class MarketOverviewService {
                     "모든 시장 데이터 소스 실패");
         }
 
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        MarketStatus status = MarketStatusResolver.resolve();
         return new MarketOverviewResponse(
                 indices,
                 forex[0],
                 forex[1],
-                OffsetDateTime.now(ZoneOffset.UTC),
+                macro,
+                now,
+                MarketStatusResolver.priceLabel(status, now),
                 Disclaimers.MARKET
         );
     }
 
+    private List<MarketIndex> fetchMacro() {
+        return java.util.Arrays.stream(MACRO_SYMBOLS)
+                .map(sym -> fetchIndex(sym[0], sym[1], sym[2], sym[3]))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
     private List<MarketIndex> fetchIndices() {
         return java.util.Arrays.stream(INDEX_SYMBOLS)
-                .parallel()
-                .map(sym -> fetchIndex(sym[0], sym[1], sym[2]))
+                .map(sym -> fetchIndexTwelveFirst(sym[0], sym[1], sym[2], sym[3]))
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     /**
-     * Finnhub 우선 → TwelveData fallback.
-     * 둘 다 실패 시 null (해당 지수만 응답에서 제외).
+     * TwelveData → Yahoo → Finnhub fallback (지수 전용).
+     * Finnhub 무료 플랜은 지수(^GSPC 등)를 지원하지 않아 항상 실패하므로,
+     * TwelveData(800 req/day 여유)를 1차로 사용하여 Yahoo 요청량을 줄인다.
      */
-    private MarketIndex fetchIndex(String finnhubSymbol, String twelveSymbol, String displayName) {
-        // 1차: Finnhub
-        try {
-            Quote q = finnhubClient.quote(finnhubSymbol);
-            if (q != null && q.price() != null && q.price().signum() > 0) {
-                return toMarketIndex(finnhubSymbol, displayName, q);
-            }
-        } catch (BusinessException ex) {
-            log.debug("finnhub index {} failed: {}", finnhubSymbol, ex.getMessage());
-        }
+    private MarketIndex fetchIndexTwelveFirst(String finnhubSymbol, String yahooSymbol,
+                                               String twelveSymbol, String displayName) {
+        Quote q = tryQuote(() -> twelveDataClient.quote(twelveSymbol));
+        if (q != null) return toMarketIndex(twelveSymbol, displayName, q);
 
-        // 2차: TwelveData fallback
-        try {
-            Quote q = twelveDataClient.quote(twelveSymbol);
-            if (q != null && q.price() != null && q.price().signum() > 0) {
-                return toMarketIndex(twelveSymbol, displayName, q);
-            }
-        } catch (BusinessException ex) {
-            log.warn("twelvedata index {} also failed: {}", twelveSymbol, ex.getMessage());
-        }
+        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
+        if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
+
+        q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
+        if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
+
+        log.warn("index {} unavailable from all sources", displayName);
+        return null;
+    }
+
+    /**
+     * Finnhub → Yahoo Finance → TwelveData 3단 fallback (매크로/환율용).
+     */
+    private MarketIndex fetchIndex(String finnhubSymbol, String yahooSymbol,
+                                    String twelveSymbol, String displayName) {
+        Quote q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
+        if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
+
+        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
+        if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
+
+        q = tryQuote(() -> twelveDataClient.quote(twelveSymbol));
+        if (q != null) return toMarketIndex(twelveSymbol, displayName, q);
 
         log.warn("index {} unavailable from all sources", displayName);
         return null;
@@ -128,27 +169,28 @@ public class MarketOverviewService {
      * @return BigDecimal[2] — [0]=price, [1]=change (전일 대비 변동). 실패 시 {null, null}.
      */
     private BigDecimal[] fetchUsdKrw() {
-        // Finnhub /forex/rates 사용
-        try {
-            Quote q = finnhubClient.quote("USDKRW=X");
-            if (q != null && q.price() != null && q.price().signum() > 0) {
-                return new BigDecimal[]{q.price(), resolveChange(q)};
-            }
-        } catch (BusinessException ex) {
-            log.debug("finnhub forex USDKRW failed: {}", ex.getMessage());
-        }
+        Quote q = tryQuote(() -> finnhubClient.quote("USDKRW=X"));
+        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
 
-        // TwelveData fallback
-        try {
-            Quote q = twelveDataClient.quote("USD/KRW");
-            if (q != null && q.price() != null && q.price().signum() > 0) {
-                return new BigDecimal[]{q.price(), resolveChange(q)};
-            }
-        } catch (BusinessException ex) {
-            log.warn("twelvedata forex USD/KRW also failed: {}", ex.getMessage());
-        }
+        q = tryQuote(() -> yahooFinanceClient.quote("USDKRW=X"));
+        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
+
+        q = tryQuote(() -> twelveDataClient.quote("USD/KRW"));
+        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
 
         return new BigDecimal[]{null, null};
+    }
+
+    private Quote tryQuote(Supplier<Quote> supplier) {
+        try {
+            Quote q = supplier.get();
+            if (q != null && q.price() != null && q.price().signum() > 0) {
+                return q;
+            }
+        } catch (BusinessException ex) {
+            log.debug("quote fallback: {}", ex.getMessage());
+        }
+        return null;
     }
 
     private BigDecimal resolveChange(Quote q) {
