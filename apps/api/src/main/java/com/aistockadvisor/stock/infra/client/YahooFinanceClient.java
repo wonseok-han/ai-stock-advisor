@@ -307,7 +307,7 @@ public class YahooFinanceClient {
                         + URLEncoder.encode(ticker, StandardCharsets.UTF_8)
                         + "?interval=" + interval + "&range=" + range;
                 return activeClient().get()
-                        .uri(url)
+                        .uri(URI.create(url))
                         .header("User-Agent", ua)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
@@ -389,7 +389,7 @@ public class YahooFinanceClient {
                         + "?period1=" + period1 + "&period2=" + period2
                         + "&interval=1d&events=div,splits";
                 JsonNode root = activeClient().get()
-                        .uri(url)
+                        .uri(URI.create(url))
                         .header("User-Agent", ua)
                         .retrieve()
                         .bodyToMono(JsonNode.class)

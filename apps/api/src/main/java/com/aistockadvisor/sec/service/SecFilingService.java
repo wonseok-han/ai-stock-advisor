@@ -79,10 +79,10 @@ public class SecFilingService {
         // 4. 신규 건 Gemini 요약
         Map<String, String> summaryKoMap = summarizeNewFilings(ticker, newMetas, contentMap);
 
-        // 5. 신규 건 DB 저장
+        // 5. 신규 건 DB 저장 (ON CONFLICT DO NOTHING — 동시 요청 race condition 방지)
         for (FilingMeta m : newMetas) {
             try {
-                summaryRepo.save(new SecFilingSummaryEntity(
+                summaryRepo.insertIgnoreDuplicate(new SecFilingSummaryEntity(
                         ticker, m.accession(), m.form(), m.category(), m.filedAt(),
                         m.docUrl(), contentMap.get(m.accession()),
                         summaryKoMap.get(m.accession())));
