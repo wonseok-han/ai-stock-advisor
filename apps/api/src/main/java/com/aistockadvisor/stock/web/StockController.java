@@ -2,6 +2,8 @@ package com.aistockadvisor.stock.web;
 
 import com.aistockadvisor.common.error.BusinessException;
 import com.aistockadvisor.common.error.ErrorCode;
+import com.aistockadvisor.sec.domain.SecFiling;
+import com.aistockadvisor.sec.service.SecFilingService;
 import com.aistockadvisor.stock.domain.AnalystEstimates;
 import com.aistockadvisor.stock.domain.Candle;
 import com.aistockadvisor.stock.domain.CompanyOverview;
@@ -51,6 +53,7 @@ public class StockController {
     private final StockDetailService detailService;
     private final CompanyOverviewService overviewService;
     private final AnalystEstimatesService analystService;
+    private final SecFilingService secFilingService;
 
     public StockController(SearchService searchService,
                            StockProfileService profileService,
@@ -59,7 +62,8 @@ public class StockController {
                            IndicatorService indicatorService,
                            StockDetailService detailService,
                            CompanyOverviewService overviewService,
-                           AnalystEstimatesService analystService) {
+                           AnalystEstimatesService analystService,
+                           SecFilingService secFilingService) {
         this.searchService = searchService;
         this.profileService = profileService;
         this.quoteService = quoteService;
@@ -68,6 +72,7 @@ public class StockController {
         this.detailService = detailService;
         this.overviewService = overviewService;
         this.analystService = analystService;
+        this.secFilingService = secFilingService;
     }
 
     @GetMapping("/search")
@@ -116,6 +121,15 @@ public class StockController {
     public AnalystEstimates analyst(
             @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
         return analystService.getEstimates(ticker);
+    }
+
+    @GetMapping("/{ticker}/sec-filings")
+    public List<SecFiling> secFilings(
+            @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
+        return secFilingService.getRecentFilings(ticker, 5).stream()
+                .map(f -> new SecFiling(f.ticker(), f.form(), f.title(), f.filedAt(),
+                        f.eventCategory(), f.daysAgo(), f.documentUrl(), null, f.summaryKo()))
+                .toList();
     }
 
     @GetMapping("/{ticker}/detail")

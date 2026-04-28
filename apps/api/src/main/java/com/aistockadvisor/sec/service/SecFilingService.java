@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.regex.Pattern;
 
 /**
  * SEC EDGAR 공시 서비스.
@@ -34,22 +37,35 @@ public class SecFilingService {
 
     private final SecEdgarClient edgarClient;
     private final RedisCacheAdapter cache;
+    private final SecFilingSummarizer summarizer;
 
-    public SecFilingService(SecEdgarClient edgarClient, RedisCacheAdapter cache) {
+    public SecFilingService(SecEdgarClient edgarClient, RedisCacheAdapter cache,
+                            SecFilingSummarizer summarizer) {
         this.edgarClient = edgarClient;
         this.cache = cache;
+        this.summarizer = summarizer;
     }
 
-    /** 최근 8-K 공시 최대 {@code limit}건. CIK 없거나 오류 시 빈 리스트. */
+    /** 최근 공시 최대 {@code limit}건. CIK 없거나 오류 시 빈 리스트. */
     public List<SecFiling> getRecentFilings(String ticker, int limit) {
-        String key = "sec:filings:" + ticker.toUpperCase();
+        String key = "sec:filings:v2:" + ticker.toUpperCase();
         List<SecFiling> cached = cache.get(key, FILINGS_TYPE);
         if (cached != null) return cached;
 
-        List<SecFiling> result = fetchFilings(ticker, limit);
-        if (!result.isEmpty()) {
-            cache.set(key, result, TTL_FILINGS);
+        List<SecFiling> filings = fetchFilings(ticker, limit);
+        if (filings.isEmpty()) return filings;
+
+        // Gemini 한국어 요약 (5건 일괄 1회 호출)
+        List<String> summaries = summarizer.summarize(filings);
+        List<SecFiling> result = new ArrayList<>();
+        for (int i = 0; i < filings.size(); i++) {
+            SecFiling f = filings.get(i);
+            String ko = i < summaries.size() ? summaries.get(i) : null;
+            result.add(new SecFiling(f.ticker(), f.form(), f.title(), f.filedAt(),
+                    f.eventCategory(), f.daysAgo(), f.documentUrl(), f.contentSummary(), ko));
         }
+
+        cache.set(key, result, TTL_FILINGS);
         return result;
     }
 
@@ -65,6 +81,17 @@ public class SecFilingService {
         }
         return result;
     }
+
+    private static final int SUMMARY_MAX_LENGTH = 1500;
+    // XBRL hidden/header 블록: 비표시 메타데이터 (CIK, 날짜, 통화 코드 등)
+    private static final Pattern IX_HIDDEN = Pattern.compile(
+            "<ix:(hidden|header)[^>]*>.*?</ix:\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern SCRIPT_STYLE = Pattern.compile(
+            "<(script|style|xbrl)[^>]*>.*?</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
+    private static final Pattern HTML_ENTITY = Pattern.compile("&[a-zA-Z#0-9]+;");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern ITEM_SECTION = Pattern.compile("Item\\s+\\d+\\.\\d+");
 
     @SuppressWarnings("unchecked")
     private List<SecFiling> fetchFilings(String ticker, int limit) {
@@ -82,25 +109,114 @@ public class SecFilingService {
                 List<String> dates = castList(recent.get("filingDate"));
                 List<String> docs = castList(recent.get("primaryDocument"));
                 List<Object> items = castList(recent.get("items"));
+                List<String> accessions = castList(recent.get("accessionNumber"));
 
                 LocalDate today = LocalDate.now();
-                List<SecFiling> result = new ArrayList<>();
 
-                for (int i = 0; i < forms.size() && result.size() < limit; i++) {
-                    if (!"8-K".equals(forms.get(i))) continue;
+                // Phase 1: 메타데이터 수집
+                record FilingMeta(String form, LocalDate filedAt, String category,
+                                  int daysAgo, String docUrl) {}
+                List<FilingMeta> metas = new ArrayList<>();
+
+                for (int i = 0; i < forms.size() && metas.size() < limit; i++) {
+                    String form = forms.get(i);
+                    if (!isRelevantForm(form)) continue;
                     LocalDate filedAt = parseDate(dates.size() > i ? dates.get(i) : null);
                     String itemCode = items.size() > i ? String.valueOf(items.get(i)) : "";
-                    String title = docs.size() > i ? docs.get(i) : "8-K 공시";
                     int daysAgo = (int) ChronoUnit.DAYS.between(filedAt, today);
-                    result.add(new SecFiling(ticker, "8-K", title, filedAt,
-                            classifyItem(itemCode), daysAgo));
+                    String docUrl = buildDocumentUrl(cik,
+                            accessions.size() > i ? accessions.get(i) : null,
+                            docs.size() > i ? docs.get(i) : null);
+                    metas.add(new FilingMeta(form, filedAt, formCategory(form, itemCode),
+                            daysAgo, docUrl));
                 }
-                return result;
+
+                // Phase 2: 병렬로 공시 문서 본문 fetch
+                try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
+                    List<Future<String>> futures = metas.stream()
+                            .map(m -> ex.submit(() ->
+                                    m.docUrl != null ? fetchAndExtract(m.docUrl) : null))
+                            .toList();
+
+                    List<SecFiling> result = new ArrayList<>();
+                    for (int j = 0; j < metas.size(); j++) {
+                        FilingMeta m = metas.get(j);
+                        String summary = safeGet(futures.get(j));
+                        result.add(new SecFiling(ticker, m.form, m.category,
+                                m.filedAt, m.category, m.daysAgo, m.docUrl, summary, null));
+                    }
+                    return result;
+                }
             } catch (Exception ex) {
                 log.debug("sec filings parse failed ticker={} reason={}", ticker, ex.getMessage());
                 return List.<SecFiling>of();
             }
         }).orElse(List.of());
+    }
+
+    private String buildDocumentUrl(String cik, String accessionNumber, String primaryDoc) {
+        if (accessionNumber == null || primaryDoc == null) return null;
+        String cikTrimmed = cik.replaceFirst("^0+", "");
+        String accNoDashes = accessionNumber.replace("-", "");
+        return "https://www.sec.gov/Archives/edgar/data/"
+                + cikTrimmed + "/" + accNoDashes + "/" + primaryDoc;
+    }
+
+    private String fetchAndExtract(String url) {
+        String html = edgarClient.fetchDocumentText(url);
+        return extractPlainText(html);
+    }
+
+    private static String extractPlainText(String html) {
+        if (html == null || html.isBlank()) return null;
+        // 1. XBRL hidden/header 블록 통째 제거 (비표시 메타데이터)
+        String text = IX_HIDDEN.matcher(html).replaceAll(" ");
+        // 2. script/style/xbrl 블록 제거
+        text = SCRIPT_STYLE.matcher(text).replaceAll(" ");
+        // 3. 모든 HTML/XML 태그 제거
+        text = HTML_TAG.matcher(text).replaceAll(" ");
+        // 4. HTML 엔티티 제거
+        text = HTML_ENTITY.matcher(text).replaceAll(" ");
+        // 5. 공백 정리
+        text = WHITESPACE.matcher(text).replaceAll(" ").trim();
+        // 6. SEC 보일러플레이트 건너뛰고 실제 내용 추출
+        text = findContent(text);
+        if (text == null || text.isEmpty()) return null;
+        if (text.length() > SUMMARY_MAX_LENGTH) {
+            return text.substring(0, SUMMARY_MAX_LENGTH);
+        }
+        return text;
+    }
+
+    private static String findContent(String text) {
+        if (text == null) return null;
+        // 8-K: "Item X.XX" 섹션이 본문 시작점
+        var m = ITEM_SECTION.matcher(text);
+        if (m.find()) {
+            return text.substring(m.start());
+        }
+        // S-3/424B: "PROSPECTUS" 이후가 본문
+        int prospIdx = text.toUpperCase().indexOf("PROSPECTUS");
+        if (prospIdx >= 0) {
+            return text.substring(prospIdx);
+        }
+        // Fallback: SEC 보일러플레이트("FORM 8-K" 등) 이후부터
+        int formIdx = text.indexOf("FORM ");
+        if (formIdx >= 0) {
+            int afterForm = text.indexOf(" ", formIdx + 10);
+            if (afterForm > 0) {
+                return text.substring(afterForm).trim();
+            }
+        }
+        return text;
+    }
+
+    private static String safeGet(Future<String> future) {
+        try {
+            return future.get();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -187,6 +303,22 @@ public class SecFilingService {
         return List.of();
     }
 
+    private static boolean isRelevantForm(String form) {
+        return switch (form) {
+            case "8-K", "8-K/A", "S-3", "S-3ASR", "424B4", "424B5", "424B3" -> true;
+            default -> false;
+        };
+    }
+
+    private String formCategory(String form, String itemCode) {
+        return switch (form) {
+            case "S-3", "S-3ASR" -> "신주 발행 등록";
+            case "424B4", "424B5" -> "공모 조건 확정";
+            case "424B3" -> "공모 설명서";
+            default -> classifyItem(itemCode);
+        };
+    }
+
     private String classifyItem(String items) {
         if (items == null || items.isBlank()) return "기타 공시";
         String first = items.split(",")[0].trim();
@@ -200,6 +332,7 @@ public class SecFilingService {
             case "2.05" -> "구조조정·비용";
             case "2.06" -> "자산가치 손상";
             case "3.01" -> "상장 폐지 위험";
+            case "3.02" -> "신주 발행";
             case "4.01" -> "감사인 변경";
             case "5.01" -> "경영권 변경";
             case "5.02" -> "임원 교체";

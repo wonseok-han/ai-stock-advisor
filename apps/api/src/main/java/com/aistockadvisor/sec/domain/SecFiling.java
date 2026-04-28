@@ -8,5 +8,8 @@ public record SecFiling(
         String title,
         LocalDate filedAt,
         String eventCategory,
-        int daysAgo
+        int daysAgo,
+        String documentUrl,
+        String contentSummary,
+        String summaryKo
 ) {}

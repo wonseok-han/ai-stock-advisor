@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.netty.http.client.HttpClient;
@@ -54,17 +55,24 @@ public class SecEdgarClient {
                 .responseTimeout(TIMEOUT);
         ReactorClientHttpConnector connector = new ReactorClientHttpConnector(httpClient);
 
+        // company_tickers.json (~수 MB) 및 companyfacts (~수 MB) 를 수용하기 위해 10MB 로 확장
+        ExchangeStrategies largeBuffer = ExchangeStrategies.builder()
+                .codecs(config -> config.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+                .build();
+
         this.dataClient = WebClient.builder()
                 .baseUrl(DATA_BASE)
                 .defaultHeader("User-Agent", USER_AGENT)
                 .defaultHeader("Accept", "application/json")
                 .clientConnector(connector)
+                .exchangeStrategies(largeBuffer)
                 .build();
 
         this.tickersClient = WebClient.builder()
                 .defaultHeader("User-Agent", USER_AGENT)
                 .defaultHeader("Accept", "application/json")
                 .clientConnector(connector)
+                .exchangeStrategies(largeBuffer)
                 .build();
     }
 
@@ -158,6 +166,25 @@ public class SecEdgarClient {
             } catch (Exception ex) {
                 log.warn("edgar tickers load failed: {}", ex.getMessage());
             }
+        }
+    }
+
+    /**
+     * SEC Archives에서 공시 문서 원문(HTML)을 가져온다.
+     * @param url 전체 URL (예: https://www.sec.gov/Archives/edgar/data/...)
+     * @return HTML 문자열, 실패 시 null
+     */
+    public String fetchDocumentText(String url) {
+        try {
+            return tickersClient.get()
+                    .uri(url)
+                    .header("Accept", "*/*")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(TIMEOUT);
+        } catch (Exception ex) {
+            log.debug("edgar document fetch failed url={} reason={}", url, ex.getMessage());
+            return null;
         }
     }
 

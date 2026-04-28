@@ -8,6 +8,7 @@ import { CompanyOverviewPanel } from '@/features/stock-detail/company-overview-p
 import { NewsPanel } from '@/features/stock-detail/news/news-panel';
 import { ChartPanel } from '@/features/stock-detail/chart/chart-panel';
 import { IndicatorsPanel } from '@/features/stock-detail/indicators/indicators-panel';
+import { SecFilingsPanel } from '@/features/stock-detail/sec-filings/sec-filings-panel';
 import { StockHeader } from '@/features/stock-detail/stock-header';
 import { TimeFrameTabs } from '@/features/stock-detail/time-frame-tabs';
 
@@ -29,6 +30,7 @@ export function StockDetailView({ ticker }: { ticker: string }) {
       <ChartPanel ticker={ticker} tf={tf} />
       <IndicatorsPanel ticker={ticker} />
       <AiSignalPanel ticker={ticker} />
+      <SecFilingsPanel ticker={ticker} />
       <NewsPanel ticker={ticker} />
     </div>
   );

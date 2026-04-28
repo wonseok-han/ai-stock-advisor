@@ -211,10 +211,12 @@ public class ContextAssembler {
         return filings.stream().map(f -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("form", f.form());
-            m.put("title", f.title());
-            m.put("filed_at", f.filedAt() != null ? f.filedAt().toString() : null);
             m.put("event_category", f.eventCategory());
+            m.put("filed_at", f.filedAt() != null ? f.filedAt().toString() : null);
             m.put("days_ago", f.daysAgo());
+            if (f.contentSummary() != null) {
+                m.put("content_summary", f.contentSummary());
+            }
             return m;
         }).toList();
     }
