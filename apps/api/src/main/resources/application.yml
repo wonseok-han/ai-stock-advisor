@@ -78,6 +78,8 @@ app:
     alphavantage:
       api-key: ${ALPHAVANTAGE_API_KEY:}
       base-url: https://www.alphavantage.co/query
+    sec-edgar:
+      contact-email: ${SEC_EDGAR_CONTACT_EMAIL:}
     gemini:
       api-key: ${GEMINI_API_KEY:}
       model: ${GEMINI_MODEL:gemini-2.5-flash}

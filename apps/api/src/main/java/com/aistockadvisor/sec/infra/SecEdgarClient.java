@@ -45,7 +45,7 @@ public class SecEdgarClient {
     private final AtomicBoolean tickersLoaded = new AtomicBoolean(false);
 
     public SecEdgarClient(ObjectMapper objectMapper,
-                          @org.springframework.beans.factory.annotation.Value("${app.resend.contact-email:}") String contactEmail) {
+                          @org.springframework.beans.factory.annotation.Value("${app.external.sec-edgar.contact-email:}") String contactEmail) {
         String userAgent = "Nowini/1.0" + (contactEmail.isBlank() ? "" : " " + contactEmail);
         this.objectMapper = objectMapper;
         HttpClient httpClient = HttpClient.create()
