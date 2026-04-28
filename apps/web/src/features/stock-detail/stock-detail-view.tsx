@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 
-import { AiSignalPanel } from '@/features/stock-detail/ai-signal/ai-signal-panel';
+import { AiSignalLinkCard } from '@/features/stock-detail/ai-signal/ai-signal-link-card';
 import { AnalystPanel } from '@/features/stock-detail/analyst/analyst-panel';
 import { CompanyOverviewPanel } from '@/features/stock-detail/company-overview-panel';
 import { NewsPanel } from '@/features/stock-detail/news/news-panel';
 import { ChartPanel } from '@/features/stock-detail/chart/chart-panel';
 import { IndicatorsPanel } from '@/features/stock-detail/indicators/indicators-panel';
+import { SecFilingsPanel } from '@/features/stock-detail/sec-filings/sec-filings-panel';
 import { StockHeader } from '@/features/stock-detail/stock-header';
 import { TimeFrameTabs } from '@/features/stock-detail/time-frame-tabs';
 
@@ -23,12 +24,13 @@ export function StockDetailView({ ticker }: { ticker: string }) {
   return (
     <div className="flex flex-col gap-6">
       <StockHeader ticker={ticker} />
+      <AiSignalLinkCard ticker={ticker} />
       <CompanyOverviewPanel ticker={ticker} />
       <AnalystPanel ticker={ticker} />
       <TimeFrameTabs value={tf} onChange={setTf} />
       <ChartPanel ticker={ticker} tf={tf} />
       <IndicatorsPanel ticker={ticker} />
-      <AiSignalPanel ticker={ticker} />
+      <SecFilingsPanel ticker={ticker} />
       <NewsPanel ticker={ticker} />
     </div>
   );

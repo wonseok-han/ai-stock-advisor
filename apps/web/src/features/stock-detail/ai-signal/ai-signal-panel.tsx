@@ -20,7 +20,16 @@ import type { AiSignalClass, SignalPerspective } from "@/types/ai-signal";
 export function AiSignalPanel({ ticker }: { ticker: string }) {
   const { user, isLoading: authLoading } = useAuth();
 
-  if (!authLoading && !user) {
+  if (authLoading) {
+    return (
+      <PanelLoading
+        title="AI 참고 분석"
+        text="인증 정보를 확인하고 있어요"
+      />
+    );
+  }
+
+  if (!user) {
     return <AiSignalPreview />;
   }
 

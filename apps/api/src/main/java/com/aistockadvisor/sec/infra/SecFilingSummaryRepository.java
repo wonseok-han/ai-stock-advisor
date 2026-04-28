@@ -1,0 +1,25 @@
+package com.aistockadvisor.sec.infra;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+
+public interface SecFilingSummaryRepository extends JpaRepository<SecFilingSummaryEntity, Long> {
+
+    List<SecFilingSummaryEntity> findByAccessionNumberIn(List<String> accessionNumbers);
+
+    @Modifying
+    @Transactional
+    @Query(value = "INSERT INTO sec_filing_summaries "
+            + "(ticker, accession_number, form, event_category, filed_at, "
+            + "document_url, content_summary, summary_ko, created_at) "
+            + "VALUES (:#{#e.ticker}, :#{#e.accessionNumber}, :#{#e.form}, "
+            + ":#{#e.eventCategory}, :#{#e.filedAt}, :#{#e.documentUrl}, "
+            + ":#{#e.contentSummary}, :#{#e.summaryKo}, NOW()) "
+            + "ON CONFLICT (accession_number) DO NOTHING", nativeQuery = true)
+    void insertIgnoreDuplicate(@org.springframework.data.repository.query.Param("e") SecFilingSummaryEntity e);
+}
