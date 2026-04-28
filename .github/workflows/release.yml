@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'changelogs/**'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find latest changelog
+        id: changelog
+        run: |
+          LATEST=$(ls -1 changelogs/*.md 2>/dev/null | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "::error::No changelog files found"
+            exit 1
+          fi
+          VERSION=$(basename "$LATEST" .md)
+          echo "FILE=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          VERSION="${{ steps.changelog.outputs.VERSION }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "EXISTS=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "EXISTS=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag
+        if: steps.check_tag.outputs.EXISTS == 'false'
+        run: |
+          VERSION="${{ steps.changelog.outputs.VERSION }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "$VERSION"
+          git push origin "$VERSION"
+
+      - name: Build release body
+        if: steps.check_tag.outputs.EXISTS == 'false'
+        id: body
+        run: |
+          CHANGELOG="${{ steps.changelog.outputs.FILE }}"
+          VERSION="${{ steps.changelog.outputs.VERSION }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          {
+            echo "BODY<<EOF"
+            cat "$CHANGELOG"
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: ${{ github.server_url }}/${{ github.repository }}/compare/${PREV_TAG}...${VERSION}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.EXISTS == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.VERSION }}
+          name: ${{ steps.changelog.outputs.VERSION }}
+          body: ${{ steps.body.outputs.BODY }}
+          make_latest: true
