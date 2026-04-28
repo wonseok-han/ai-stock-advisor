@@ -2,6 +2,9 @@ package com.aistockadvisor.ai.service;
 
 import com.aistockadvisor.news.domain.NewsItem;
 import com.aistockadvisor.news.service.NewsService;
+import com.aistockadvisor.sec.domain.SecFiling;
+import com.aistockadvisor.sec.domain.SecFinancials;
+import com.aistockadvisor.sec.service.SecFilingService;
 import com.aistockadvisor.stock.domain.AnalystEstimates;
 import com.aistockadvisor.stock.domain.IndicatorSnapshot;
 import com.aistockadvisor.stock.domain.Quote;
@@ -47,17 +50,20 @@ public class ContextAssembler {
     private final IndicatorService indicatorService;
     private final NewsService newsService;
     private final AnalystEstimatesService analystService;
+    private final SecFilingService secFilingService;
 
     public ContextAssembler(StockProfileService profileService,
                             QuoteService quoteService,
                             IndicatorService indicatorService,
                             NewsService newsService,
-                            AnalystEstimatesService analystService) {
+                            AnalystEstimatesService analystService,
+                            SecFilingService secFilingService) {
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.indicatorService = indicatorService;
         this.newsService = newsService;
         this.analystService = analystService;
+        this.secFilingService = secFilingService;
     }
 
     public Map<String, Object> assemble(String ticker) {
@@ -67,6 +73,8 @@ public class ContextAssembler {
             Future<IndicatorSnapshot> iF = ex.submit(() -> safely(() -> indicatorService.compute(ticker)));
             Future<List<NewsItem>> nF = ex.submit(() -> safely(() -> newsService.getNews(ticker, NEWS_LIMIT)));
             Future<AnalystEstimates> aF = ex.submit(() -> safely(() -> analystService.getEstimates(ticker)));
+            Future<List<SecFiling>> sfF = ex.submit(() -> safely(() -> secFilingService.getRecentFilings(ticker, 5)));
+            Future<SecFinancials> sxF = ex.submit(() -> safely(() -> secFilingService.getFinancials(ticker)));
 
             Map<String, Object> ctx = new LinkedHashMap<>();
             ctx.put("ticker", ticker);
@@ -75,6 +83,8 @@ public class ContextAssembler {
             ctx.put("indicators", indicatorsOf(await(iF)));
             ctx.put("recent_news", newsOf(await(nF)));
             ctx.put("analyst_estimates", analystOf(await(aF)));
+            ctx.put("sec_filings", secFilingsOf(await(sfF)));
+            ctx.put("sec_financials", secFinancialsOf(await(sxF)));
             return ctx;
         }
     }
@@ -194,6 +204,36 @@ public class ContextAssembler {
             }).toList());
         }
         return m.isEmpty() ? null : m;
+    }
+
+    private List<Map<String, Object>> secFilingsOf(List<SecFiling> filings) {
+        if (filings == null || filings.isEmpty()) return null;
+        return filings.stream().map(f -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("form", f.form());
+            m.put("title", f.title());
+            m.put("filed_at", f.filedAt() != null ? f.filedAt().toString() : null);
+            m.put("event_category", f.eventCategory());
+            m.put("days_ago", f.daysAgo());
+            return m;
+        }).toList();
+    }
+
+    private Map<String, Object> secFinancialsOf(SecFinancials sf) {
+        if (sf == null) return null;
+        Map<String, Object> m = new LinkedHashMap<>();
+        if (sf.revenueHistory() != null && !sf.revenueHistory().isEmpty()) {
+            m.put("revenue_trend", sf.revenueHistory().stream()
+                    .map(SecFinancials.QuarterValue::value).toList());
+            m.put("quarters", sf.revenueHistory().stream()
+                    .map(SecFinancials.QuarterValue::quarter).toList());
+        }
+        if (sf.netIncomeHistory() != null && !sf.netIncomeHistory().isEmpty()) {
+            m.put("net_income_trend", sf.netIncomeHistory().stream()
+                    .map(SecFinancials.QuarterValue::value).toList());
+        }
+        m.put("unit", sf.unit());
+        return m.size() <= 1 ? null : m;
     }
 
     private static String freshnessOf(long hoursAgo) {
