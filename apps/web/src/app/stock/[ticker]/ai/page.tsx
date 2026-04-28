@@ -1,5 +1,7 @@
+import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
 
+import { getProfile, getQuote } from '@/lib/api/stocks';
 import { AiSignalPageView } from '@/features/stock-detail/ai-signal/ai-signal-page-view';
 
 import type { Metadata } from 'next';
@@ -25,9 +27,24 @@ export default async function AiSignalPage({ params }: Props) {
     notFound();
   }
 
+  const queryClient = new QueryClient();
+
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: ['profile', ticker],
+      queryFn: () => getProfile(ticker),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['quote', ticker],
+      queryFn: () => getQuote(ticker),
+    }),
+  ]);
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <AiSignalPageView ticker={ticker} />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <AiSignalPageView ticker={ticker} />
+      </HydrationBoundary>
     </main>
   );
 }

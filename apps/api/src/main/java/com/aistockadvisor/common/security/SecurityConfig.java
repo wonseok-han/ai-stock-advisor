@@ -69,7 +69,7 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain protectedFilterChain(HttpSecurity http) throws Exception {
         return http
-                .securityMatcher("/api/v1/me", "/api/v1/bookmarks/**", "/api/v1/push/subscribe", "/api/v1/push/unsubscribe", "/api/v1/notifications/**", "/api/v1/stocks/*/ai-signal")
+                .securityMatcher("/api/v1/me", "/api/v1/bookmarks/**", "/api/v1/push/subscribe", "/api/v1/push/unsubscribe", "/api/v1/notifications/**", "/api/v1/stocks/*/ai-signal", "/api/v1/stocks/*/sec-filings")
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

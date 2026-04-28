@@ -2,12 +2,21 @@
 
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { PanelLoading } from '@/components/ui/panel-loading';
+import { useAuth } from '@/features/auth/auth-provider';
 import { useSecFilings } from '@/features/stock-detail/sec-filings/hooks/use-sec-filings';
 import { cn } from '@/lib/cn';
 
 import type { SecFiling } from '@/types/stock';
 
 export function SecFilingsPanel({ ticker }: { ticker: string }) {
+  const { user, isLoading: authLoading } = useAuth();
+
+  if (authLoading || !user) return null;
+
+  return <SecFilingsContent ticker={ticker} />;
+}
+
+function SecFilingsContent({ ticker }: { ticker: string }) {
   const { data, isLoading, error } = useSecFilings(ticker);
 
   if (isLoading) {

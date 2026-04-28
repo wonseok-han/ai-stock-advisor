@@ -1,5 +1,15 @@
+import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
 
+import { getNews } from '@/lib/api/news';
+import {
+  getAnalystEstimates,
+  getCandles,
+  getCompanyOverview,
+  getIndicators,
+  getProfile,
+  getQuote,
+} from '@/lib/api/stocks';
 import { StockDetailView } from '@/features/stock-detail/stock-detail-view';
 
 import type { Metadata } from 'next';
@@ -25,9 +35,44 @@ export default async function StockDetailPage({ params }: Props) {
     notFound();
   }
 
+  const queryClient = new QueryClient();
+
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: ['profile', ticker],
+      queryFn: () => getProfile(ticker),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['quote', ticker],
+      queryFn: () => getQuote(ticker),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['candles', ticker, '1D'],
+      queryFn: () => getCandles(ticker, '1D'),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['indicators', ticker],
+      queryFn: () => getIndicators(ticker),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['overview', ticker],
+      queryFn: () => getCompanyOverview(ticker),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['analyst', ticker],
+      queryFn: async () => (await getAnalystEstimates(ticker)) ?? null,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['news', ticker, 5],
+      queryFn: () => getNews(ticker, 5),
+    }),
+  ]);
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <StockDetailView ticker={ticker} />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <StockDetailView ticker={ticker} />
+      </HydrationBoundary>
     </main>
   );
 }
