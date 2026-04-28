@@ -34,7 +34,6 @@ public class SecEdgarClient {
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
     private static final String DATA_BASE = "https://data.sec.gov";
     private static final String TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
-    private static final String USER_AGENT = "Nowini/1.0 oshan1112@gmail.com";
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -45,7 +44,9 @@ public class SecEdgarClient {
     private final ConcurrentHashMap<String, String> tickerCikMap = new ConcurrentHashMap<>();
     private final AtomicBoolean tickersLoaded = new AtomicBoolean(false);
 
-    public SecEdgarClient(ObjectMapper objectMapper) {
+    public SecEdgarClient(ObjectMapper objectMapper,
+                          @org.springframework.beans.factory.annotation.Value("${app.resend.contact-email:}") String contactEmail) {
+        String userAgent = "Nowini/1.0" + (contactEmail.isBlank() ? "" : " " + contactEmail);
         this.objectMapper = objectMapper;
         HttpClient httpClient = HttpClient.create()
                 .followRedirect(true)
@@ -62,14 +63,14 @@ public class SecEdgarClient {
 
         this.dataClient = WebClient.builder()
                 .baseUrl(DATA_BASE)
-                .defaultHeader("User-Agent", USER_AGENT)
+                .defaultHeader("User-Agent", userAgent)
                 .defaultHeader("Accept", "application/json")
                 .clientConnector(connector)
                 .exchangeStrategies(largeBuffer)
                 .build();
 
         this.tickersClient = WebClient.builder()
-                .defaultHeader("User-Agent", USER_AGENT)
+                .defaultHeader("User-Agent", userAgent)
                 .defaultHeader("Accept", "application/json")
                 .clientConnector(connector)
                 .exchangeStrategies(largeBuffer)
