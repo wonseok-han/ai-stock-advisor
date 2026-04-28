@@ -4,6 +4,8 @@ import com.aistockadvisor.cache.RedisCacheAdapter;
 import com.aistockadvisor.sec.domain.SecFiling;
 import com.aistockadvisor.sec.domain.SecFinancials;
 import com.aistockadvisor.sec.infra.SecEdgarClient;
+import com.aistockadvisor.sec.infra.SecFilingSummaryEntity;
+import com.aistockadvisor.sec.infra.SecFilingSummaryRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,15 +16,17 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * SEC EDGAR 공시 서비스.
- * 8-K 최신 공시 및 XBRL 재무 팩트를 조회하고 Redis 캐시로 보호한다.
+ * DB 영구 저장 + Redis 핫 캐시 2계층 구조로 Gemini 호출을 공시 1건당 1회로 제한한다.
  */
 @Service
 public class SecFilingService {
@@ -38,12 +42,15 @@ public class SecFilingService {
     private final SecEdgarClient edgarClient;
     private final RedisCacheAdapter cache;
     private final SecFilingSummarizer summarizer;
+    private final SecFilingSummaryRepository summaryRepo;
 
     public SecFilingService(SecEdgarClient edgarClient, RedisCacheAdapter cache,
-                            SecFilingSummarizer summarizer) {
+                            SecFilingSummarizer summarizer,
+                            SecFilingSummaryRepository summaryRepo) {
         this.edgarClient = edgarClient;
         this.cache = cache;
         this.summarizer = summarizer;
+        this.summaryRepo = summaryRepo;
     }
 
     /** 최근 공시 최대 {@code limit}건. CIK 없거나 오류 시 빈 리스트. */
@@ -52,17 +59,52 @@ public class SecFilingService {
         List<SecFiling> cached = cache.get(key, FILINGS_TYPE);
         if (cached != null) return cached;
 
-        List<SecFiling> filings = fetchFilings(ticker, limit);
-        if (filings.isEmpty()) return filings;
+        // 1. EDGAR 메타데이터 조회
+        List<FilingMeta> metas = fetchFilingMetas(ticker, limit);
+        if (metas.isEmpty()) return List.of();
 
-        // Gemini 한국어 요약 (5건 일괄 1회 호출)
-        List<String> summaries = summarizer.summarize(filings);
+        // 2. DB에서 기존 요약 조회
+        List<String> accNums = metas.stream().map(FilingMeta::accession).toList();
+        Map<String, SecFilingSummaryEntity> dbMap = summaryRepo
+                .findByAccessionNumberIn(accNums).stream()
+                .collect(Collectors.toMap(SecFilingSummaryEntity::getAccessionNumber, e -> e));
+
+        // 3. DB에 없는 건만 문서 fetch (병렬)
+        LocalDate today = LocalDate.now();
+        List<FilingMeta> newMetas = metas.stream()
+                .filter(m -> !dbMap.containsKey(m.accession())).toList();
+
+        Map<String, String> contentMap = fetchDocumentsParallel(newMetas);
+
+        // 4. 신규 건 Gemini 요약
+        Map<String, String> summaryKoMap = summarizeNewFilings(ticker, newMetas, contentMap);
+
+        // 5. 신규 건 DB 저장
+        for (FilingMeta m : newMetas) {
+            try {
+                summaryRepo.save(new SecFilingSummaryEntity(
+                        ticker, m.accession(), m.form(), m.category(), m.filedAt(),
+                        m.docUrl(), contentMap.get(m.accession()),
+                        summaryKoMap.get(m.accession())));
+            } catch (Exception ex) {
+                log.debug("sec filing save failed acc={} reason={}", m.accession(), ex.getMessage());
+            }
+        }
+
+        // 6. 최종 결과 조합 (EDGAR 순서 유지)
         List<SecFiling> result = new ArrayList<>();
-        for (int i = 0; i < filings.size(); i++) {
-            SecFiling f = filings.get(i);
-            String ko = i < summaries.size() ? summaries.get(i) : null;
-            result.add(new SecFiling(f.ticker(), f.form(), f.title(), f.filedAt(),
-                    f.eventCategory(), f.daysAgo(), f.documentUrl(), f.contentSummary(), ko));
+        for (FilingMeta m : metas) {
+            int daysAgo = (int) ChronoUnit.DAYS.between(m.filedAt(), today);
+            SecFilingSummaryEntity db = dbMap.get(m.accession());
+            if (db != null) {
+                result.add(new SecFiling(ticker, db.getForm(), db.getEventCategory(),
+                        db.getFiledAt(), db.getEventCategory(), daysAgo,
+                        db.getDocumentUrl(), db.getContentSummary(), db.getSummaryKo()));
+            } else {
+                result.add(new SecFiling(ticker, m.form(), m.category(),
+                        m.filedAt(), m.category(), daysAgo, m.docUrl(),
+                        contentMap.get(m.accession()), summaryKoMap.get(m.accession())));
+            }
         }
 
         cache.set(key, result, TTL_FILINGS);
@@ -82,8 +124,10 @@ public class SecFilingService {
         return result;
     }
 
+    record FilingMeta(String form, LocalDate filedAt, String category,
+                      String docUrl, String accession) {}
+
     private static final int SUMMARY_MAX_LENGTH = 1500;
-    // XBRL hidden/header 블록: 비표시 메타데이터 (CIK, 날짜, 통화 코드 등)
     private static final Pattern IX_HIDDEN = Pattern.compile(
             "<ix:(hidden|header)[^>]*>.*?</ix:\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern SCRIPT_STYLE = Pattern.compile(
@@ -94,16 +138,16 @@ public class SecFilingService {
     private static final Pattern ITEM_SECTION = Pattern.compile("Item\\s+\\d+\\.\\d+");
 
     @SuppressWarnings("unchecked")
-    private List<SecFiling> fetchFilings(String ticker, int limit) {
+    private List<FilingMeta> fetchFilingMetas(String ticker, int limit) {
         return edgarClient.getCik(ticker).map(cik -> {
             try {
                 Map<String, Object> subs = edgarClient.getSubmissions(cik);
-                if (subs.isEmpty()) return List.<SecFiling>of();
+                if (subs.isEmpty()) return List.<FilingMeta>of();
 
                 Map<String, Object> filings = (Map<String, Object>) subs.get("filings");
-                if (filings == null) return List.<SecFiling>of();
+                if (filings == null) return List.<FilingMeta>of();
                 Map<String, Object> recent = (Map<String, Object>) filings.get("recent");
-                if (recent == null) return List.<SecFiling>of();
+                if (recent == null) return List.<FilingMeta>of();
 
                 List<String> forms = castList(recent.get("form"));
                 List<String> dates = castList(recent.get("filingDate"));
@@ -111,47 +155,58 @@ public class SecFilingService {
                 List<Object> items = castList(recent.get("items"));
                 List<String> accessions = castList(recent.get("accessionNumber"));
 
-                LocalDate today = LocalDate.now();
-
-                // Phase 1: 메타데이터 수집
-                record FilingMeta(String form, LocalDate filedAt, String category,
-                                  int daysAgo, String docUrl) {}
                 List<FilingMeta> metas = new ArrayList<>();
-
                 for (int i = 0; i < forms.size() && metas.size() < limit; i++) {
                     String form = forms.get(i);
                     if (!isRelevantForm(form)) continue;
                     LocalDate filedAt = parseDate(dates.size() > i ? dates.get(i) : null);
                     String itemCode = items.size() > i ? String.valueOf(items.get(i)) : "";
-                    int daysAgo = (int) ChronoUnit.DAYS.between(filedAt, today);
-                    String docUrl = buildDocumentUrl(cik,
-                            accessions.size() > i ? accessions.get(i) : null,
+                    String acc = accessions.size() > i ? accessions.get(i) : null;
+                    if (acc == null) continue;
+                    String docUrl = buildDocumentUrl(cik, acc,
                             docs.size() > i ? docs.get(i) : null);
-                    metas.add(new FilingMeta(form, filedAt, formCategory(form, itemCode),
-                            daysAgo, docUrl));
+                    metas.add(new FilingMeta(form, filedAt,
+                            formCategory(form, itemCode), docUrl, acc));
                 }
-
-                // Phase 2: 병렬로 공시 문서 본문 fetch
-                try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
-                    List<Future<String>> futures = metas.stream()
-                            .map(m -> ex.submit(() ->
-                                    m.docUrl != null ? fetchAndExtract(m.docUrl) : null))
-                            .toList();
-
-                    List<SecFiling> result = new ArrayList<>();
-                    for (int j = 0; j < metas.size(); j++) {
-                        FilingMeta m = metas.get(j);
-                        String summary = safeGet(futures.get(j));
-                        result.add(new SecFiling(ticker, m.form, m.category,
-                                m.filedAt, m.category, m.daysAgo, m.docUrl, summary, null));
-                    }
-                    return result;
-                }
+                return metas;
             } catch (Exception ex) {
                 log.debug("sec filings parse failed ticker={} reason={}", ticker, ex.getMessage());
-                return List.<SecFiling>of();
+                return List.<FilingMeta>of();
             }
         }).orElse(List.of());
+    }
+
+    private Map<String, String> fetchDocumentsParallel(List<FilingMeta> metas) {
+        if (metas.isEmpty()) return Map.of();
+        Map<String, String> contentMap = new HashMap<>();
+        try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<String>> futures = metas.stream()
+                    .map(m -> ex.submit(() ->
+                            m.docUrl() != null ? fetchAndExtract(m.docUrl()) : null))
+                    .toList();
+            for (int i = 0; i < metas.size(); i++) {
+                contentMap.put(metas.get(i).accession(), safeGet(futures.get(i)));
+            }
+        }
+        return contentMap;
+    }
+
+    private Map<String, String> summarizeNewFilings(String ticker, List<FilingMeta> metas,
+                                                     Map<String, String> contentMap) {
+        if (metas.isEmpty()) return Map.of();
+        LocalDate today = LocalDate.now();
+        List<SecFiling> forSummary = metas.stream()
+                .map(m -> new SecFiling(ticker, m.form(), m.category(), m.filedAt(),
+                        m.category(), (int) ChronoUnit.DAYS.between(m.filedAt(), today),
+                        m.docUrl(), contentMap.get(m.accession()), null))
+                .toList();
+        List<String> summaries = summarizer.summarize(forSummary);
+        Map<String, String> result = new HashMap<>();
+        for (int i = 0; i < metas.size(); i++) {
+            result.put(metas.get(i).accession(),
+                    i < summaries.size() ? summaries.get(i) : null);
+        }
+        return result;
     }
 
     private String buildDocumentUrl(String cik, String accessionNumber, String primaryDoc) {
