@@ -31,7 +31,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,7 +54,9 @@ public class TwelveDataClient {
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final Duration BATCH_TIMEOUT = Duration.ofSeconds(8);
     private static final TypeReference<TwelveQuoteResponse> QUOTE_TYPE = new TypeReference<>() {};
+    private static final TypeReference<Map<String, TwelveQuoteResponse>> BATCH_QUOTE_TYPE = new TypeReference<>() {};
     private static final TypeReference<TimeSeriesResponse> SERIES_TYPE = new TypeReference<>() {};
 
     private final WebClient webClient;
@@ -85,31 +89,74 @@ public class TwelveDataClient {
                 ttl, () -> call("/quote", uri -> uri
                         .queryParam("symbol", symbol)
                         .queryParam("apikey", apiKey), TwelveQuoteResponse.class));
-        if (resp == null || resp.close() == null) {
-            return null;
+        return toQuote(symbol, resp);
+    }
+
+    /**
+     * /quote (batch). 여러 심볼을 콤마로 묶어 1회 호출. 12종 = 1 req.
+     * 응답: 2종 이상이면 Map{symbol → quote}, 1종이면 단일 객체.
+     * 실패 심볼은 결과에서 제외.
+     */
+    public Map<String, Quote> batchQuote(List<String> symbols) {
+        if (symbols == null || symbols.isEmpty()) return Map.of();
+        String joined = String.join(",", symbols);
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_QUOTE_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        String cacheKey = "twelve:batch:" + joined.hashCode();
+
+        Map<String, Quote> cached = cache.get(cacheKey,
+                new TypeReference<Map<String, Quote>>() {});
+        if (cached != null) return cached;
+
+        Map<String, Quote> result = new HashMap<>();
+        try {
+            if (symbols.size() == 1) {
+                Quote q = quote(symbols.getFirst());
+                if (q != null) result.put(symbols.getFirst(), q);
+            } else {
+                String json = webClient.get()
+                        .uri(b -> b.path("/quote")
+                                .queryParam("symbol", joined)
+                                .queryParam("apikey", apiKey)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(BATCH_TIMEOUT);
+                if (json != null && !json.contains("\"code\"")) {
+                    var om = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, TwelveQuoteResponse> batch = om.readValue(json, BATCH_QUOTE_TYPE);
+                    for (var entry : batch.entrySet()) {
+                        Quote q = toQuote(entry.getKey(), entry.getValue());
+                        if (q != null) result.put(entry.getKey(), q);
+                    }
+                } else if (json != null) {
+                    log.warn("twelvedata batch returned error: {}", json.substring(0, Math.min(json.length(), 200)));
+                }
+            }
+            if (!result.isEmpty()) {
+                cache.set(cacheKey, result, ttl);
+            }
+        } catch (Exception ex) {
+            log.warn("twelvedata batch quote failed: {}", ex.getMessage());
         }
+        return result;
+    }
+
+    private Quote toQuote(String symbol, TwelveQuoteResponse resp) {
+        if (resp == null || resp.close() == null) return null;
         BigDecimal change = resp.change() != null ? resp.change() : BigDecimal.ZERO;
         BigDecimal pctChange = resp.percent_change() != null ? resp.percent_change() : BigDecimal.ZERO;
         BigDecimal prev = resp.previous_close() != null ? resp.previous_close() : BigDecimal.ZERO;
         long timestamp = resp.timestamp() != null ? resp.timestamp() : Instant.now().getEpochSecond();
         OffsetDateTime updatedAt = OffsetDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC);
         MarketStatus status = MarketStatusResolver.resolve();
-        return new Quote(
-                symbol,
-                resp.close(),
-                change,
-                pctChange,
+        return new Quote(symbol, resp.close(), change, pctChange,
                 resp.high() != null ? resp.high() : resp.close(),
                 resp.low() != null ? resp.low() : resp.close(),
                 resp.open() != null ? resp.open() : resp.close(),
-                prev,
-                resp.volume() != null ? resp.volume() : 0L,
-                updatedAt,
-                status,
-                MarketStatusResolver.priceLabel(status, updatedAt),
-                null,
-                null
-        );
+                prev, resp.volume() != null ? resp.volume() : 0L,
+                updatedAt, status, MarketStatusResolver.priceLabel(status, updatedAt),
+                null, null);
     }
 
     /**
