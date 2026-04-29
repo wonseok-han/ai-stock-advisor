@@ -31,29 +31,33 @@ public class SecFilingSummarizer {
         this.promptLoader = promptLoader;
     }
 
-    public List<String> summarize(List<SecFiling> filings) {
+    public record SummaryResult(String summaryKo, String sentiment) {}
+
+    public List<SummaryResult> summarize(List<SecFiling> filings) {
         if (filings == null || filings.isEmpty()) return List.of();
 
-        boolean hasContent = filings.stream().anyMatch(f -> f.contentSummary() != null);
-        if (!hasContent) return filings.stream().map(f -> (String) null).toList();
+        boolean hasUrl = filings.stream().anyMatch(f -> f.documentUrl() != null);
+        if (!hasUrl) return filings.stream().map(f -> (SummaryResult) null).toList();
 
         try {
             String system = promptLoader.load("sec-filing-summary.system.txt");
             String user = buildUserPrompt(filings);
-            LlmClient.LlmResult result = llmClient.generate(system, user,
+            LlmClient.LlmResult result = llmClient.generateWithUrlContext(system, user,
                     LlmMetrics.FEATURE_SEC_SUMMARY);
 
             List<Map<String, String>> parsed = objectMapper.readValue(result.content(), LIST_TYPE);
             if (parsed.size() != filings.size()) {
                 log.warn("sec summary size mismatch: expected={} got={}", filings.size(), parsed.size());
-                return filings.stream().map(f -> (String) null).toList();
+                return filings.stream().map(f -> (SummaryResult) null).toList();
             }
             return parsed.stream()
-                    .map(m -> m.getOrDefault("summary_ko", null))
+                    .map(m -> new SummaryResult(
+                            m.getOrDefault("summary_ko", null),
+                            m.getOrDefault("sentiment", null)))
                     .toList();
         } catch (Exception ex) {
             log.warn("sec filing summarization failed: {}", ex.getMessage());
-            return filings.stream().map(f -> (String) null).toList();
+            return filings.stream().map(f -> (SummaryResult) null).toList();
         }
     }
 
@@ -63,7 +67,10 @@ public class SecFilingSummarizer {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("form", f.form());
                 m.put("event_category", f.eventCategory());
-                m.put("content_summary", f.contentSummary());
+                m.put("document_url", f.documentUrl());
+                if (f.contentSummary() != null && !f.contentSummary().isBlank()) {
+                    m.put("content_summary", f.contentSummary());
+                }
                 return m;
             }).toList();
             return objectMapper.writeValueAsString(input);

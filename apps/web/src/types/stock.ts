@@ -150,6 +150,7 @@ export interface SecFiling {
   documentUrl: string | null;
   contentSummary: string | null;
   summaryKo: string | null;
+  sentiment: '긍정' | '부정' | '중립' | null;
 }
 
 export interface ApiErrorBody {

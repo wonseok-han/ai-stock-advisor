@@ -11,5 +11,6 @@ public record SecFiling(
         int daysAgo,
         String documentUrl,
         String contentSummary,
-        String summaryKo
+        String summaryKo,
+        String sentiment
 ) {}

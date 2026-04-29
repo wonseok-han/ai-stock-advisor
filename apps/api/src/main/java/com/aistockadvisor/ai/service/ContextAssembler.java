@@ -214,8 +214,8 @@ public class ContextAssembler {
             m.put("event_category", f.eventCategory());
             m.put("filed_at", f.filedAt() != null ? f.filedAt().toString() : null);
             m.put("days_ago", f.daysAgo());
-            if (f.contentSummary() != null) {
-                m.put("content_summary", f.contentSummary());
+            if (f.summaryKo() != null) {
+                m.put("summary", f.summaryKo());
             }
             return m;
         }).toList();
