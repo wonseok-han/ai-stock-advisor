@@ -75,6 +75,16 @@ function FilingRow({ filing }: { filing: SecFiling }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-fg">{filing.eventCategory}</p>
+          {filing.sentiment && (
+            <span
+              className={cn(
+                'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold',
+                sentimentStyle(filing.sentiment),
+              )}
+            >
+              {filing.sentiment}
+            </span>
+          )}
           {filing.documentUrl && (
             <a
               href={filing.documentUrl}
@@ -141,6 +151,17 @@ const POSITIVE_CATEGORIES = new Set([
 const DILUTION_CATEGORIES = new Set([
   '신주 발행', '신주 발행 등록', '공모 조건 확정', '공모 설명서',
 ]);
+
+function sentimentStyle(sentiment: string): string {
+  switch (sentiment) {
+    case '긍정':
+      return 'bg-emerald-500/10 text-success';
+    case '부정':
+      return 'bg-red-500/10 text-danger';
+    default:
+      return 'bg-zinc-500/10 text-fg-muted';
+  }
+}
 
 function categoryStyle(category: string): string {
   if (NEGATIVE_CATEGORIES.has(category)) {

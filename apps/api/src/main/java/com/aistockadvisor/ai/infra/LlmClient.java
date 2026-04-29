@@ -24,6 +24,14 @@ public interface LlmClient {
         return generate(systemPrompt, userPrompt);
     }
 
+    /**
+     * URL Context 도구를 활성화하여 프롬프트 내 URL 을 모델이 직접 읽도록 한다.
+     * Gemini 2.5 이상에서 지원. 기본 구현은 일반 generate fallback.
+     */
+    default LlmResult generateWithUrlContext(String systemPrompt, String userPrompt, String feature) {
+        return generate(systemPrompt, userPrompt, feature);
+    }
+
     /** 호출 결과 + 메타데이터 (감사 로그용). */
     record LlmResult(
             String content,

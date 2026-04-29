@@ -128,7 +128,8 @@ public class StockController {
             @PathVariable("ticker") @Pattern(regexp = TICKER_REGEX) String ticker) {
         return secFilingService.getRecentFilings(ticker, 5).stream()
                 .map(f -> new SecFiling(f.ticker(), f.form(), f.title(), f.filedAt(),
-                        f.eventCategory(), f.daysAgo(), f.documentUrl(), null, f.summaryKo()))
+                        f.eventCategory(), f.daysAgo(), f.documentUrl(), null, f.summaryKo(),
+                        f.sentiment()))
                 .toList();
     }
 

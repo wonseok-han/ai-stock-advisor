@@ -16,10 +16,10 @@ public interface SecFilingSummaryRepository extends JpaRepository<SecFilingSumma
     @Transactional
     @Query(value = "INSERT INTO sec_filing_summaries "
             + "(ticker, accession_number, form, event_category, filed_at, "
-            + "document_url, content_summary, summary_ko, created_at) "
+            + "document_url, content_summary, summary_ko, sentiment, created_at) "
             + "VALUES (:#{#e.ticker}, :#{#e.accessionNumber}, :#{#e.form}, "
             + ":#{#e.eventCategory}, :#{#e.filedAt}, :#{#e.documentUrl}, "
-            + ":#{#e.contentSummary}, :#{#e.summaryKo}, NOW()) "
+            + ":#{#e.contentSummary}, :#{#e.summaryKo}, :#{#e.sentiment}, NOW()) "
             + "ON CONFLICT (accession_number) DO NOTHING", nativeQuery = true)
     void insertIgnoreDuplicate(@org.springframework.data.repository.query.Param("e") SecFilingSummaryEntity e);
 }

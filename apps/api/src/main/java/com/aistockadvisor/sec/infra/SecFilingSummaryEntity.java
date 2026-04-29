@@ -42,6 +42,9 @@ public class SecFilingSummaryEntity {
     @Column(columnDefinition = "TEXT")
     private String summaryKo;
 
+    @Column(length = 10)
+    private String sentiment;
+
     @Column(nullable = false)
     private OffsetDateTime createdAt;
 
@@ -49,7 +52,7 @@ public class SecFilingSummaryEntity {
 
     public SecFilingSummaryEntity(String ticker, String accessionNumber, String form,
                                   String eventCategory, LocalDate filedAt, String documentUrl,
-                                  String contentSummary, String summaryKo) {
+                                  String contentSummary, String summaryKo, String sentiment) {
         this.ticker = ticker.toUpperCase();
         this.accessionNumber = accessionNumber;
         this.form = form;
@@ -58,6 +61,7 @@ public class SecFilingSummaryEntity {
         this.documentUrl = documentUrl;
         this.contentSummary = contentSummary;
         this.summaryKo = summaryKo;
+        this.sentiment = sentiment;
         this.createdAt = OffsetDateTime.now();
     }
 
@@ -70,5 +74,6 @@ public class SecFilingSummaryEntity {
     public String getDocumentUrl() { return documentUrl; }
     public String getContentSummary() { return contentSummary; }
     public String getSummaryKo() { return summaryKo; }
+    public String getSentiment() { return sentiment; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }

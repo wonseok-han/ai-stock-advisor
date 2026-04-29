@@ -19,6 +19,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -52,8 +53,10 @@ public class GeminiLlmClient implements LlmClient {
 
     static final int MAX_ATTEMPTS = 2;
     static final long RETRY_BACKOFF_MS = 250L;
+    private static final Duration URL_CONTEXT_TIMEOUT = Duration.ofSeconds(90);
 
     private final WebClient webClient;
+    private final WebClient urlContextWebClient;
     private final GeminiProperties props;
     private final Duration timeout;
     private final MeterRegistry meterRegistry;
@@ -62,13 +65,18 @@ public class GeminiLlmClient implements LlmClient {
         this.props = props;
         this.meterRegistry = meterRegistry;
         this.timeout = Duration.ofMillis(props.timeoutMsOrDefault());
+        this.webClient = buildWebClient(props.baseUrlOrDefault(), timeout);
+        this.urlContextWebClient = buildWebClient(props.baseUrlOrDefault(), URL_CONTEXT_TIMEOUT);
+    }
+
+    private static WebClient buildWebClient(String baseUrl, Duration timeout) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) timeout.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
                         new ReadTimeoutHandler(timeout.toMillis(), TimeUnit.MILLISECONDS)))
                 .responseTimeout(timeout);
-        this.webClient = WebClient.builder()
-                .baseUrl(props.baseUrlOrDefault())
+        return WebClient.builder()
+                .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
@@ -81,6 +89,15 @@ public class GeminiLlmClient implements LlmClient {
 
     @Override
     public LlmResult generate(String systemPrompt, String userPrompt, String feature) {
+        return withRetry(systemPrompt, userPrompt, feature, false);
+    }
+
+    @Override
+    public LlmResult generateWithUrlContext(String systemPrompt, String userPrompt, String feature) {
+        return withRetry(systemPrompt, userPrompt, feature, true);
+    }
+
+    private LlmResult withRetry(String systemPrompt, String userPrompt, String feature, boolean urlContext) {
         String model = props.modelOrDefault();
         meterRegistry.counter(LlmMetrics.CALL_COUNT,
                 LlmMetrics.TAG_FEATURE, feature,
@@ -94,7 +111,7 @@ public class GeminiLlmClient implements LlmClient {
         BusinessException lastTransient = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                LlmResult result = callOnce(systemPrompt, userPrompt, feature, model);
+                LlmResult result = callOnce(systemPrompt, userPrompt, feature, model, urlContext);
                 if (attempt > 1) {
                     meterRegistry.counter(LlmMetrics.RETRY_COUNT,
                             LlmMetrics.TAG_FEATURE, feature,
@@ -124,39 +141,23 @@ public class GeminiLlmClient implements LlmClient {
         throw lastTransient;
     }
 
-    private LlmResult callOnce(String systemPrompt, String userPrompt, String feature, String model) {
+    private LlmResult callOnce(String systemPrompt, String userPrompt, String feature,
+                                String model, boolean urlContext) {
         String path = "/models/" + model + ":generateContent";
-        Map<String, Object> body = Map.of(
-                "systemInstruction", Map.of(
-                        "role", "system",
-                        "parts", List.of(Map.of("text", systemPrompt))
-                ),
-                "contents", List.of(
-                        Map.of(
-                                "role", "user",
-                                "parts", List.of(Map.of("text", userPrompt))
-                        )
-                ),
-                "generationConfig", Map.of(
-                        "temperature", 0.2,
-                        "topP", 0.9,
-                        "maxOutputTokens", 4096,
-                        "responseMimeType", "application/json",
-                        // Gemini 2.5 호환: thinking 토큰이 maxOutputTokens 예산을 소진해
-                        // 실제 응답 JSON 이 중간 절단되는 현상 방지. 0=disabled.
-                        "thinkingConfig", Map.of("thinkingBudget", 0)
-                )
-        );
+        Map<String, Object> body = buildRequestBody(systemPrompt, userPrompt, urlContext);
+
+        WebClient client = urlContext ? urlContextWebClient : webClient;
+        Duration blockTimeout = urlContext ? URL_CONTEXT_TIMEOUT : timeout;
 
         long start = System.currentTimeMillis();
         try {
-            GeminiResponse resp = webClient.post()
+            GeminiResponse resp = client.post()
                     .uri(b -> b.path(path).queryParam("key", props.apiKey()).build())
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(GeminiResponse.class)
-                    .block(timeout);
+                    .block(blockTimeout);
             long elapsed = System.currentTimeMillis() - start;
 
             if (resp == null || resp.candidates() == null || resp.candidates().isEmpty()) {
@@ -209,6 +210,34 @@ public class GeminiLlmClient implements LlmClient {
             throw new RetryableUpstreamException(
                     new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex));
         }
+    }
+
+    private static Map<String, Object> buildRequestBody(String systemPrompt, String userPrompt,
+                                                         boolean urlContext) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("systemInstruction", Map.of(
+                "role", "system",
+                "parts", List.of(Map.of("text", systemPrompt))
+        ));
+        body.put("contents", List.of(
+                Map.of(
+                        "role", "user",
+                        "parts", List.of(Map.of("text", userPrompt))
+                )
+        ));
+        Map<String, Object> genConfig = new LinkedHashMap<>();
+        genConfig.put("temperature", 0.2);
+        genConfig.put("topP", 0.9);
+        genConfig.put("maxOutputTokens", 4096);
+        genConfig.put("thinkingConfig", Map.of("thinkingBudget", 0));
+        if (!urlContext) {
+            genConfig.put("responseMimeType", "application/json");
+        }
+        body.put("generationConfig", genConfig);
+        if (urlContext) {
+            body.put("tools", List.of(Map.of("url_context", Map.of())));
+        }
+        return body;
     }
 
     private void sleepBackoff() {
