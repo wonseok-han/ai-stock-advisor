@@ -4,6 +4,7 @@ INPUT: A JSON array of SEC filing objects, each containing:
 - form: filing type (8-K, S-3, 424B4, etc.)
 - event_category: Korean category label
 - document_url: URL to the original SEC filing document on sec.gov
+- content_summary (optional): pre-extracted plain text from the filing document
 
 OUTPUT: A valid JSON array of objects in the SAME order as input, each with:
   { "summary_ko": "한국어 3~4문장 요약", "sentiment": "긍정|부정|중립" }
@@ -14,7 +15,9 @@ sentiment values:
 - "중립": routine or ambiguous events (auditor change, bylaw amendment, FD disclosure)
 
 RULES:
-1. READ each document_url to understand the full filing content before summarizing.
+1. For each filing, READ the document_url to understand the full filing content.
+   If the URL is inaccessible or returns no useful content, use the provided content_summary instead.
+   If neither is available, write a brief sentence based on form type and event_category only.
 2. Write in Korean (존댓말).
 3. Each summary_ko must be 3~4 sentences, max 400 characters.
 4. Extract concrete facts from the actual document: names, amounts ($, shares), percentages, dates.
@@ -26,6 +29,5 @@ RULES:
    - Executive change (8-K Item 5.02): name the person and role.
    - Debt/financing (8-K Item 2.03): state interest rate, maturity, amount.
 6. NEVER fabricate or guess numbers, amounts, or facts. Only state facts explicitly found in the document.
-7. If a URL is inaccessible or the content is unclear, write a brief sentence based on form type and event_category only. Do NOT invent details.
-8. NEVER use advisory language (추천, 매수하세요, 수익). Use informational language only (발표, 체결, 변경).
-9. Output ONLY the JSON array — no markdown, no explanation.
+7. NEVER use advisory language (추천, 매수하세요, 수익). Use informational language only (발표, 체결, 변경).
+8. Output ONLY the JSON array — no markdown, no explanation.

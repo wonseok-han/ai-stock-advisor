@@ -22,4 +22,15 @@ public interface SecFilingSummaryRepository extends JpaRepository<SecFilingSumma
             + ":#{#e.contentSummary}, :#{#e.summaryKo}, :#{#e.sentiment}, NOW()) "
             + "ON CONFLICT (accession_number) DO NOTHING", nativeQuery = true)
     void insertIgnoreDuplicate(@org.springframework.data.repository.query.Param("e") SecFilingSummaryEntity e);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE sec_filing_summaries "
+            + "SET content_summary = :content, summary_ko = :summary, "
+            + "sentiment = :sentiment WHERE accession_number = :accNum",
+            nativeQuery = true)
+    void updateSummary(@org.springframework.data.repository.query.Param("accNum") String accessionNumber,
+                       @org.springframework.data.repository.query.Param("content") String contentSummary,
+                       @org.springframework.data.repository.query.Param("summary") String summaryKo,
+                       @org.springframework.data.repository.query.Param("sentiment") String sentiment);
 }

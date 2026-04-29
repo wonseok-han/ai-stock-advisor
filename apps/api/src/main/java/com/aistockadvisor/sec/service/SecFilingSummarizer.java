@@ -68,6 +68,9 @@ public class SecFilingSummarizer {
                 m.put("form", f.form());
                 m.put("event_category", f.eventCategory());
                 m.put("document_url", f.documentUrl());
+                if (f.contentSummary() != null && !f.contentSummary().isBlank()) {
+                    m.put("content_summary", f.contentSummary());
+                }
                 return m;
             }).toList();
             return objectMapper.writeValueAsString(input);

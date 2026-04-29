@@ -19,6 +19,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -66,25 +69,48 @@ public class SecFilingService {
                 .findByAccessionNumberIn(accNums).stream()
                 .collect(Collectors.toMap(SecFilingSummaryEntity::getAccessionNumber, e -> e));
 
-        // 3. DB에 없는 신규 건 필터
+        // 3. DB에 없는 신규 건 + 저품질 기존 건 필터
         LocalDate today = LocalDate.now();
         List<FilingMeta> newMetas = metas.stream()
                 .filter(m -> !dbMap.containsKey(m.accession())).toList();
+        List<FilingMeta> staleMetas = metas.stream()
+                .filter(m -> dbMap.containsKey(m.accession()))
+                .filter(m -> isLowQualitySummary(dbMap.get(m.accession())))
+                .toList();
 
-        // 4. 신규 건 Gemini URL Context 요약 (Gemini가 SEC.gov URL을 직접 읽음)
-        Map<String, SecFilingSummarizer.SummaryResult> summaryMap = summarizeNewFilings(ticker, newMetas);
+        List<FilingMeta> toSummarize = new ArrayList<>();
+        toSummarize.addAll(newMetas);
+        toSummarize.addAll(staleMetas);
 
-        // 5. 신규 건 DB 저장 (ON CONFLICT DO NOTHING — 동시 요청 race condition 방지)
+        // 4. 문서 텍스트 추출 (병렬) + Gemini 요약 (URL Context + 추출 텍스트 hybrid)
+        Map<String, String> contentMap = fetchDocumentsParallel(toSummarize);
+        Map<String, SecFilingSummarizer.SummaryResult> summaryMap =
+                summarizeNewFilings(ticker, toSummarize, contentMap);
+
+        // 5a. 신규 건 DB 저장
         for (FilingMeta m : newMetas) {
             try {
                 SecFilingSummarizer.SummaryResult sr = summaryMap.get(m.accession());
                 summaryRepo.insertIgnoreDuplicate(new SecFilingSummaryEntity(
                         ticker, m.accession(), m.form(), m.category(), m.filedAt(),
-                        m.docUrl(), null,
+                        m.docUrl(), contentMap.get(m.accession()),
                         sr != null ? sr.summaryKo() : null,
                         sr != null ? sr.sentiment() : null));
             } catch (Exception ex) {
                 log.debug("sec filing save failed acc={} reason={}", m.accession(), ex.getMessage());
+            }
+        }
+
+        // 5b. 저품질 기존 건 DB 업데이트
+        for (FilingMeta m : staleMetas) {
+            try {
+                SecFilingSummarizer.SummaryResult sr = summaryMap.get(m.accession());
+                if (sr != null && sr.summaryKo() != null) {
+                    summaryRepo.updateSummary(m.accession(), contentMap.get(m.accession()),
+                            sr.summaryKo(), sr.sentiment());
+                }
+            } catch (Exception ex) {
+                log.debug("sec filing update failed acc={} reason={}", m.accession(), ex.getMessage());
             }
         }
 
@@ -102,7 +128,7 @@ public class SecFilingService {
                 SecFilingSummarizer.SummaryResult sr = summaryMap.get(m.accession());
                 result.add(new SecFiling(ticker, m.form(), m.category(),
                         m.filedAt(), m.category(), daysAgo, m.docUrl(),
-                        null,
+                        contentMap.get(m.accession()),
                         sr != null ? sr.summaryKo() : null,
                         sr != null ? sr.sentiment() : null));
             }
@@ -127,6 +153,24 @@ public class SecFilingService {
 
     record FilingMeta(String form, LocalDate filedAt, String category,
                       String docUrl, String accession) {}
+
+    private static final int SUMMARY_MAX_LENGTH = 8000;
+    private static final Pattern IX_HIDDEN = Pattern.compile(
+            "<ix:(hidden|header)[^>]*>.*?</ix:\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern SCRIPT_STYLE = Pattern.compile(
+            "<(script|style|xbrl)[^>]*>.*?</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
+    private static final Pattern HTML_ENTITY = Pattern.compile("&[a-zA-Z#0-9]+;");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern ITEM_SECTION = Pattern.compile("Item\\s+\\d+\\s*\\.\\s*\\d+");
+    private static final Pattern SIGNATURES = Pattern.compile(
+            "\\bSIGNATURES?\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EXHIBIT_ITEM = Pattern.compile(
+            "Item\\s+9\\s*\\.\\s*01", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SEC_BOILERPLATE = Pattern.compile(
+            "[^.]{0,200}shall not be deemed[^.]{0,300}"
+                    + "(?:Section\\s+18|Exchange Act)[^.]*\\.",
+            Pattern.CASE_INSENSITIVE);
 
     @SuppressWarnings("unchecked")
     private List<FilingMeta> fetchFilingMetas(String ticker, int limit) {
@@ -167,14 +211,29 @@ public class SecFilingService {
         }).orElse(List.of());
     }
 
+    private Map<String, String> fetchDocumentsParallel(List<FilingMeta> metas) {
+        if (metas.isEmpty()) return Map.of();
+        Map<String, String> contentMap = new HashMap<>();
+        try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<String>> futures = metas.stream()
+                    .map(m -> ex.submit(() ->
+                            m.docUrl() != null ? fetchAndExtract(m.docUrl()) : null))
+                    .toList();
+            for (int i = 0; i < metas.size(); i++) {
+                contentMap.put(metas.get(i).accession(), safeGet(futures.get(i)));
+            }
+        }
+        return contentMap;
+    }
+
     private Map<String, SecFilingSummarizer.SummaryResult> summarizeNewFilings(
-            String ticker, List<FilingMeta> metas) {
+            String ticker, List<FilingMeta> metas, Map<String, String> contentMap) {
         if (metas.isEmpty()) return Map.of();
         LocalDate today = LocalDate.now();
         List<SecFiling> forSummary = metas.stream()
                 .map(m -> new SecFiling(ticker, m.form(), m.category(), m.filedAt(),
                         m.category(), (int) ChronoUnit.DAYS.between(m.filedAt(), today),
-                        m.docUrl(), null, null, null))
+                        m.docUrl(), contentMap.get(m.accession()), null, null))
                 .toList();
         List<SecFilingSummarizer.SummaryResult> summaries = summarizer.summarize(forSummary);
         Map<String, SecFilingSummarizer.SummaryResult> result = new HashMap<>();
@@ -191,6 +250,85 @@ public class SecFilingService {
         String accNoDashes = accessionNumber.replace("-", "");
         return "https://www.sec.gov/Archives/edgar/data/"
                 + cikTrimmed + "/" + accNoDashes + "/" + primaryDoc;
+    }
+
+    private String fetchAndExtract(String url) {
+        try {
+            String html = edgarClient.fetchDocumentText(url);
+            if (html == null || html.isBlank()) {
+                log.debug("sec doc fetch returned empty url={}", url);
+                return null;
+            }
+            String text = extractPlainText(html);
+            if (text == null) {
+                log.debug("sec doc extract returned null url={} htmlLen={}", url, html.length());
+            } else {
+                log.debug("sec doc extracted url={} textLen={}", url, text.length());
+            }
+            return text;
+        } catch (Exception ex) {
+            log.warn("sec doc fetch failed url={} reason={}", url, ex.getMessage());
+            return null;
+        }
+    }
+
+    private static String extractPlainText(String html) {
+        if (html == null || html.isBlank()) return null;
+        String text = IX_HIDDEN.matcher(html).replaceAll(" ");
+        text = SCRIPT_STYLE.matcher(text).replaceAll(" ");
+        text = HTML_TAG.matcher(text).replaceAll(" ");
+        text = HTML_ENTITY.matcher(text).replaceAll(" ");
+        text = SEC_BOILERPLATE.matcher(text).replaceAll(" ");
+        text = WHITESPACE.matcher(text).replaceAll(" ").trim();
+        text = findContent(text);
+        if (text == null || text.isEmpty()) return null;
+        if (text.length() > SUMMARY_MAX_LENGTH) {
+            return text.substring(0, SUMMARY_MAX_LENGTH);
+        }
+        return text;
+    }
+
+    private static String findContent(String text) {
+        if (text == null) return null;
+        var m = ITEM_SECTION.matcher(text);
+        if (m.find()) {
+            String body = text.substring(m.start());
+            var exhibitMatch = EXHIBIT_ITEM.matcher(body);
+            if (exhibitMatch.find()) {
+                body = body.substring(0, exhibitMatch.start());
+            }
+            var sigMatch = SIGNATURES.matcher(body);
+            if (sigMatch.find()) {
+                body = body.substring(0, sigMatch.start());
+            }
+            return body.trim();
+        }
+        int prospIdx = text.toUpperCase().indexOf("PROSPECTUS");
+        if (prospIdx >= 0) {
+            String body = text.substring(prospIdx);
+            var sigMatch = SIGNATURES.matcher(body);
+            if (sigMatch.find()) {
+                body = body.substring(0, sigMatch.start());
+            }
+            return body.trim();
+        }
+        int formIdx = text.indexOf("FORM ");
+        if (formIdx >= 0) {
+            int afterForm = text.indexOf(" ", formIdx + 10);
+            if (afterForm > 0) {
+                return text.substring(afterForm).trim();
+            }
+        }
+        return text;
+    }
+
+    private static String safeGet(Future<String> future) {
+        try {
+            return future.get();
+        } catch (Exception e) {
+            log.debug("sec doc future failed: {}", e.getMessage());
+            return null;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -275,6 +413,13 @@ public class SecFilingService {
     private <T> List<T> castList(Object obj) {
         if (obj instanceof List<?> list) return (List<T>) list;
         return List.of();
+    }
+
+    private static boolean isLowQualitySummary(SecFilingSummaryEntity e) {
+        if (e.getSummaryKo() == null || e.getSentiment() == null) return true;
+        String s = e.getSummaryKo();
+        return s.contains("접근할 수 없") || s.contains("파악하기 어렵")
+                || s.contains("제공하기 어렵") || s.contains("확인할 수 없");
     }
 
     private static boolean isRelevantForm(String form) {
