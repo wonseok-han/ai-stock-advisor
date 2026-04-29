@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { PanelLoading } from '@/components/ui/panel-loading';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { useMarketOverview } from '@/features/market-dashboard/hooks/use-market-overview';
@@ -7,6 +9,8 @@ import { cn } from '@/lib/cn';
 import { formatPercentChange, formatSignedNumber } from '@/lib/format/percent';
 
 import type { MarketIndex } from '@/types/market';
+
+const HERO_ROTATE_MS = 6000;
 
 const INDEX_TOOLTIPS: Record<string, string> = {
   'S&P 500': '미국 대형주 500개의 시가총액 가중 지수. 미국 주식 시장 전체의 건강 상태를 나타내는 대표 지표입니다.',
@@ -52,6 +56,9 @@ export function MarketOverview() {
     );
   }
 
+  const majorIndices = data.indices.slice(0, 4);
+  const futures = data.indices.slice(4);
+
   return (
     <div className="space-y-6">
       <section aria-label="주요 지수" className="card overflow-hidden">
@@ -60,10 +67,15 @@ export function MarketOverview() {
         >
           주요 지수
         </SectionLabel>
-        <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
-          {data.indices.map((idx) => (
-            <IndexCard key={idx.symbol} index={idx} />
-          ))}
+        <div className="p-5">
+          <IndexCarousel indices={majorIndices} />
+          {futures.length > 0 && (
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {futures.map((idx) => (
+                <FuturesCard key={idx.symbol} index={idx} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -137,39 +149,170 @@ function SectionLabel({ children, tooltip }: { children: React.ReactNode; toolti
   );
 }
 
-function IndexCard({ index }: { index: MarketIndex }) {
-  const up = index.change > 0;
-  const down = index.change < 0;
+function IndexCarousel({ indices }: { indices: MarketIndex[] }) {
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [fading, setFading] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const changeBg = up
-    ? 'bg-emerald-500/10 text-success'
-    : down
-      ? 'bg-red-500/10 text-danger'
-      : 'bg-bg-muted text-fg-muted';
+  const rotate = useCallback(() => {
+    setFading(true);
+    setTimeout(() => {
+      setHeroIdx((prev) => (prev + 1) % indices.length);
+      setFading(false);
+    }, 300);
+  }, [indices.length]);
 
-  const changeColor = up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted';
+  useEffect(() => {
+    timerRef.current = setInterval(rotate, HERO_ROTATE_MS);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [rotate]);
 
+  const handleDotClick = (i: number) => {
+    if (i === heroIdx) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    setFading(true);
+    setTimeout(() => {
+      setHeroIdx(i);
+      setFading(false);
+      timerRef.current = setInterval(rotate, HERO_ROTATE_MS);
+    }, 300);
+  };
+
+  const hero = indices[heroIdx];
+  const rest = indices.filter((_, i) => i !== heroIdx);
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:grid-rows-[1fr_1fr]">
+      {hero && (
+        <div className="col-span-2 row-span-2 flex flex-col">
+          <div className={cn(
+            'flex-1 transition-all duration-300',
+            fading ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100',
+          )}>
+            <HeroIndexCard index={hero} />
+          </div>
+          <div className="mt-2 flex justify-center gap-1.5">
+            {indices.map((idx, i) => (
+              <button
+                key={idx.symbol}
+                onClick={() => handleDotClick(i)}
+                aria-label={idx.name}
+                className={cn(
+                  'h-1.5 rounded-full transition-all duration-300 cursor-pointer',
+                  i === heroIdx
+                    ? 'w-4 bg-primary'
+                    : 'w-1.5 bg-fg-muted/30 hover:bg-fg-muted/50',
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {rest.map((idx) => (
+        <IndexCard key={idx.symbol} index={idx} />
+      ))}
+    </div>
+  );
+}
+
+function changeStyles(change: number) {
+  const up = change > 0;
+  const down = change < 0;
+  return {
+    badge: up
+      ? 'bg-emerald-500/10 text-success'
+      : down
+        ? 'bg-red-500/10 text-danger'
+        : 'bg-bg-muted text-fg-muted',
+    text: up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted',
+  };
+}
+
+function HeroIndexCard({ index }: { index: MarketIndex }) {
+  const { badge, text } = changeStyles(index.change);
   const tooltip = INDEX_TOOLTIPS[index.name];
 
   return (
-    <div className="rounded-xl bg-bg-muted border-t-2 border-t-primary/50 p-4 transition-shadow hover:shadow-lg">
+    <div className="flex h-full flex-col justify-between rounded-xl bg-bg-muted p-5 ring-1 ring-border">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-fg">
+          {index.name}
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </span>
+        <span className={cn('rounded-full px-2.5 py-1 text-xs font-bold tabular-nums', badge)}>
+          {formatPercentChange(index.changePercent)}
+        </span>
+      </div>
+      <div className="mt-4 sm:mt-auto">
+        <div className="text-4xl font-extrabold tabular-nums tracking-tight text-fg sm:text-5xl">
+          {index.price.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </div>
+        <div className={cn('mt-2 text-base font-semibold tabular-nums', text)}>
+          {formatSignedNumber(index.change)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IndexCard({ index }: { index: MarketIndex }) {
+  const { badge, text } = changeStyles(index.change);
+  const tooltip = INDEX_TOOLTIPS[index.name];
+
+  return (
+    <div className="flex flex-col justify-between rounded-xl bg-bg-muted p-4 transition-shadow hover:shadow-lg">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
           {index.name}
           {tooltip && <InfoTooltip text={tooltip} />}
         </span>
-        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums', changeBg)}>
+        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums', badge)}>
           {formatPercentChange(index.changePercent)}
         </span>
       </div>
-      <div className="mt-3 text-2xl font-bold tabular-nums text-fg">
-        {index.price.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
+      <div className="mt-3">
+        <div className="text-xl font-bold tabular-nums text-fg">
+          {index.price.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </div>
+        <div className={cn('mt-1 text-sm font-medium tabular-nums', text)}>
+          {formatSignedNumber(index.change)}
+        </div>
       </div>
-      <div className={cn('mt-1 text-sm font-medium tabular-nums', changeColor)}>
-        {formatSignedNumber(index.change)}
+    </div>
+  );
+}
+
+function FuturesCard({ index }: { index: MarketIndex }) {
+  const { badge, text } = changeStyles(index.change);
+  const tooltip = INDEX_TOOLTIPS[index.name];
+
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-bg-muted/60 px-4 py-3 ring-1 ring-border/50">
+      <div className="flex items-center gap-3">
+        <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
+          {index.name}
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </span>
+        <span className="text-base font-bold tabular-nums text-fg">
+          {index.price.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={cn('text-xs font-medium tabular-nums', text)}>
+          {formatSignedNumber(index.change)}
+        </span>
+        <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums', badge)}>
+          {formatPercentChange(index.changePercent)}
+        </span>
       </div>
     </div>
   );
