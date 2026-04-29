@@ -6,7 +6,7 @@
 |---|---|
 | Feature | signal-accuracy |
 | Design Doc | `docs/02-design/features/signal-accuracy.design.md` (v0.1, 2026-04-20) |
-| Impl Scope | `apps/api/src/main/java/com/aistockadvisor/ai/**`, `V15__ai_signal_evaluation.sql`, `apps/web/src/{types,lib/api,features/stock-detail}/**`, `.github/workflows/forbidden-terms.yml` |
+| Impl Scope | `apps/api/src/main/java/com/nowini/ai/**`, `V15__ai_signal_evaluation.sql`, `apps/web/src/{types,lib/api,features/stock-detail}/**`, `.github/workflows/forbidden-terms.yml` |
 | Analysis Date | 2026-04-20 |
 | **Match Rate** | **96%** |
 | 권고 | `/pdca report signal-accuracy` 진입 |

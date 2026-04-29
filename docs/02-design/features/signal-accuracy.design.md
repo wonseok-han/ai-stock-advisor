@@ -446,7 +446,7 @@ StockDetailPage 로드
 
 **Backend (apps/api):**
 ```
-src/main/java/com/aistockadvisor/ai/
+src/main/java/com/nowini/ai/
 ├── domain/
 │   ├── SignalOutcome.java              [NEW]
 │   ├── SignalOutcomeEvaluator.java     [NEW]  (pure)
@@ -470,7 +470,7 @@ src/main/resources/db/migration/
 
 src/main/resources/application.yml      [MODIFY: app.ai.evaluation.*]
 
-src/test/java/com/aistockadvisor/ai/
+src/test/java/com/nowini/ai/
 ├── domain/
 │   └── SignalOutcomeEvaluatorTest.java [NEW]
 ├── service/

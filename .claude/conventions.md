@@ -22,7 +22,7 @@ Import order: (1) 외부 라이브러리 → (2) `@/...` 절대경로 → (3) �
 | Classes | PascalCase | `StockController`, `FinnhubClient` |
 | Methods | camelCase | `getQuote`, `fetchCandles` |
 | Constants | UPPER_SNAKE_CASE | `DEFAULT_CACHE_TTL` |
-| Packages | lowercase.dot | `com.aistockadvisor.stock` |
+| Packages | lowercase.dot | `com.nowini.stock` |
 | DTOs | `*Request` / `*Response` | `QuoteResponse` |
 
 패키지 레이아웃: domain-driven (`stock/`, `market/`, `ai/`, `auth/`, `bookmark/`, `notification/`).

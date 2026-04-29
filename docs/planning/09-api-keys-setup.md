@@ -232,7 +232,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 Docker Compose로 PostgreSQL을 직접 실행하는 경우:
 
 ```
-DATABASE_URL=jdbc:postgresql://localhost:5432/aistockadvisor
+DATABASE_URL=jdbc:postgresql://localhost:5432/nowini
 DATABASE_USERNAME=dev
 DATABASE_PASSWORD=dev
 ```

@@ -12,7 +12,7 @@
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/aistockadvisor
+    url: jdbc:postgresql://localhost:5432/nowini
     username: dev
     password: dev
   data:
@@ -37,4 +37,4 @@ app:
 
 logging:
   level:
-    com.aistockadvisor: DEBUG
+    com.nowini: DEBUG

@@ -7,7 +7,7 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/aistockadvisor}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/nowini}
     username: ${DATABASE_USERNAME:dev}
     password: ${DATABASE_PASSWORD:dev}
     driver-class-name: org.postgresql.Driver
@@ -94,7 +94,7 @@ app:
     vapid:
       public-key: ${VAPID_PUBLIC_KEY:}
       private-key: ${VAPID_PRIVATE_KEY:}
-      subject: ${VAPID_SUBJECT:mailto:admin@aistockadvisor.com}
+      subject: ${VAPID_SUBJECT:mailto:admin@nowini.com}
   notification:
     dedup:
       reset-ratio: ${NOTIFICATION_DEDUP_RESET_RATIO:0.6}
@@ -121,4 +121,4 @@ app:
 logging:
   level:
     root: INFO
-    com.aistockadvisor: ${APP_LOG_LEVEL:INFO}
+    com.nowini: ${APP_LOG_LEVEL:INFO}
