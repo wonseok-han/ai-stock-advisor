@@ -21,8 +21,9 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -49,6 +50,8 @@ public class MarketOverviewService {
             {"^IXIC", "^IXIC", "IXIC", "Nasdaq"},
             {"^DJI",  "^DJI",  "DJI",  "Dow Jones"},
             {"^RUT",  "^RUT",  "RUT",  "Russell 2000"},
+            {"ES=F",  "ES=F",  "ES",   "S&P 500 선물"},
+            {"NQ=F",  "NQ=F",  "NQ",   "Nasdaq 선물"},
     };
 
     /** 매크로 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
@@ -78,10 +81,39 @@ public class MarketOverviewService {
         return cache.getOrLoad("market:overview", TYPE, ttl, this::fetchOverview);
     }
 
+    /** TwelveData batch에 사용할 전체 심볼 목록 (지수 4 + 매크로 7 + USD/KRW = 12종). */
+    private static final List<String> ALL_TWELVE_SYMBOLS;
+    static {
+        List<String> syms = new ArrayList<>();
+        for (String[] s : INDEX_SYMBOLS) syms.add(s[2]);
+        for (String[] s : MACRO_SYMBOLS) syms.add(s[2]);
+        syms.add("USD/KRW");
+        ALL_TWELVE_SYMBOLS = List.copyOf(syms);
+    }
+
     private MarketOverviewResponse fetchOverview() {
-        List<MarketIndex> indices = fetchIndices();
-        BigDecimal[] forex = fetchUsdKrw();
-        List<MarketIndex> macro = fetchMacro();
+        // 1. TwelveData batch quote — 12종을 1 req로 조회
+        Map<String, Quote> batch = twelveDataClient.batchQuote(ALL_TWELVE_SYMBOLS);
+        log.debug("twelvedata batch: {}/{} symbols returned", batch.size(), ALL_TWELVE_SYMBOLS.size());
+
+        // 2. 지수 조합 (batch hit → Yahoo → Finnhub fallback)
+        List<MarketIndex> indices = new ArrayList<>();
+        for (String[] sym : INDEX_SYMBOLS) {
+            MarketIndex idx = resolveFromBatch(batch, sym[2], sym[3]);
+            if (idx == null) idx = fallbackIndex(sym[0], sym[1], sym[3]);
+            if (idx != null) indices.add(idx);
+        }
+
+        // 3. 매크로 조합 (batch hit → Finnhub → Yahoo fallback)
+        List<MarketIndex> macro = new ArrayList<>();
+        for (String[] sym : MACRO_SYMBOLS) {
+            MarketIndex idx = resolveFromBatch(batch, sym[2], sym[3]);
+            if (idx == null) idx = fallbackMacro(sym[0], sym[1], sym[3]);
+            if (idx != null) macro.add(idx);
+        }
+
+        // 4. USD/KRW (batch hit → Finnhub → Yahoo fallback)
+        BigDecimal[] forex = resolveForexFromBatch(batch);
 
         if (indices.isEmpty() && forex[0] == null) {
             throw new BusinessException(
@@ -92,41 +124,30 @@ public class MarketOverviewService {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         MarketStatus status = MarketStatusResolver.resolve();
         return new MarketOverviewResponse(
-                indices,
-                forex[0],
-                forex[1],
-                macro,
-                now,
+                indices, forex[0], forex[1], macro, now,
                 MarketStatusResolver.priceLabel(status, now),
                 Disclaimers.MARKET
         );
     }
 
-    private List<MarketIndex> fetchMacro() {
-        return java.util.Arrays.stream(MACRO_SYMBOLS)
-                .map(sym -> fetchIndex(sym[0], sym[1], sym[2], sym[3]))
-                .filter(Objects::nonNull)
-                .toList();
+    private MarketIndex resolveFromBatch(Map<String, Quote> batch, String twelveSymbol, String displayName) {
+        Quote q = batch.get(twelveSymbol);
+        if (q != null && q.price() != null && q.price().signum() > 0) {
+            return toMarketIndex(twelveSymbol, displayName, q);
+        }
+        return null;
     }
 
-    private List<MarketIndex> fetchIndices() {
-        return java.util.Arrays.stream(INDEX_SYMBOLS)
-                .map(sym -> fetchIndexTwelveFirst(sym[0], sym[1], sym[2], sym[3]))
-                .filter(Objects::nonNull)
-                .toList();
+    private BigDecimal[] resolveForexFromBatch(Map<String, Quote> batch) {
+        Quote q = batch.get("USD/KRW");
+        if (q != null && q.price() != null && q.price().signum() > 0) {
+            return new BigDecimal[]{q.price(), resolveChange(q)};
+        }
+        return fallbackForex();
     }
 
-    /**
-     * TwelveData → Yahoo → Finnhub fallback (지수 전용).
-     * Finnhub 무료 플랜은 지수(^GSPC 등)를 지원하지 않아 항상 실패하므로,
-     * TwelveData(800 req/day 여유)를 1차로 사용하여 Yahoo 요청량을 줄인다.
-     */
-    private MarketIndex fetchIndexTwelveFirst(String finnhubSymbol, String yahooSymbol,
-                                               String twelveSymbol, String displayName) {
-        Quote q = tryQuote(() -> twelveDataClient.quote(twelveSymbol));
-        if (q != null) return toMarketIndex(twelveSymbol, displayName, q);
-
-        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
+    private MarketIndex fallbackIndex(String finnhubSymbol, String yahooSymbol, String displayName) {
+        Quote q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
         if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
 
         q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
@@ -136,49 +157,32 @@ public class MarketOverviewService {
         return null;
     }
 
-    /**
-     * Finnhub → Yahoo Finance → TwelveData 3단 fallback (매크로/환율용).
-     */
-    private MarketIndex fetchIndex(String finnhubSymbol, String yahooSymbol,
-                                    String twelveSymbol, String displayName) {
+    private MarketIndex fallbackMacro(String finnhubSymbol, String yahooSymbol, String displayName) {
         Quote q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
         if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
 
         q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
         if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
 
-        q = tryQuote(() -> twelveDataClient.quote(twelveSymbol));
-        if (q != null) return toMarketIndex(twelveSymbol, displayName, q);
-
-        log.warn("index {} unavailable from all sources", displayName);
+        log.warn("macro {} unavailable from all sources", displayName);
         return null;
     }
 
-    private MarketIndex toMarketIndex(String symbol, String displayName, Quote q) {
-        return new MarketIndex(
-                symbol,
-                displayName,
-                q.price(),
-                q.change(),
-                q.changePercent(),
-                q.updatedAt()
-        );
-    }
-
-    /**
-     * @return BigDecimal[2] — [0]=price, [1]=change (전일 대비 변동). 실패 시 {null, null}.
-     */
-    private BigDecimal[] fetchUsdKrw() {
+    private BigDecimal[] fallbackForex() {
         Quote q = tryQuote(() -> finnhubClient.quote("USDKRW=X"));
         if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
 
         q = tryQuote(() -> yahooFinanceClient.quote("USDKRW=X"));
         if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
 
-        q = tryQuote(() -> twelveDataClient.quote("USD/KRW"));
-        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
-
         return new BigDecimal[]{null, null};
+    }
+
+    private MarketIndex toMarketIndex(String symbol, String displayName, Quote q) {
+        return new MarketIndex(
+                symbol, displayName,
+                q.price(), q.change(), q.changePercent(), q.updatedAt()
+        );
     }
 
     private Quote tryQuote(Supplier<Quote> supplier) {

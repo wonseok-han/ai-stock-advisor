@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { useMarketMovers } from '@/features/market-dashboard/hooks/use-market-movers';
 import { cn } from '@/lib/cn';
 import { formatUsd } from '@/lib/format/currency';
@@ -13,16 +14,7 @@ export function MarketMovers() {
   const { data, isLoading, error, refetch } = useMarketMovers();
 
   if (isLoading) {
-    return (
-      <section aria-label="급등/급락 종목" className="card p-5">
-        <div className="h-4 w-32 animate-pulse rounded bg-bg-skeleton" />
-        <div className="mt-4 space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-8 animate-pulse rounded bg-bg-skeleton" />
-          ))}
-        </div>
-      </section>
-    );
+    return <PanelLoading title="급등/급락 종목" text="급등락 종목을 불러오고 있어요" />;
   }
 
   if (error || !data) {
@@ -50,7 +42,7 @@ export function MarketMovers() {
       </div>
       <div className="border-t border-border px-5 py-2.5">
         <p className="text-[11px] text-fg-muted">
-          인기 종목 {data.poolSize}개 기준 · {data.disclaimer}
+          {data.disclaimer}
         </p>
       </div>
     </section>

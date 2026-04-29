@@ -1,5 +1,6 @@
 'use client';
 
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { useSectorPerformance } from '@/features/market-dashboard/hooks/use-sector-performance';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { cn } from '@/lib/cn';
@@ -8,22 +9,7 @@ export function SectorPerformance() {
   const { data, isLoading, error } = useSectorPerformance();
 
   if (isLoading) {
-    return (
-      <section aria-label="섹터 퍼포먼스" className="card overflow-hidden">
-        <div className="border-b border-border px-5 py-4">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-fg-muted">
-              섹터 퍼포먼스
-            </h2>
-          </div>
-        </div>
-        <div className="space-y-2 p-5">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-7 animate-pulse rounded bg-bg-skeleton" />
-          ))}
-        </div>
-      </section>
-    );
+    return <PanelLoading title="섹터 퍼포먼스" text="섹터 데이터를 불러오고 있어요" />;
   }
 
   if (error || !data || data.length === 0) {

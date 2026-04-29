@@ -1,7 +1,8 @@
 'use client';
 
-import { useMarketOverview } from '@/features/market-dashboard/hooks/use-market-overview';
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { useMarketOverview } from '@/features/market-dashboard/hooks/use-market-overview';
 import { cn } from '@/lib/cn';
 import { formatPercentChange, formatSignedNumber } from '@/lib/format/percent';
 
@@ -12,6 +13,8 @@ const INDEX_TOOLTIPS: Record<string, string> = {
   'Nasdaq': 'IT·바이오 등 기술주 중심의 지수. 성장주 비중이 높아 기술 섹터 흐름을 파악할 수 있습니다.',
   'Dow Jones': '미국 우량 대형주 30개로 구성된 전통 지수. 가격 가중 방식으로 고가 종목의 영향이 큽니다.',
   'Russell 2000': '미국 소형주 2,000개로 구성된 지수. 내수 경기와 중소기업 체감 경기를 반영합니다.',
+  'S&P 500 선물': 'S&P 500 E-mini 선물. 거의 24시간 거래되어 장외 시간에도 시장 방향성을 파악할 수 있습니다.',
+  'Nasdaq 선물': 'Nasdaq 100 E-mini 선물. 거의 24시간 거래되어 프리마켓·애프터마켓 기술주 흐름을 확인할 수 있습니다.',
 };
 
 const MACRO_TOOLTIPS: Record<string, string> = {
@@ -32,20 +35,7 @@ export function MarketOverview() {
   const { data, isLoading, error, refetch } = useMarketOverview();
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {['주요 지수', '변동성 · 환율 · 금리', '원자재'].map((label) => (
-          <section key={label} className="card overflow-hidden">
-            <SectionLabel>{label}</SectionLabel>
-            <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-xl bg-bg-skeleton" />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    );
+    return <PanelLoading title="시장 개요" text="시장 데이터를 불러오고 있어요" />;
   }
 
   if (error || !data) {
