@@ -138,7 +138,7 @@ FE Component → Hook (React Query) → Service (fetch) → Type
 
 ### 3.1 주요 파일 목록
 
-**Backend** (`apps/api/src/main/java/com/aistockadvisor/ai/`):
+**Backend** (`apps/api/src/main/java/com/nowini/ai/`):
 ```
 domain/
   ├── SignalOutcome.java (record + Direction enum)

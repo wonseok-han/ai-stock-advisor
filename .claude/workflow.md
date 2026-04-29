@@ -74,6 +74,7 @@ nowini/
 ├── apps/
 │   ├── web/               # Next.js 16 (FE)
 │   └── api/               # Spring Boot 3 (BE)
+├── changelogs/            # 버전별 릴리즈 changelog (vX.Y.Z.md)
 ├── docs/
 │   ├── planning/          # 초기 기획 고정본 (01 ~ 07)
 │   ├── 01-plan/           # bkit PDCA: 기능별 Plan 문서
@@ -132,7 +133,33 @@ main (배포) ← develop (통합) ← feat/xxx (작업)
 
 ---
 
-## Key Commands (bkit)
+## Release Workflow
+
+```
+/changelog → changelogs/vX.Y.Z.md 생성 + develop 커밋/push
+/pr        → develop → main Release PR 생성
+PR 머지    → GitHub Actions 자동 태그 + 릴리즈 발행
+```
+
+1. **`/changelog`**: develop 브랜치에서 실행. main 대비 변경사항 분석 → `changelogs/vX.Y.Z.md` 생성 → develop에 커밋+push
+2. **`/pr`**: base 브랜치 자동 감지 (feat→develop, develop→main). Release PR 생성 시 changelog 내용을 본문에 포함
+3. **GitHub Actions** (`.github/workflows/release.yml`): main에 changelogs 파일 머지 시 자동으로 태그 생성 + GitHub Release 발행
+
+> **SoR**: `changelogs/vX.Y.Z.md`가 릴리즈 노트의 Single Source of Record. GitHub Release는 이 파일에서 자동 생성됨.
+
+---
+
+## Key Commands
+
+### 개발 커맨드 (Claude 슬래시)
+
+| 명령 | 설명 |
+|---|---|
+| `/commit` | staged 변경사항 커밋 (승인 없이 즉시 실행) |
+| `/pr` | GitHub PR 생성 (base 브랜치 자동 감지) |
+| `/changelog` | 릴리즈용 changelog 생성 (`changelogs/vX.Y.Z.md`) |
+
+### bkit PDCA 커맨드
 
 | 명령 | 설명 |
 |---|---|

@@ -68,14 +68,14 @@ Makefile 의 `api-dev` 타깃이 `.env.local` 을 자동 source 합니다.
 | 알림 튜닝 | `NOTIFICATION_DEDUP_RESET_RATIO`, `NOTIFICATION_DEDUP_COOLDOWN` | 히스테리시스 + 쿨다운 |
 | 캐시 TTL | `NEWS_CACHE_TTL_HOURS`, `AI_SIGNAL_CACHE_TTL_MINUTES` | Redis TTL |
 | 레이트 리밋 | `AI_SIGNAL_RATE_LIMIT_RPM` | AI 시그널 분당 호출 상한 |
-| 로깅 | `APP_LOG_LEVEL` (기본 `INFO`) | `com.aistockadvisor` 패키지 로거 |
+| 로깅 | `APP_LOG_LEVEL` (기본 `INFO`) | `com.nowini` 패키지 로거 |
 
 YAML 구조 자체를 바꾸고 싶다면 [`src/main/resources/application.example.yml`](src/main/resources/application.example.yml) 복사해 `application-local.yml` 작성.
 
 ## 패키지 구조 (도메인 지향)
 
 ```
-com.aistockadvisor/
+com.nowini/
 ├── ApiApplication.java
 ├── ai/            Gemini 클라이언트 + RAG 파이프라인 + 메트릭 + 레드팀 테스트
 ├── auth/          Supabase JWT Resource Server 검증 + 계정 삭제 흐름
@@ -98,7 +98,7 @@ com.aistockadvisor/
   - 다음 번호 (`V15__...`) 사용
   - 프로덕션(Supabase) 이 이미 적용한 migration 은 **수정 금지** (체크섬 불일치)
   - Supabase 전용 객체(`auth.users`, `anon` / `authenticated` / `service_role` 롤, RLS 정책)는 **테스트 환경 호환 stub** 이 [`src/test/resources/init-supabase-compat.sql`](src/test/resources/init-supabase-compat.sql) 에 있어 그대로 사용 가능
-- Testcontainers 가 Flyway 실행 전에 위 init script 를 한 번 돌립니다 ([`TestcontainersConfiguration.java`](src/test/java/com/aistockadvisor/TestcontainersConfiguration.java))
+- Testcontainers 가 Flyway 실행 전에 위 init script 를 한 번 돌립니다 ([`TestcontainersConfiguration.java`](src/test/java/com/nowini/TestcontainersConfiguration.java))
 
 ## 테스트
 
@@ -114,7 +114,7 @@ com.aistockadvisor/
 ## 코딩 컨벤션
 
 - 클래스: `PascalCase`, 메서드: `camelCase`, 상수: `UPPER_SNAKE_CASE`
-- 패키지: `lowercase.dot` (`com.aistockadvisor.stock`)
+- 패키지: `lowercase.dot` (`com.nowini.stock`)
 - DTO: `*Request` / `*Response`
 - 도메인 주도 패키지 레이아웃 유지 (`stock/`, `market/`, ...)
 

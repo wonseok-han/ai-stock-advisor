@@ -7,6 +7,7 @@ import type {
   IndicatorSnapshot,
   Quote,
   SearchHit,
+  SecFiling,
   StockDetail,
   StockProfile,
   TimeFrame,
@@ -40,6 +41,10 @@ export function getCompanyOverview(ticker: string): Promise<CompanyOverview> {
 export async function getAnalystEstimates(ticker: string): Promise<AnalystEstimates | null> {
   const data = await apiFetch<AnalystEstimates | null>(`/stocks/${ticker}/analyst`);
   return data ?? null;
+}
+
+export function getSecFilings(ticker: string): Promise<SecFiling[]> {
+  return apiFetch<SecFiling[]>(`/stocks/${ticker}/sec-filings`);
 }
 
 export function getDetail(ticker: string, tf: TimeFrame): Promise<StockDetail> {

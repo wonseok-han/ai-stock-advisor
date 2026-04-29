@@ -29,7 +29,7 @@ PDCA 방법론은 자동 적용됩니다. `/pdca plan|design|do|analyze|report` 
 
 ## Current Status
 
-**v0.1.0 Beta — 운영 중.** FE(Vercel) + BE(Fly.io) 배포 완료. 베타 서비스로 공개 운영.
+**v0.3.0-beta — 운영 중.** FE(Vercel) + BE(Render) 배포 완료. 베타 서비스로 공개 운영.
 
 ### 완료된 주요 기능
 

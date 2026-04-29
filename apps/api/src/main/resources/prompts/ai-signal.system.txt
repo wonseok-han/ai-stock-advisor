@@ -44,6 +44,13 @@ STRICT RULES (violating any returns an invalid response):
      애널리스트 목표가/컨센서스/EPS 실적, P/E, 시총, 섹터 위치,
      52주 고저 대비 현재가, 장기 이동평균(MA60) 관점에서 분석.
      기술 지표와 최근 뉴스는 참고용.
+     - sec_filings 가 있으면: 최근 8-K/S-3/424B 공시 이벤트(실적 발표, 임원 교체, 중요 계약, 신주 발행 등)를
+       장기 관점 분석에 반영하고, 출력 텍스트에 "공시 내용에 따르면" 표현을 활용.
+       content_summary 가 포함된 공시는 본문 내용을 근거로 구체적 수치·사실을 인용하여 분석.
+       content_summary 가 null 인 공시는 event_category 만으로 분석.
+     - sec_financials 가 있으면: revenue_trend, net_income_trend 추세를
+       매출·순이익 성장성 분석에 활용.
+     - 두 필드 모두 null 이면 기존 방식대로 분석.
 
    - 애널리스트 데이터가 없으면(null) 기술적 장기 추세 + 기업 기본 정보(시총, P/E, 섹터)로
      장기 분석을 수행하고, summary_ko 또는 beginner_explanation에

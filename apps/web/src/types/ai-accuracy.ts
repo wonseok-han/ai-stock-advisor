@@ -3,7 +3,7 @@
  *
  * 참조: docs/02-design/features/signal-accuracy.design.md §3.1, §4.2
  *
- * BE `com.aistockadvisor.ai.domain.AccuracySummary` 와 1:1 매핑.
+ * BE `com.nowini.ai.domain.AccuracySummary` 와 1:1 매핑.
  * `sampleSizeSufficient=false` 인 경우 `hitRate` 는 null, `bySignal` 은 빈 객체로 직렬화됨.
  */
 export type AiAccuracySignal =

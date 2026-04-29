@@ -1,5 +1,6 @@
 'use client';
 
+import { PanelLoading } from '@/components/ui/panel-loading';
 import { useMarketNews } from '@/features/market-dashboard/hooks/use-market-news';
 
 import type { MarketNewsItem } from '@/types/market';
@@ -8,19 +9,7 @@ export function MarketNews() {
   const { data, isLoading, error, refetch } = useMarketNews();
 
   if (isLoading) {
-    return (
-      <section aria-label="시장 뉴스" className="card p-5">
-        <div className="h-4 w-24 animate-pulse rounded bg-bg-skeleton" />
-        <div className="mt-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="space-y-1">
-              <div className="h-4 animate-pulse rounded bg-bg-skeleton" />
-              <div className="h-3 w-3/4 animate-pulse rounded bg-bg-skeleton" />
-            </div>
-          ))}
-        </div>
-      </section>
-    );
+    return <PanelLoading title="시장 뉴스" text="최신 뉴스를 불러오고 있어요" />;
   }
 
   if (error || !data) {

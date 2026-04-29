@@ -154,7 +154,7 @@ AI 시그널의 과거 방향 정합도를 측정·공개한다. 목적은 두 �
 ```
 Selected Level: Dynamic
 
-Backend (apps/api/src/main/java/com/aistockadvisor/ai):
+Backend (apps/api/src/main/java/com/nowini/ai):
 ├── domain/
 │   └── SignalOutcome.java (record: window, hit, predicted, actual, changePct)
 │   └── SignalEvaluation.java (record)

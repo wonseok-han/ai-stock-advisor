@@ -140,6 +140,19 @@ export interface AnalystEstimates {
   }[];
 }
 
+export interface SecFiling {
+  ticker: string;
+  form: string;
+  title: string;
+  filedAt: string; // ISO date "2026-01-15"
+  eventCategory: string;
+  daysAgo: number;
+  documentUrl: string | null;
+  contentSummary: string | null;
+  summaryKo: string | null;
+  sentiment: '긍정' | '부정' | '중립' | null;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;
