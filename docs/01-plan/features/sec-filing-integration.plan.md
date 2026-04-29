@@ -163,6 +163,6 @@ ctx.put("sec_filings", secFilingsOf(await(sF)));
 
 ## 8. 관련 파일
 
-- `apps/api/src/main/java/com/aistockadvisor/ai/service/ContextAssembler.java`
-- `apps/api/src/main/java/com/aistockadvisor/ai/service/PromptBuilder.java`
-- `apps/api/src/main/java/com/aistockadvisor/cache/CacheService.java`
+- `apps/api/src/main/java/com/nowini/ai/service/ContextAssembler.java`
+- `apps/api/src/main/java/com/nowini/ai/service/PromptBuilder.java`
+- `apps/api/src/main/java/com/nowini/cache/CacheService.java`

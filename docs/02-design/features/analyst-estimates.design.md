@@ -185,7 +185,7 @@ null → FE 패널 숨김
 
 ### 3.1 Domain Record
 
-**`com.aistockadvisor.stock.domain.AnalystEstimates`**
+**`com.nowini.stock.domain.AnalystEstimates`**
 
 ```java
 public record AnalystEstimates(
@@ -226,7 +226,7 @@ public record AnalystEstimates(
 
 ### 3.2 Service
 
-**`com.aistockadvisor.stock.service.AnalystEstimatesService`**
+**`com.nowini.stock.service.AnalystEstimatesService`**
 
 ```java
 @Service
