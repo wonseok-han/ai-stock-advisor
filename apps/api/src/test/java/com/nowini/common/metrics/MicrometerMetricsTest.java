@@ -6,6 +6,7 @@ import com.nowini.legal.LegalGuardFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -92,11 +93,17 @@ class MicrometerMetricsTest {
             r.setContentType(MediaType.APPLICATION_JSON_VALUE);
             String body = "{\"ticker\":\"AAPL\",\"summaryKo\":\"지금 매수 추천합니다.\"}";
             r.getOutputStream().write(body.getBytes());
+            r.getOutputStream().flush();
         };
-        filter.doFilter(req, res, chain);
+
+        Method doFilterInternal = LegalGuardFilter.class.getDeclaredMethod(
+                "doFilterInternal", HttpServletRequest.class, HttpServletResponse.class, FilterChain.class);
+        doFilterInternal.setAccessible(true);
+        doFilterInternal.invoke(filter, req, res, chain);
 
         double filterHits = registry.counter(LlmMetrics.FORBIDDEN_HIT,
-                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER).count();
+                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER,
+                LlmMetrics.TAG_FEATURE, LlmMetrics.FEATURE_AI_SIGNAL).count();
         assertThat(filterHits).isGreaterThanOrEqualTo(1.0);
     }
 
@@ -114,11 +121,17 @@ class MicrometerMetricsTest {
             r.setContentType(MediaType.APPLICATION_JSON_VALUE);
             String body = "{\"ticker\":\"AAPL\",\"summaryKo\":\"참고용 중립 분석입니다.\"}";
             r.getOutputStream().write(body.getBytes());
+            r.getOutputStream().flush();
         };
-        filter.doFilter(req, res, chain);
+
+        Method doFilterInternal = LegalGuardFilter.class.getDeclaredMethod(
+                "doFilterInternal", HttpServletRequest.class, HttpServletResponse.class, FilterChain.class);
+        doFilterInternal.setAccessible(true);
+        doFilterInternal.invoke(filter, req, res, chain);
 
         double filterHits = registry.counter(LlmMetrics.FORBIDDEN_HIT,
-                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER).count();
+                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER,
+                LlmMetrics.TAG_FEATURE, LlmMetrics.FEATURE_AI_SIGNAL).count();
         assertThat(filterHits).isEqualTo(0.0);
     }
 }
