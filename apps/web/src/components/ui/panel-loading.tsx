@@ -22,6 +22,15 @@ export function PanelLoading({
   );
 }
 
+export function InlineLoading({ text }: { text: string }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <LoadingDots />
+      <TypingText text={text} />
+    </div>
+  );
+}
+
 function TypingText({ text }: { text: string }) {
   const [count, setCount] = useState(0);
 

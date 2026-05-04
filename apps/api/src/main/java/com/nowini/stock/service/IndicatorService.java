@@ -50,7 +50,7 @@ public class IndicatorService {
     public IndicatorSnapshot compute(String ticker) {
         Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
-        return cache.getOrLoad("ind:" + ticker, TYPE, ttl, () -> doCompute(ticker));
+        return cache.getOrLoad("ind:v2:" + ticker, TYPE, ttl, () -> doCompute(ticker));
     }
 
     private IndicatorSnapshot doCompute(String ticker) {
@@ -82,12 +82,15 @@ public class IndicatorService {
         double ma20 = lastDouble(new SMAIndicator(close, 20), last);
         double ma60 = lastDouble(new SMAIndicator(close, 60), last);
 
+        long avgVolume20d = computeAvgVolume(candles, 20);
+
         return new IndicatorSnapshot(
                 ticker,
                 rsi14,
                 new IndicatorSnapshot.Macd(macdValue, signalValue, macdValue - signalValue),
                 new IndicatorSnapshot.Bollinger(bbUpper, bbMiddle, bbLower, percentB),
                 new IndicatorSnapshot.MovingAverage(ma5, ma20, ma60),
+                avgVolume20d,
                 IndicatorTooltips.KO
         );
     }
@@ -107,6 +110,16 @@ public class IndicatorService {
                     .add();
         }
         return series;
+    }
+
+    private static long computeAvgVolume(List<Candle> candles, int days) {
+        int size = candles.size();
+        if (size < days) return 0L;
+        long sum = 0;
+        for (int i = size - days; i < size; i++) {
+            sum += candles.get(i).volume();
+        }
+        return sum / days;
     }
 
     private static double lastDouble(Indicator<Num> ind, int idx) {

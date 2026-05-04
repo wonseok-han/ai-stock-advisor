@@ -32,10 +32,28 @@ export interface SignalPerspective {
   whatToWatch?: string[] | null;
 }
 
+export type TimingVerdictType = 'NOW' | 'NOT_YET' | 'UNCERTAIN';
+
+export interface TimingFactor {
+  factor: string;
+  detail: string;
+  weight: number;
+}
+
+export interface TimingVerdict {
+  verdict: TimingVerdictType;
+  score: number;
+  factorsMet: TimingFactor[];
+  factorsUnmet: TimingFactor[];
+  summaryKo: string;
+  disclaimerKo: string;
+}
+
 export interface AiSignal {
   ticker: string;
   shortTerm: SignalPerspective;
   longTerm: SignalPerspective;
+  timing?: TimingVerdict | null;
   generatedAt: string;
   modelName: string;
   disclaimer: string;

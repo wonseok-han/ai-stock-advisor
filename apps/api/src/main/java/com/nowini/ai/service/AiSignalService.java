@@ -64,7 +64,7 @@ public class AiSignalService {
     public AiSignal getSignal(String ticker) {
         String cacheKey = "ai:" + ticker + ":v3";
         AiSignal cached = cache.get(cacheKey, CACHE_TYPE);
-        if (cached != null) {
+        if (cached != null && cached.shortTerm() != null && cached.longTerm() != null) {
             return cached;
         }
 
@@ -95,6 +95,7 @@ public class AiSignalService {
                         ticker,
                         validated.shortTerm(),
                         validated.longTerm(),
+                        validated.timing(),
                         Instant.now(),
                         raw.modelName(),
                         Disclaimers.AI_SIGNAL,
@@ -127,7 +128,7 @@ public class AiSignalService {
                 "일시적으로 AI 분석이 제한되어 중립(NEUTRAL) 관점으로 제공됩니다. 투자 판단 시 참고용으로만 활용해주세요.",
                 null, null, null, null
         );
-        return new AiSignal(ticker, neutral, neutral, Instant.now(),
+        return new AiSignal(ticker, neutral, neutral, null, Instant.now(),
                 modelName, Disclaimers.AI_SIGNAL, true);
     }
 

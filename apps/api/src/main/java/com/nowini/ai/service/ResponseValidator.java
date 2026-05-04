@@ -5,6 +5,8 @@ import com.nowini.ai.domain.ImpactDirection;
 import com.nowini.ai.domain.IndicatorInterpretation;
 import com.nowini.ai.domain.NewsImpact;
 import com.nowini.ai.domain.SignalPerspective;
+import com.nowini.ai.domain.TimingFactor;
+import com.nowini.ai.domain.TimingVerdict;
 import com.nowini.common.metrics.LlmMetrics;
 import com.nowini.legal.ForbiddenTermsRegistry;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -72,16 +74,23 @@ public class ResponseValidator {
             return Result.invalid("long_term validation failed", List.of(), rawMap);
         }
 
+        TimingVerdict timing = validateTiming(parsed.timing);
+
         StringBuilder scan = new StringBuilder();
         appendPerspectiveText(scan, shortTerm);
         appendPerspectiveText(scan, longTerm);
+        if (timing != null) {
+            scan.append(timing.summaryKo()).append(' ');
+            for (TimingFactor f : timing.factorsMet()) scan.append(f.detail()).append(' ');
+            for (TimingFactor f : timing.factorsUnmet()) scan.append(f.detail()).append(' ');
+        }
         List<String> hits = forbidden.detect(scan.toString());
         if (!hits.isEmpty()) {
             recordForbiddenHit(feature, hits.size());
             return Result.invalid("forbidden-terms-detected", hits, rawMap);
         }
 
-        return Result.valid(shortTerm, longTerm, rawMap);
+        return Result.valid(shortTerm, longTerm, timing, rawMap);
     }
 
     private SignalPerspective validatePerspective(RawSignal raw, String feature) {
@@ -116,6 +125,36 @@ public class ResponseValidator {
                 signal, confidence, rationale, risks, summary,
                 beginnerExplanation, indicatorInterpretation, newsImpact, whatToWatch
         );
+    }
+
+    private TimingVerdict validateTiming(RawTiming raw) {
+        if (raw == null) return null;
+        TimingVerdict.Verdict verdict = parseEnum(TimingVerdict.Verdict.class, raw.verdict);
+        if (verdict == null) return null;
+        if (raw.score == null || raw.score < 0 || raw.score > 100) return null;
+        List<TimingFactor> met = mapFactors(raw.factors_met);
+        List<TimingFactor> unmet = mapFactors(raw.factors_unmet);
+        if (met.isEmpty() && unmet.isEmpty()) return null;
+        if (met.size() + unmet.size() < 4) return null;
+        String summary = blankToNull(raw.summary_ko);
+        if (summary == null) return null;
+        String disclaimer = raw.disclaimer_ko != null ? raw.disclaimer_ko
+                : "진입 조건의 기술적 충족 여부를 정리한 것으로, 투자 판단은 본인의 책임입니다.";
+        return new TimingVerdict(verdict, raw.score, met, unmet, summary, disclaimer);
+    }
+
+    private List<TimingFactor> mapFactors(List<RawFactor> src) {
+        if (src == null || src.isEmpty()) return List.of();
+        List<TimingFactor> out = new ArrayList<>(src.size());
+        for (RawFactor rf : src) {
+            if (rf == null) continue;
+            String factor = blankToNull(rf.factor);
+            String detail = blankToNull(rf.detail);
+            if (factor == null || detail == null) continue;
+            int weight = rf.weight != null ? rf.weight : 10;
+            out.add(new TimingFactor(factor, detail, weight));
+        }
+        return out;
     }
 
     private void appendPerspectiveText(StringBuilder scan, SignalPerspective p) {
@@ -211,17 +250,18 @@ public class ResponseValidator {
             boolean valid,
             SignalPerspective shortTerm,
             SignalPerspective longTerm,
+            TimingVerdict timing,
             String reason,
             List<String> forbiddenDetected,
             Map<String, Object> rawMap
     ) {
         public static Result valid(SignalPerspective shortTerm, SignalPerspective longTerm,
-                                   Map<String, Object> raw) {
-            return new Result(true, shortTerm, longTerm, null, List.of(), raw);
+                                   TimingVerdict timing, Map<String, Object> raw) {
+            return new Result(true, shortTerm, longTerm, timing, null, List.of(), raw);
         }
 
         public static Result invalid(String reason, List<String> hits, Map<String, Object> raw) {
-            return new Result(false, null, null,
+            return new Result(false, null, null, null,
                     reason, hits == null ? List.of() : hits,
                     raw == null ? Collections.emptyMap() : raw);
         }
@@ -230,7 +270,25 @@ public class ResponseValidator {
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RawDualSignal(
             RawSignal short_term,
-            RawSignal long_term
+            RawSignal long_term,
+            RawTiming timing
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record RawTiming(
+            String verdict,
+            Integer score,
+            List<RawFactor> factors_met,
+            List<RawFactor> factors_unmet,
+            String summary_ko,
+            String disclaimer_ko
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record RawFactor(
+            String factor,
+            String detail,
+            Integer weight
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
