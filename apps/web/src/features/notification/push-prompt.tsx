@@ -3,9 +3,9 @@
 import { usePush } from '@/features/notification/hooks/use-push';
 
 export function PushPrompt() {
-  const { supported, permission, isSubscribed, loading, subscribe, unsubscribe } = usePush();
+  const { supported, permission, isSubscribed, checking, loading, subscribe, unsubscribe } = usePush();
 
-  if (!supported) return null;
+  if (!supported || checking) return null;
   if (permission === 'denied') {
     return (
       <p className="text-xs text-gray-400">

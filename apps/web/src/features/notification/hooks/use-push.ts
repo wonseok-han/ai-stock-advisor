@@ -16,6 +16,7 @@ export function usePush() {
   const { user } = useAuth();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -24,10 +25,14 @@ export function usePush() {
   }, []);
 
   useEffect(() => {
-    if (!user || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (!user || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+      setChecking(false);
+      return;
+    }
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();
       setIsSubscribed(!!sub);
+      setChecking(false);
     });
   }, [user]);
 
@@ -74,5 +79,5 @@ export function usePush() {
 
   const supported = typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
-  return { supported, permission, isSubscribed, loading, subscribe, unsubscribe };
+  return { supported, permission, isSubscribed, checking, loading, subscribe, unsubscribe };
 }

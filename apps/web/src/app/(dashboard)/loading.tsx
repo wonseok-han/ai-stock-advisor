@@ -1,9 +1,15 @@
+"use client";
+
+import { InlineLoading } from "@/components/ui/panel-loading";
+
 export default function DashboardLoading() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       {/* Market Overview */}
       <section className="card p-5">
-        <div className="mb-4 h-5 w-28 animate-pulse rounded bg-bg-skeleton" />
+        <div className="mb-4">
+          <InlineLoading text="시장 지수를 불러오고 있어요" />
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:grid-rows-[1fr_1fr]">
           <div className="col-span-2 row-span-2">
             <div className="h-full min-h-[160px] animate-pulse rounded-xl bg-bg-skeleton" />
@@ -17,7 +23,9 @@ export default function DashboardLoading() {
 
       {/* Sector Performance */}
       <section className="card p-5">
-        <div className="mb-4 h-5 w-32 animate-pulse rounded bg-bg-skeleton" />
+        <div className="mb-4">
+          <InlineLoading text="섹터별 성과를 분석하고 있어요" />
+        </div>
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3">
@@ -32,7 +40,9 @@ export default function DashboardLoading() {
       {/* Market Movers + News */}
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5">
-          <div className="mb-4 h-5 w-24 animate-pulse rounded bg-bg-skeleton" />
+          <div className="mb-4">
+            <InlineLoading text="주요 종목을 확인하고 있어요" />
+          </div>
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-12 animate-pulse rounded-lg bg-bg-skeleton" />
@@ -40,7 +50,9 @@ export default function DashboardLoading() {
           </div>
         </section>
         <section className="card p-5">
-          <div className="mb-4 h-5 w-20 animate-pulse rounded bg-bg-skeleton" />
+          <div className="mb-4">
+            <InlineLoading text="최신 뉴스를 가져오고 있어요" />
+          </div>
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-16 animate-pulse rounded-lg bg-bg-skeleton" />
