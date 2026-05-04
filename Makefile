@@ -62,6 +62,7 @@ help:
 
 # ---------- Setup ----------
 install:
+	npm install
 	cd $(WEB_DIR) && pnpm install --frozen-lockfile
 	cd $(API_DIR) && ./gradlew --version
 
