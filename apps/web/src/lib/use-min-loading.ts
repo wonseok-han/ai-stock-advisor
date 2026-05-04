@@ -1,25 +1,41 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 
 const MIN_DURATION = 600;
 
 export function useMinLoading(isLoading: boolean): boolean {
-  const [show, setShow] = useState(isLoading);
-  const startRef = useRef<number | null>(null);
+  const ref = useRef({
+    loading: isLoading,
+    start: isLoading ? Date.now() : 0,
+    timer: null as ReturnType<typeof setTimeout> | null,
+    listeners: new Set<() => void>(),
+  });
 
-  useEffect(() => {
-    if (isLoading) {
-      startRef.current = Date.now();
-      setShow(true);
-    } else if (startRef.current !== null) {
-      const elapsed = Date.now() - startRef.current;
-      const remaining = MIN_DURATION - elapsed;
-      if (remaining > 0) {
-        const id = setTimeout(() => setShow(false), remaining);
-        return () => clearTimeout(id);
+  const store = ref.current;
+
+  if (isLoading && !store.loading) {
+    store.loading = true;
+    store.start = Date.now();
+  } else if (!isLoading && store.loading) {
+    const elapsed = Date.now() - store.start;
+    const remaining = MIN_DURATION - elapsed;
+    if (remaining > 0) {
+      if (!store.timer) {
+        store.timer = setTimeout(() => {
+          store.loading = false;
+          store.timer = null;
+          store.listeners.forEach((l) => l());
+        }, remaining);
       }
-      setShow(false);
+    } else {
+      store.loading = false;
     }
-  }, [isLoading]);
+  }
 
-  return show;
+  return useSyncExternalStore(
+    (cb) => {
+      store.listeners.add(cb);
+      return () => { store.listeners.delete(cb); };
+    },
+    () => store.loading,
+  );
 }
