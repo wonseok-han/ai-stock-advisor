@@ -1,41 +1,38 @@
-import { useRef, useSyncExternalStore } from 'react';
+import { useEffect, useReducer } from 'react';
 
 const MIN_DURATION = 600;
 
-export function useMinLoading(isLoading: boolean): boolean {
-  const ref = useRef({
-    loading: isLoading,
-    start: isLoading ? Date.now() : 0,
-    timer: null as ReturnType<typeof setTimeout> | null,
-    listeners: new Set<() => void>(),
-  });
+type State = { visible: boolean; startedAt: number };
+type Action = { type: 'START' } | { type: 'STOP' } | { type: 'DELAYED_STOP' };
 
-  const store = ref.current;
-
-  if (isLoading && !store.loading) {
-    store.loading = true;
-    store.start = Date.now();
-  } else if (!isLoading && store.loading) {
-    const elapsed = Date.now() - store.start;
-    const remaining = MIN_DURATION - elapsed;
-    if (remaining > 0) {
-      if (!store.timer) {
-        store.timer = setTimeout(() => {
-          store.loading = false;
-          store.timer = null;
-          store.listeners.forEach((l) => l());
-        }, remaining);
-      }
-    } else {
-      store.loading = false;
-    }
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'START':
+      return { visible: true, startedAt: Date.now() };
+    case 'STOP':
+    case 'DELAYED_STOP':
+      return { visible: false, startedAt: 0 };
+    default:
+      return state;
   }
+}
 
-  return useSyncExternalStore(
-    (cb) => {
-      store.listeners.add(cb);
-      return () => { store.listeners.delete(cb); };
-    },
-    () => store.loading,
-  );
+export function useMinLoading(isLoading: boolean): boolean {
+  const [state, dispatch] = useReducer(reducer, { visible: isLoading, startedAt: 0 });
+
+  useEffect(() => {
+    if (isLoading && !state.visible) {
+      dispatch({ type: 'START' });
+    } else if (!isLoading && state.visible) {
+      const elapsed = Date.now() - state.startedAt;
+      const remaining = MIN_DURATION - elapsed;
+      if (remaining > 0) {
+        const id = setTimeout(() => dispatch({ type: 'DELAYED_STOP' }), remaining);
+        return () => clearTimeout(id);
+      }
+      dispatch({ type: 'STOP' });
+    }
+  }, [isLoading, state.visible, state.startedAt]);
+
+  return state.visible;
 }
