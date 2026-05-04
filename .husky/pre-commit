@@ -1,0 +1,9 @@
+echo "🔍 Pre-commit: FE typecheck + lint"
+cd apps/web && pnpm exec tsc --noEmit && pnpm lint
+cd -
+
+echo "🔍 Pre-commit: API build check"
+cd apps/api && ./gradlew check --no-daemon -x test
+cd -
+
+echo "✅ Pre-commit checks passed"
