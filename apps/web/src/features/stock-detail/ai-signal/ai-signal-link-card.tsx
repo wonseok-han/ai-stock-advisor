@@ -63,7 +63,9 @@ export function AiSignalLinkCard({ ticker }: { ticker: string }) {
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-fg">이 종목, AI로 분석해볼까요?</h2>
+          <h2 className="text-sm font-semibold text-fg">
+            이 종목, AI로 분석해볼까요?
+          </h2>
           <p className="text-xs text-fg-muted">
             시장 데이터 · 기술 지표 · 뉴스를 종합한 참고 시그널
           </p>

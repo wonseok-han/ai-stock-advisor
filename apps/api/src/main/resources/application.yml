@@ -106,7 +106,7 @@ app:
     contact-email: ${CONTACT_EMAIL:}
   cache:
     news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
-    ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:60}
+    ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:120}
   ai:
     signal:
       rate-limit-rpm: ${AI_SIGNAL_RATE_LIMIT_RPM:15}

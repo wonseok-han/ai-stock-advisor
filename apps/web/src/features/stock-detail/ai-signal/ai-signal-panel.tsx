@@ -10,6 +10,7 @@ import { ConfidenceTooltip } from "@/features/stock-detail/ai-signal/components/
 import { IndicatorInterpretation } from "@/features/stock-detail/ai-signal/components/indicator-interpretation";
 import { NewsImpact } from "@/features/stock-detail/ai-signal/components/news-impact";
 import { SignalGuide } from "@/features/stock-detail/ai-signal/components/signal-guide";
+import { TimingCard } from "@/features/stock-detail/ai-signal/components/timing-card";
 import { WhatToWatch } from "@/features/stock-detail/ai-signal/components/what-to-watch";
 import { useAiSignal } from "@/features/stock-detail/ai-signal/hooks/use-ai-signal";
 import { AiAccuracyBadge } from "@/features/stock-detail/components/ai-accuracy-badge";
@@ -104,7 +105,10 @@ function AiSignalContent({ ticker }: { ticker: string }) {
   }
 
   return (
-    <section aria-label="AI 참고 분석" className="card brand-glow p-5">
+    <>
+      {data.timing && <TimingCard timing={data.timing} />}
+
+      <section aria-label="AI 참고 분석" className="card brand-glow p-5">
       <div className="mb-3">
         <h2 className="text-sm font-semibold text-fg">AI 참고 분석</h2>
       </div>
@@ -140,6 +144,7 @@ function AiSignalContent({ ticker }: { ticker: string }) {
         <AiAccuracyBadge window={30} />
       </div>
     </section>
+    </>
   );
 }
 

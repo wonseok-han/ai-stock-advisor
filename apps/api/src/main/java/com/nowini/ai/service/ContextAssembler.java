@@ -1,15 +1,20 @@
 package com.nowini.ai.service;
 
+import com.nowini.market.domain.MarketIndex;
+import com.nowini.market.domain.MarketOverviewResponse;
+import com.nowini.market.service.MarketOverviewService;
 import com.nowini.news.domain.NewsItem;
 import com.nowini.news.service.NewsService;
 import com.nowini.sec.domain.SecFiling;
 import com.nowini.sec.domain.SecFinancials;
 import com.nowini.sec.service.SecFilingService;
 import com.nowini.stock.domain.AnalystEstimates;
+import com.nowini.stock.domain.CompanyOverview;
 import com.nowini.stock.domain.IndicatorSnapshot;
 import com.nowini.stock.domain.Quote;
 import com.nowini.stock.domain.StockProfile;
 import com.nowini.stock.service.AnalystEstimatesService;
+import com.nowini.stock.service.CompanyOverviewService;
 import com.nowini.stock.service.IndicatorService;
 import com.nowini.stock.service.QuoteService;
 import com.nowini.stock.service.StockProfileService;
@@ -17,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -51,19 +57,25 @@ public class ContextAssembler {
     private final NewsService newsService;
     private final AnalystEstimatesService analystService;
     private final SecFilingService secFilingService;
+    private final MarketOverviewService marketOverviewService;
+    private final CompanyOverviewService companyOverviewService;
 
     public ContextAssembler(StockProfileService profileService,
                             QuoteService quoteService,
                             IndicatorService indicatorService,
                             NewsService newsService,
                             AnalystEstimatesService analystService,
-                            SecFilingService secFilingService) {
+                            SecFilingService secFilingService,
+                            MarketOverviewService marketOverviewService,
+                            CompanyOverviewService companyOverviewService) {
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.indicatorService = indicatorService;
         this.newsService = newsService;
         this.analystService = analystService;
         this.secFilingService = secFilingService;
+        this.marketOverviewService = marketOverviewService;
+        this.companyOverviewService = companyOverviewService;
     }
 
     public Map<String, Object> assemble(String ticker) {
@@ -75,6 +87,8 @@ public class ContextAssembler {
             Future<AnalystEstimates> aF = ex.submit(() -> safely(() -> analystService.getEstimates(ticker)));
             Future<List<SecFiling>> sfF = ex.submit(() -> safely(() -> secFilingService.getRecentFilings(ticker, 5)));
             Future<SecFinancials> sxF = ex.submit(() -> safely(() -> secFilingService.getFinancials(ticker)));
+            Future<BigDecimal> vixF = ex.submit(() -> safely(this::fetchVix));
+            Future<CompanyOverview> coF = ex.submit(() -> safely(() -> companyOverviewService.getOverview(ticker)));
 
             Map<String, Object> ctx = new LinkedHashMap<>();
             ctx.put("ticker", ticker);
@@ -85,6 +99,9 @@ public class ContextAssembler {
             ctx.put("analyst_estimates", analystOf(await(aF)));
             ctx.put("sec_filings", secFilingsOf(await(sfF)));
             ctx.put("sec_financials", secFinancialsOf(await(sxF)));
+            ctx.put("fundamentals", fundamentalsOf(await(coF)));
+            BigDecimal vix = await(vixF);
+            if (vix != null) ctx.put("vix", vix);
             return ctx;
         }
     }
@@ -104,6 +121,16 @@ public class ContextAssembler {
             log.debug("context loader failed: {}", ex.getMessage());
             return null;
         }
+    }
+
+    private Map<String, Object> fundamentalsOf(CompanyOverview co) {
+        if (co == null) return null;
+        Map<String, Object> m = new LinkedHashMap<>();
+        if (co.peRatio() != null) m.put("pe_ratio", co.peRatio());
+        if (co.eps() != null) m.put("eps", co.eps());
+        if (co.sector() != null) m.put("sector", co.sector());
+        if (co.beta() != null) m.put("beta", co.beta());
+        return m.isEmpty() ? null : m;
     }
 
     private Map<String, Object> profileOf(StockProfile p) {
@@ -126,6 +153,7 @@ public class ContextAssembler {
         m.put("low", q.low());
         m.put("open", q.open());
         m.put("previous_close", q.previousClose());
+        m.put("volume", q.volume());
         m.put("fifty_two_week_high", q.week52High());
         m.put("fifty_two_week_low", q.week52Low());
         return m;
@@ -156,6 +184,9 @@ public class ContextAssembler {
                     "ma20", ind.movingAverage().ma20(),
                     "ma60", ind.movingAverage().ma60()
             ));
+        }
+        if (ind.avgVolume20d() > 0) {
+            m.put("avg_volume_20d", ind.avgVolume20d());
         }
         return m;
     }
@@ -236,6 +267,16 @@ public class ContextAssembler {
         }
         m.put("unit", sf.unit());
         return m.size() <= 1 ? null : m;
+    }
+
+    private BigDecimal fetchVix() {
+        MarketOverviewResponse overview = marketOverviewService.getOverview();
+        if (overview == null || overview.macro() == null) return null;
+        return overview.macro().stream()
+                .filter(m -> "VIX".equals(m.name()))
+                .map(MarketIndex::price)
+                .findFirst()
+                .orElse(null);
     }
 
     private static String freshnessOf(long hoursAgo) {

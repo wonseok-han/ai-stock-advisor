@@ -92,7 +92,8 @@ public class LegalGuardFilter extends OncePerRequestFilter {
             return body;
         }
         meterRegistry.counter(LlmMetrics.FORBIDDEN_HIT,
-                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER
+                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_FILTER,
+                LlmMetrics.TAG_FEATURE, extractFeature(uri)
         ).increment(hits.size());
         log.warn("legal-guard: forbidden terms detected in response uri={} hits={}", uri, hits);
         try {
@@ -113,21 +114,30 @@ public class LegalGuardFilter extends OncePerRequestFilter {
         String ticker = extractTicker(uri);
         ObjectNode root = objectMapper.createObjectNode();
         root.put("ticker", ticker);
-        root.put("signal", "NEUTRAL");
-        root.put("confidence", 0.5);
-        root.put("timeframe", "MID");
-        ArrayNode rationale = root.putArray("rationale");
-        rationale.add("일시적으로 AI 분석이 제한되어 중립 관점으로 제공됩니다.");
-        rationale.add("기술 지표·뉴스·가격 흐름을 추가 확인하신 뒤 참고하세요.");
-        ArrayNode risks = root.putArray("risks");
-        risks.add("시장 변동성에 따라 단기 가격 방향이 크게 바뀔 수 있습니다.");
-        risks.add("응답 검증 과정에서 일부 표현이 제한되었습니다.");
-        root.put("summaryKo", "참고용 중립 분석입니다. 투자 판단과 책임은 사용자 본인에게 있습니다.");
+
+        ObjectNode perspective = neutralPerspective();
+        root.set("shortTerm", perspective);
+        root.set("longTerm", perspective.deepCopy());
+
         root.put("generatedAt", Instant.now().toString());
         root.put("modelName", "legal-guard-neutral");
         root.put("disclaimer", Disclaimers.AI_SIGNAL);
         root.put("fallback", true);
         return root.toString();
+    }
+
+    private ObjectNode neutralPerspective() {
+        ObjectNode p = objectMapper.createObjectNode();
+        p.put("signal", "NEUTRAL");
+        p.put("confidence", 0.5);
+        ArrayNode rationale = p.putArray("rationale");
+        rationale.add("일시적으로 AI 분석이 제한되어 중립 관점으로 제공됩니다.");
+        rationale.add("기술 지표·뉴스·가격 흐름을 추가 확인하신 뒤 참고하세요.");
+        ArrayNode risks = p.putArray("risks");
+        risks.add("시장 변동성에 따라 단기 가격 방향이 크게 바뀔 수 있습니다.");
+        risks.add("응답 검증 과정에서 일부 표현이 제한되었습니다.");
+        p.put("summaryKo", "참고용 중립 분석입니다. 투자 판단과 책임은 사용자 본인에게 있습니다.");
+        return p;
     }
 
     private String neutralGeneric() {
@@ -137,7 +147,14 @@ public class LegalGuardFilter extends OncePerRequestFilter {
         return root.toString();
     }
 
-    /** {@code /api/v1/stocks/{ticker}/ai-signal} 형태에서 ticker 추출. 실패 시 "N/A". */
+    private String extractFeature(String uri) {
+        if (uri == null) return LlmMetrics.FEATURE_UNKNOWN;
+        if (uri.endsWith("/ai-signal")) return LlmMetrics.FEATURE_AI_SIGNAL;
+        if (uri.endsWith("/news")) return LlmMetrics.FEATURE_NEWS;
+        if (uri.contains("/sec/")) return LlmMetrics.FEATURE_SEC_SUMMARY;
+        return LlmMetrics.FEATURE_UNKNOWN;
+    }
+
     private String extractTicker(String uri) {
         try {
             String[] parts = uri.split("\\?")[0].split("/");

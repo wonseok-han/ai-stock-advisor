@@ -6,6 +6,7 @@ public record AiSignal(
         String ticker,
         SignalPerspective shortTerm,
         SignalPerspective longTerm,
+        TimingVerdict timing,
         Instant generatedAt,
         String modelName,
         String disclaimer,
