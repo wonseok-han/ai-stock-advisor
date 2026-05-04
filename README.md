@@ -9,9 +9,11 @@
 ## 주요 기능
 
 - **AI 시그널**: 차트·뉴스·기술 지표를 종합한 단기/장기 이중관점 참고 분석 (매수/중립/매도)
+- **AI 타이밍 판정**: "지금이니?!" — 8개 기술 팩터 기반 진입 조건 충족도 시각화 (NOW / UNCERTAIN / NOT_YET)
+- **SEC 공시 분석**: EDGAR 8-K/10-K 공시 Gemini 한국어 요약 + AI 컨텍스트 통합
 - **차트**: TradingView Lightweight Charts 기반 캔들 + 보조지표 (MACD / Bollinger / RSI)
 - **뉴스**: 종목별 최신 뉴스 LLM 번역·요약 (Gemini 2.5 Flash)
-- **시장 대시보드**: 주요 지수 (S&P500, Nasdaq, Dow, VIX), USD/KRW, 섹터 퍼포먼스, 매크로 지표
+- **시장 대시보드**: 주요 지수 (S&P500, Nasdaq, Dow, VIX, 선물), USD/KRW, 섹터 퍼포먼스, 매크로 지표
 - **종목 상세**: 기업 정보, 시가총액, P/E, EPS, 52주 고저, 애널리스트 평점·목표가, 분기 실적
 - **인증**: Supabase Auth (이메일/비밀번호 + Google OAuth)
 - **북마크 & 알림**: 종목별 조건 설정 (가격 변동 %, 뉴스, 시그널) + Web Push
@@ -146,8 +148,9 @@ main (배포) ← develop (통합) ← feat/xxx (작업)
 
 ### 릴리즈
 
-- `docs/04-report/changelog.md`에 릴리즈 노트 작성 후 GitHub Release 생성
+- `changelogs/vX.Y.Z.md` 작성 → develop PR → main 머지 → GitHub Actions 자동 태그/릴리즈
 - 시맨틱 버전: `v{major}.{minor}.{patch}-beta`
+- 현재 버전: **v0.4.0-beta**
 
 ## 문서
 
@@ -155,7 +158,7 @@ main (배포) ← develop (통합) ← feat/xxx (작업)
 |---|---|
 | 기획 고정본 | [`docs/planning/`](docs/planning/) |
 | 진행 중 PDCA | `docs/01-plan/` ~ `docs/04-report/` |
-| Changelog | [`docs/04-report/changelog.md`](docs/04-report/changelog.md) |
+| Changelog | [`changelogs/`](changelogs/) |
 | 완료 아카이브 | [`docs/archive/`](docs/archive/) |
 
 ## 법적 고지

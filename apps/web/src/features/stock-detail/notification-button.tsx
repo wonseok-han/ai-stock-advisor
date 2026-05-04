@@ -33,7 +33,7 @@ export function NotificationButton({ ticker }: { ticker: string }) {
         className={`inline-flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 transition-colors ${
           isActive
             ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
-            : 'bg-bg-muted text-fg-secondary hover:bg-bg-muted'
+            : 'border border-border bg-bg text-fg-muted hover:border-fg-muted hover:text-fg-secondary dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-400 dark:hover:text-zinc-300'
         }`}
         aria-label={isActive ? '알림 설정됨 (편집)' : '알림 설정'}
         title={isActive ? '알림 설정됨 (편집)' : '알림 설정'}

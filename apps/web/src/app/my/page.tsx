@@ -3,9 +3,11 @@
 import { Suspense, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { InlineLoading } from '@/components/ui/panel-loading';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useBookmarks } from '@/features/bookmark/hooks/use-bookmarks';
 import { useNotificationSettings } from '@/features/notification/hooks/use-notification-settings';
+import { useMinLoading } from '@/lib/use-min-loading';
 import { ProfileSection } from '@/features/my-page/profile-section';
 import { BookmarkGrid } from '@/features/my-page/bookmark-grid';
 import { NotificationSection } from '@/features/my-page/notification-section';
@@ -26,12 +28,15 @@ export default function MyPage() {
 function MyPageSkeleton() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-      <div className="animate-pulse rounded-2xl bg-bg-skeleton p-6">
+      <div className="rounded-2xl bg-bg-skeleton p-6">
+        <div className="mb-3">
+          <InlineLoading text="프로필 정보를 불러오고 있어요" />
+        </div>
         <div className="flex items-center gap-5">
-          <div className="h-16 w-16 shrink-0 rounded-full bg-bg-muted" />
+          <div className="h-16 w-16 shrink-0 animate-pulse rounded-full bg-bg-muted" />
           <div className="flex-1 space-y-2">
-            <div className="h-5 w-48 rounded bg-bg-muted" />
-            <div className="h-4 w-32 rounded bg-bg-muted" />
+            <div className="h-5 w-48 animate-pulse rounded bg-bg-muted" />
+            <div className="h-4 w-32 animate-pulse rounded bg-bg-muted" />
           </div>
         </div>
       </div>
@@ -61,8 +66,10 @@ function MyPageContent() {
     params.set('tab', tab);
     router.replace(`/my?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
-  const { data: bookmarkData, isLoading: bookmarkLoading } = useBookmarks();
-  const { data: notificationData, isLoading: notificationLoading } = useNotificationSettings();
+  const { data: bookmarkData, isLoading: bookmarkLoadingRaw } = useBookmarks();
+  const { data: notificationData, isLoading: notificationLoadingRaw } = useNotificationSettings();
+  const bookmarkLoading = useMinLoading(bookmarkLoadingRaw);
+  const notificationLoading = useMinLoading(notificationLoadingRaw);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -71,29 +78,7 @@ function MyPageContent() {
   }, [isLoading, user, router]);
 
   if (isLoading || !user) {
-    return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-        <div className="animate-pulse rounded-2xl bg-bg-skeleton p-6">
-          <div className="flex items-center gap-5">
-            <div className="h-16 w-16 shrink-0 rounded-full bg-bg-muted" />
-            <div className="flex-1 space-y-2">
-              <div className="h-5 w-48 rounded bg-bg-muted" />
-              <div className="h-4 w-32 rounded bg-bg-muted" />
-            </div>
-          </div>
-        </div>
-        <div className="mt-6 flex gap-4 border-b border-border pb-3">
-          <div className="h-4 w-16 animate-pulse rounded bg-bg-skeleton" />
-          <div className="h-4 w-12 animate-pulse rounded bg-bg-skeleton" />
-          <div className="h-4 w-12 animate-pulse rounded bg-bg-skeleton" />
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-bg-skeleton" />
-          ))}
-        </div>
-      </div>
-    );
+    return <MyPageSkeleton />;
   }
 
   const tabs: { key: Tab; label: string; count?: number; icon: React.ReactNode }[] = [
@@ -169,10 +154,15 @@ function MyPageContent() {
       <div className="mt-6">
         {activeTab === 'bookmarks' && (
           bookmarkLoading ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-xl bg-bg-skeleton" />
-              ))}
+            <div>
+              <div className="mb-4">
+                <InlineLoading text="북마크 목록을 불러오고 있어요" />
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-24 animate-pulse rounded-xl bg-bg-skeleton" />
+                ))}
+              </div>
             </div>
           ) : (
             <BookmarkGrid />
@@ -180,10 +170,15 @@ function MyPageContent() {
         )}
         {activeTab === 'notifications' && (
           notificationLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-xl bg-bg-skeleton" />
-              ))}
+            <div>
+              <div className="mb-4">
+                <InlineLoading text="알림 설정을 확인하고 있어요" />
+              </div>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-xl bg-bg-skeleton" />
+                ))}
+              </div>
             </div>
           ) : (
             <NotificationSection />

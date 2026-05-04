@@ -12,6 +12,7 @@ public record IndicatorSnapshot(
         Macd macd,
         Bollinger bollinger,
         MovingAverage movingAverage,
+        long avgVolume20d,
         Map<String, String> tooltipsKo
 ) {
     public record Macd(double macd, double signal, double histogram) {

@@ -42,7 +42,7 @@ export function BookmarkButton({ ticker }: { ticker: string }) {
         className={`inline-flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 text-base leading-none transition-colors ${
           isBookmarked
             ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400'
-            : 'bg-bg-muted text-fg-secondary hover:bg-bg-muted'
+            : 'border border-border bg-bg text-fg-muted hover:border-fg-muted hover:text-fg-secondary dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-400 dark:hover:text-zinc-300'
         } disabled:opacity-50`}
         aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
         title={isBookmarked ? '북마크 해제' : '북마크 추가'}
