@@ -80,6 +80,7 @@ apps/api/src/test/resources/application-test-local.yml
 .bkit/state/
 .bkit/runtime/
 .bkit/snapshots/
+.bkit/audit/
 .bkit-memory.json
 
 # ============================================================
