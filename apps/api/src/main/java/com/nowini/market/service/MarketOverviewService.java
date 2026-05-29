@@ -7,6 +7,7 @@ import com.nowini.market.domain.MarketIndex;
 import com.nowini.market.domain.MarketOverviewResponse;
 import com.nowini.stock.domain.Quote;
 import com.nowini.stock.infra.client.FinnhubClient;
+import com.nowini.stock.infra.client.StooqClient;
 import com.nowini.stock.infra.client.TwelveDataClient;
 import com.nowini.stock.infra.client.YahooFinanceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,36 +43,39 @@ public class MarketOverviewService {
     private final FinnhubClient finnhubClient;
     private final YahooFinanceClient yahooFinanceClient;
     private final TwelveDataClient twelveDataClient;
+    private final StooqClient stooqClient;
     private final RedisCacheAdapter cache;
 
-    /** 지수 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
+    /** 지수 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명, Stooq} (Stooq 빈값 = 미지원) */
     private static final String[][] INDEX_SYMBOLS = {
-            {"^GSPC", "^GSPC", "SPX",  "S&P 500"},
-            {"^IXIC", "^IXIC", "IXIC", "Nasdaq"},
-            {"^DJI",  "^DJI",  "DJI",  "Dow Jones"},
-            {"^RUT",  "^RUT",  "RUT",  "Russell 2000"},
-            {"ES=F",  "ES=F",  "ES",   "S&P 500 선물"},
-            {"NQ=F",  "NQ=F",  "NQ",   "Nasdaq 선물"},
+            {"^GSPC", "^GSPC", "SPX",  "S&P 500",      "^spx"},
+            {"^IXIC", "^IXIC", "IXIC", "Nasdaq",       "^ndq"},
+            {"^DJI",  "^DJI",  "DJI",  "Dow Jones",    "^dji"},
+            {"^RUT",  "^RUT",  "RUT",  "Russell 2000", ""},
+            {"ES=F",  "ES=F",  "ES",   "S&P 500 선물", "es.f"},
+            {"NQ=F",  "NQ=F",  "NQ",   "Nasdaq 선물",  "nq.f"},
     };
 
-    /** 매크로 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명} */
+    /** 매크로 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명, Stooq} (Stooq 빈값 = 미지원) */
     private static final String[][] MACRO_SYMBOLS = {
-            {"^VIX",  "^VIX",  "VIX",     "VIX"},
-            {"DX-Y.NYB", "DX-Y.NYB", "DXY", "DXY"},
-            {"^TNX",  "^TNX",  "TNX",     "10Y Treasury"},
-            {"GC=F",  "GC=F",  "XAU/USD", "Gold"},
-            {"SI=F",  "SI=F",  "XAG/USD", "Silver"},
-            {"CL=F",  "CL=F",  "WTI/USD", "WTI Oil"},
-            {"HG=F",  "HG=F",  "XCU/USD", "Copper"},
+            {"^VIX",  "^VIX",  "VIX",     "VIX",          ""},
+            {"DX-Y.NYB", "DX-Y.NYB", "DXY", "DXY",        ""},
+            {"^TNX",  "^TNX",  "TNX",     "10Y Treasury", ""},
+            {"GC=F",  "GC=F",  "XAU/USD", "Gold",         "xauusd"},
+            {"SI=F",  "SI=F",  "XAG/USD", "Silver",       "xagusd"},
+            {"CL=F",  "CL=F",  "WTI/USD", "WTI Oil",      "cl.f"},
+            {"HG=F",  "HG=F",  "XCU/USD", "Copper",       "hg.f"},
     };
 
     public MarketOverviewService(FinnhubClient finnhubClient,
                                  YahooFinanceClient yahooFinanceClient,
                                  TwelveDataClient twelveDataClient,
+                                 StooqClient stooqClient,
                                  RedisCacheAdapter cache) {
         this.finnhubClient = finnhubClient;
         this.yahooFinanceClient = yahooFinanceClient;
         this.twelveDataClient = twelveDataClient;
+        this.stooqClient = stooqClient;
         this.cache = cache;
     }
 
@@ -100,7 +104,7 @@ public class MarketOverviewService {
         List<MarketIndex> indices = new ArrayList<>();
         for (String[] sym : INDEX_SYMBOLS) {
             MarketIndex idx = resolveFromBatch(batch, sym[2], sym[3]);
-            if (idx == null) idx = fallbackIndex(sym[0], sym[1], sym[3]);
+            if (idx == null) idx = fallbackIndex(sym[0], sym[1], sym[4], sym[3]);
             if (idx != null) indices.add(idx);
         }
 
@@ -108,7 +112,7 @@ public class MarketOverviewService {
         List<MarketIndex> macro = new ArrayList<>();
         for (String[] sym : MACRO_SYMBOLS) {
             MarketIndex idx = resolveFromBatch(batch, sym[2], sym[3]);
-            if (idx == null) idx = fallbackMacro(sym[0], sym[1], sym[3]);
+            if (idx == null) idx = fallbackMacro(sym[0], sym[1], sym[4], sym[3]);
             if (idx != null) macro.add(idx);
         }
 
@@ -146,8 +150,11 @@ public class MarketOverviewService {
         return fallbackForex();
     }
 
-    private MarketIndex fallbackIndex(String finnhubSymbol, String yahooSymbol, String displayName) {
-        Quote q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
+    private MarketIndex fallbackIndex(String finnhubSymbol, String yahooSymbol, String stooqSymbol, String displayName) {
+        Quote q = tryQuote(() -> stooqClient.quote(stooqSymbol));
+        if (q != null) return toMarketIndex(stooqSymbol, displayName, q);
+
+        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
         if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
 
         q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
@@ -157,8 +164,11 @@ public class MarketOverviewService {
         return null;
     }
 
-    private MarketIndex fallbackMacro(String finnhubSymbol, String yahooSymbol, String displayName) {
-        Quote q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
+    private MarketIndex fallbackMacro(String finnhubSymbol, String yahooSymbol, String stooqSymbol, String displayName) {
+        Quote q = tryQuote(() -> stooqClient.quote(stooqSymbol));
+        if (q != null) return toMarketIndex(stooqSymbol, displayName, q);
+
+        q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
         if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
 
         q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
@@ -169,7 +179,10 @@ public class MarketOverviewService {
     }
 
     private BigDecimal[] fallbackForex() {
-        Quote q = tryQuote(() -> finnhubClient.quote("USDKRW=X"));
+        Quote q = tryQuote(() -> stooqClient.quote("usdkrw"));
+        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
+
+        q = tryQuote(() -> finnhubClient.quote("USDKRW=X"));
         if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
 
         q = tryQuote(() -> yahooFinanceClient.quote("USDKRW=X"));
