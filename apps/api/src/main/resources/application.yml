@@ -75,6 +75,9 @@ app:
     fmp:
       api-key: ${FMP_API_KEY:}
       base-url: https://financialmodelingprep.com/stable
+    fred:
+      api-key: ${FRED_API_KEY:}
+      base-url: https://api.stlouisfed.org/fred
     alphavantage:
       api-key: ${ALPHAVANTAGE_API_KEY:}
       base-url: https://www.alphavantage.co/query

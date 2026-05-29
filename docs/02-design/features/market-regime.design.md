@@ -62,7 +62,7 @@ GET /api/v1/market/regime/ai     # 인증(JWT) — AI 해석 (로그인 사용�
       ]
     }
   },
-  "disclaimer": "본 지표는 정보 제공·참고용이며 투자 권유가 아닙니다. 투자 판단과 책임은 사용자 본인에게 있습니다."
+  "disclaimer": "본 지표는 투자 자문이 아닌 정보 제공·참고용입니다. 투자 판단과 책임은 사용자 본인에게 있습니다."
 }
 ```
 
@@ -74,7 +74,7 @@ GET /api/v1/market/regime/ai     # 인증(JWT) — AI 해석 (로그인 사용�
 {
   "asOf": "2026-05-29T05:00:00Z",
   "aiSummary": "버핏지수는 역사적 고평가 구간이고 신용스프레드는 안정적입니다. 다만 이는 확정적 예측이 아닌 참고 지표입니다.",
-  "disclaimer": "본 해석은 정보 제공·참고용이며 투자 권유가 아닙니다. 투자 판단과 책임은 사용자 본인에게 있습니다."
+  "disclaimer": "본 해석은 투자 자문이 아닌 정보 제공·참고용입니다. 투자 판단과 책임은 사용자 본인에게 있습니다."
 }
 ```
 
@@ -171,6 +171,7 @@ apps/web/src/features/market-dashboard
 ## 7. 면책 (필수)
 
 - 모든 출력은 **정보 제공·참고용**, 매수/매도/현금화 등 지시 금지 (`no-investment-advice`)
+- **금칙어 회피**: 응답에 `LegalGuardFilter` 금칙어(`투자 권유`, `매수 추천`, `추천드립니다`, `사세요` 등 `legal/forbidden-terms.json`)가 있으면 fallback으로 차단됨. 면책 문구는 "투자 자문이 아닌"처럼 금칙어 비포함 표현 사용. AI 해석 프롬프트에도 금칙어 금지 명시
 - composite·AI 요약에 반드시 면책 문구 동반
 - AI 해석은 관점 제시(단정 금지)
 - 참조: `docs/planning/07-legal-compliance.md`, `docs/01-plan/features/market-regime.plan.md`
