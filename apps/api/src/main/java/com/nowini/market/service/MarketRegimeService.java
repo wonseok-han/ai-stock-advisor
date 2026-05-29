@@ -1,6 +1,9 @@
 package com.nowini.market.service;
 
+import com.nowini.ai.infra.LlmClient;
 import com.nowini.cache.RedisCacheAdapter;
+import com.nowini.common.metrics.LlmMetrics;
+import com.nowini.market.domain.MarketRegimeAiResponse;
 import com.nowini.market.domain.MarketRegimeResponse;
 import com.nowini.market.domain.MarketRegimeResponse.Axes;
 import com.nowini.market.domain.MarketRegimeResponse.Axis;
@@ -11,6 +14,10 @@ import com.nowini.market.infra.CnnFearGreedClient.FearGreedSnapshot;
 import com.nowini.market.infra.FredClient;
 import com.nowini.market.infra.FredClient.FredObservation;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -31,23 +38,83 @@ import java.util.List;
 @Service
 public class MarketRegimeService {
 
+    private static final Logger log = LoggerFactory.getLogger(MarketRegimeService.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Duration TTL = Duration.ofHours(6);
     private static final TypeReference<MarketRegimeResponse> TYPE = new TypeReference<>() {};
+    private static final TypeReference<MarketRegimeAiResponse> AI_TYPE = new TypeReference<>() {};
     private static final String DISCLAIMER =
             "본 지표는 투자 자문이 아닌 정보 제공·참고용입니다. 투자 판단과 책임은 사용자 본인에게 있습니다.";
 
+    private static final String AI_SYSTEM_PROMPT = """
+            당신은 미국 시장 국면 지표를 객관적으로 설명하는 보조자입니다.
+            규칙:
+            1) 투자 자문이 아닌 정보·참고 제공.
+            2) 매수/매도 지시 및 '사세요', '파세요', '매수 추천', '투자 권유', '추천드립니다' 등 표현 금지.
+            3) 단정적 예측 금지 — '~를 시사하나 확정적이지 않습니다' 톤 유지.
+            4) 한국어 1~2문장, 제공된 지표 사실에만 근거.
+            출력은 JSON 형식으로만: {"summary": "<요약>"}
+            """;
+
     private final FredClient fred;
     private final CnnFearGreedClient cnn;
+    private final LlmClient llm;
     private final RedisCacheAdapter cache;
 
-    public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn, RedisCacheAdapter cache) {
+    public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn, LlmClient llm, RedisCacheAdapter cache) {
         this.fred = fred;
         this.cnn = cnn;
+        this.llm = llm;
         this.cache = cache;
     }
 
     public MarketRegimeResponse getRegime() {
         return cache.getOrLoad("market:regime", TYPE, TTL, this::fetch);
+    }
+
+    /** AI 해석 (로그인 사용자 전용). 동일 지표 스냅샷 기반, 실패 시 aiSummary=null. */
+    public MarketRegimeAiResponse getRegimeAi() {
+        return cache.getOrLoad("market:regime:ai", AI_TYPE, TTL, () -> {
+            MarketRegimeResponse regime = getRegime();
+            return new MarketRegimeAiResponse(regime.asOf(), generateAiSummary(regime), DISCLAIMER);
+        });
+    }
+
+    private String generateAiSummary(MarketRegimeResponse regime) {
+        if (regime.composite() == null) return null;
+        try {
+            LlmClient.LlmResult result = llm.generate(
+                    AI_SYSTEM_PROMPT, buildAiPrompt(regime), LlmMetrics.FEATURE_MARKET_REGIME);
+            JsonNode node = MAPPER.readTree(result.content());
+            String summary = node.path("summary").asText(null);
+            return (summary == null || summary.isBlank()) ? null : summary;
+        } catch (Exception ex) {
+            log.warn("market-regime ai summary failed: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    private static String buildAiPrompt(MarketRegimeResponse r) {
+        StringBuilder sb = new StringBuilder("현재 미국 시장 국면 지표:\n");
+        if (r.composite() != null) {
+            sb.append("- 종합 국면: ").append(r.composite().score())
+                    .append("/100 (").append(r.composite().labelKo()).append(")\n");
+        }
+        appendAxis(sb, r.axes().valuation());
+        appendAxis(sb, r.axes().riskSentiment());
+        appendAxis(sb, r.axes().macro());
+        appendAxis(sb, r.axes().trendBreadth());
+        sb.append("\n위 지표를 바탕으로 현재 시장 국면을 1~2문장으로 요약하세요.");
+        return sb.toString();
+    }
+
+    private static void appendAxis(StringBuilder sb, Axis axis) {
+        if (axis == null || axis.indicators() == null) return;
+        for (Indicator i : axis.indicators()) {
+            sb.append("- ").append(i.name()).append(": ").append(i.value());
+            if (i.unit() != null) sb.append(i.unit());
+            sb.append(" (").append(i.zone()).append(")\n");
+        }
     }
 
     private MarketRegimeResponse fetch() {

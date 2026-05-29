@@ -1,5 +1,6 @@
 package com.nowini.market.web;
 
+import com.nowini.market.domain.MarketRegimeAiResponse;
 import com.nowini.market.domain.MarketRegimeResponse;
 import com.nowini.market.service.MarketRegimeService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,5 +26,11 @@ public class MarketRegimeController {
     @GetMapping("/regime")
     public MarketRegimeResponse regime() {
         return regimeService.getRegime();
+    }
+
+    /** AI 해석 — 로그인 사용자 전용 (SecurityConfig protectedFilterChain). */
+    @GetMapping("/regime/ai")
+    public MarketRegimeAiResponse regimeAi() {
+        return regimeService.getRegimeAi();
     }
 }
