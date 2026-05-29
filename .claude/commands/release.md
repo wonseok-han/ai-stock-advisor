@@ -27,24 +27,29 @@
 
 ## 2. 버전 결정 + changelog 파일 작성
 
-### 2-1. 이전 태그 이후 변경 내역 분석
+### 2-1. main 대비 develop 변경 내역 분석
+
+> **주의**: `git describe --tags`는 develop 히스토리 도달성 문제로 옛 태그(예: v0.1.0)를
+> 반환할 수 있으므로 **사용하지 않는다.** 릴리즈 범위는 항상 `origin/main..origin/develop`
+> (main에 아직 머지되지 않은 커밋)으로 판단한다.
 
 ```bash
-LATEST_TAG=$(/usr/bin/git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-/usr/bin/git log "$LATEST_TAG"..origin/develop --oneline
-/usr/bin/git diff --shortstat "$LATEST_TAG"..origin/develop
+/usr/bin/git log origin/main..origin/develop --oneline
+/usr/bin/git diff --shortstat origin/main..origin/develop
 ```
 
-커밋 목록을 카테고리별로 분류한다:
+커밋 목록을 카테고리별로 분류한다 (Merge 커밋은 제외):
 - **Added**: `feat` 접두사 커밋
 - **Changed**: `refactor`, `perf`, `style`, `docs`, `chore`, `ci` 접두사 커밋
 - **Fixed**: `fix` 접두사 커밋
 
 ### 2-2. 버전 결정
 
+**현재 버전**은 root `package.json`의 `version` 필드를 기준으로 한다 (`git describe` 사용 금지).
+
 시맨틱 버전 규칙:
-- `feat` 커밋이 있으면 **minor** bump (0.4.0 → 0.5.0)
-- `feat`이 없으면 **patch** bump (0.4.0 → 0.4.1)
+- `feat` 커밋이 있으면 **minor** bump (0.5.0 → 0.6.0)
+- `feat`이 없으면 **patch** bump (0.5.0 → 0.5.1)
 - **현재 베타 단계이므로 `-beta` 접미사 유지** (예: `v0.6.0-beta`)
 
 결정된 버전을 사용자에게 보여주고, 변경을 원하면 수정할 수 있도록 한다.
