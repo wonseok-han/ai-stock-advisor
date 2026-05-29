@@ -1,6 +1,13 @@
 import { apiFetch } from '@/lib/api/client';
 
-import type { MarketMovers, MarketNewsItem, MarketOverview, SectorPerformance } from '@/types/market';
+import type {
+  MarketMovers,
+  MarketNewsItem,
+  MarketOverview,
+  MarketRegime,
+  MarketRegimeAi,
+  SectorPerformance,
+} from '@/types/market';
 
 export function getMarketOverview(): Promise<MarketOverview> {
   return apiFetch<MarketOverview>('/market/overview');
@@ -16,4 +23,12 @@ export function getMarketMovers(): Promise<MarketMovers> {
 
 export function getSectorPerformance(): Promise<SectorPerformance[]> {
   return apiFetch<SectorPerformance[]>('/market/sectors');
+}
+
+export function getMarketRegime(): Promise<MarketRegime> {
+  return apiFetch<MarketRegime>('/market/regime');
+}
+
+export function getMarketRegimeAi(): Promise<MarketRegimeAi> {
+  return apiFetch<MarketRegimeAi>('/market/regime/ai');
 }
