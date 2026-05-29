@@ -7,7 +7,7 @@ import { useMarketRegime } from '@/features/market-dashboard/hooks/use-market-re
 import { useMarketRegimeAi } from '@/features/market-dashboard/hooks/use-market-regime-ai';
 
 import { InfoTooltip } from '@/components/ui/info-tooltip';
-import { PanelLoading } from '@/components/ui/panel-loading';
+import { InlineLoading, PanelLoading } from '@/components/ui/panel-loading';
 
 import type { MarketRegimeComposite, RegimeIndicator } from '@/types/market';
 
@@ -175,7 +175,11 @@ function AiSection() {
   }
 
   if (isLoading) {
-    return <div className="mt-4 text-sm text-fg-muted">AI 해석을 불러오고 있어요…</div>;
+    return (
+      <div className="mt-4 rounded-xl bg-bg-muted p-4">
+        <InlineLoading text="AI가 시장 국면을 해석하고 있어요" />
+      </div>
+    );
   }
   if (!data?.aiSummary) return null;
 
