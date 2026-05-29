@@ -37,46 +37,46 @@ const REGIME_TOOLTIPS: Record<string, string> = {
     'S&P500이 200일 이동평균 대비 얼마나 위/아래인지입니다. 기준: 0 이상 장기 상승추세 · 0 미만 하락추세.',
 };
 
-/** 지표별 zone 단계 (세그먼트 막대). 정의가 없으면 값만 표시. */
-const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
+/** 지표별 zone 단계 + 값 범위 (세그먼트 막대). 정의가 없으면 값만 표시. */
+const REGIME_SEGMENTS: Record<string, { zone: string; label: string; range: string }[]> = {
   buffett: [
-    { zone: 'cheap', label: '저평가' },
-    { zone: 'normal', label: '정상' },
-    { zone: 'overheated', label: '과열' },
+    { zone: 'cheap', label: '저평가', range: '<100%' },
+    { zone: 'normal', label: '정상', range: '100~150' },
+    { zone: 'overheated', label: '과열', range: '>150%' },
   ],
   fearGreed: [
-    { zone: 'fear', label: '공포' },
-    { zone: 'neutral', label: '중립' },
-    { zone: 'greed', label: '탐욕' },
+    { zone: 'fear', label: '공포', range: '<45' },
+    { zone: 'neutral', label: '중립', range: '45~55' },
+    { zone: 'greed', label: '탐욕', range: '>55' },
   ],
   creditSpread: [
-    { zone: 'calm', label: '안정' },
-    { zone: 'normal', label: '정상' },
-    { zone: 'fear', label: '위험' },
+    { zone: 'calm', label: '안정', range: '<3%' },
+    { zone: 'normal', label: '정상', range: '3~5%' },
+    { zone: 'fear', label: '위험', range: '>5%' },
   ],
   vix: [
-    { zone: 'calm', label: '안정' },
-    { zone: 'normal', label: '정상' },
-    { zone: 'fear', label: '불안' },
+    { zone: 'calm', label: '안정', range: '<15' },
+    { zone: 'normal', label: '정상', range: '15~25' },
+    { zone: 'fear', label: '불안', range: '>25' },
   ],
   yieldCurve2y: [
-    { zone: 'inverted', label: '역전' },
-    { zone: 'neutral', label: '평탄' },
-    { zone: 'normal', label: '정상' },
+    { zone: 'inverted', label: '역전', range: '<0' },
+    { zone: 'neutral', label: '평탄', range: '0~0.5' },
+    { zone: 'normal', label: '정상', range: '>0.5' },
   ],
   yieldCurve3m: [
-    { zone: 'inverted', label: '역전' },
-    { zone: 'neutral', label: '평탄' },
-    { zone: 'normal', label: '정상' },
+    { zone: 'inverted', label: '역전', range: '<0' },
+    { zone: 'neutral', label: '평탄', range: '0~0.5' },
+    { zone: 'normal', label: '정상', range: '>0.5' },
   ],
   unemployment: [
-    { zone: 'low', label: '낮음' },
-    { zone: 'normal', label: '보통' },
-    { zone: 'elevated', label: '높음' },
+    { zone: 'low', label: '낮음', range: '<4%' },
+    { zone: 'normal', label: '보통', range: '4~5%' },
+    { zone: 'elevated', label: '높음', range: '>5%' },
   ],
   sp500vs200ma: [
-    { zone: 'downtrend', label: '하락추세' },
-    { zone: 'uptrend', label: '상승추세' },
+    { zone: 'downtrend', label: '하락추세', range: '<0%' },
+    { zone: 'uptrend', label: '상승추세', range: '≥0%' },
   ],
 };
 
@@ -95,6 +95,7 @@ function activeZoneColor(zone: string): string {
     case 'calm':
     case 'uptrend':
     case 'low':
+    case 'normal':
       return 'bg-emerald-500/15 text-success ring-emerald-500/30';
     default:
       return 'bg-fg/10 text-fg ring-border';
@@ -197,7 +198,13 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
   );
 }
 
-function SegmentBar({ segments, current }: { segments: { zone: string; label: string }[]; current: string }) {
+function SegmentBar({
+  segments,
+  current,
+}: {
+  segments: { zone: string; label: string; range: string }[];
+  current: string;
+}) {
   return (
     <div className="mt-2 flex gap-1">
       {segments.map((seg) => {
@@ -205,13 +212,14 @@ function SegmentBar({ segments, current }: { segments: { zone: string; label: st
         return (
           <div
             key={seg.zone}
-            className={`flex-1 rounded-md py-1 text-center text-[10px] ring-1 transition-colors ${
-              active
-                ? `font-bold ${activeZoneColor(seg.zone)}`
-                : 'bg-transparent font-medium text-fg-secondary ring-border'
+            className={`flex-1 rounded-md px-0.5 py-1 text-center ring-1 transition-colors ${
+              active ? activeZoneColor(seg.zone) : 'bg-transparent text-fg-secondary ring-border'
             }`}
           >
-            {seg.label}
+            <div className={`text-[10px] leading-tight ${active ? 'font-bold' : 'font-medium'}`}>
+              {seg.label}
+            </div>
+            <div className="mt-0.5 text-[9px] leading-tight opacity-60">{seg.range}</div>
           </div>
         );
       })}
