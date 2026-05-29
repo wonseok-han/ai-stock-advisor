@@ -21,7 +21,12 @@ import reactor.netty.http.client.HttpClient;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -107,26 +112,61 @@ public class FmpClient {
                 this::fetchSectorPerformance);
     }
 
+    /**
+     * FMP stable sector-performance-snapshot 조회.
+     * <p>
+     * 구 {@code /sector-performance}는 404(폐기)되어 {@code /sector-performance-snapshot}으로 전환.
+     * 이 엔드포인트는 {@code date} 파라미터가 필수이고 거래소(NASDAQ/NYSE/AMEX)별로 sector가
+     * 중복 반환되므로, sector별 averageChange를 평균내어 기존 {@link FmpSectorPerformance} 형태로 변환한다.
+     * 주말/휴일 대비로 ET 기준 최근 5일을 역순으로 시도해 첫 유효 응답을 사용한다.
+     */
     private List<FmpSectorPerformance> fetchSectorPerformance() {
-        try {
-            FmpSectorPerformance[] resp = webClient.get()
-                    .uri(b -> b.path("/sector-performance")
-                            .queryParam("apikey", apiKey)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(FmpSectorPerformance[].class)
-                    .block(TIMEOUT);
-            return resp == null ? List.of() : List.of(resp);
-        } catch (Exception ex) {
-            log.warn("fmp sector-performance failed: {}", ex.getMessage());
-            return List.of();
+        ZoneId et = ZoneId.of("America/New_York");
+        for (int i = 0; i < 5; i++) {
+            final String date = LocalDate.now(et).minusDays(i).toString();
+            try {
+                FmpSectorSnapshot[] resp = webClient.get()
+                        .uri(b -> b.path("/sector-performance-snapshot")
+                                .queryParam("date", date)
+                                .queryParam("apikey", apiKey)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(FmpSectorSnapshot[].class)
+                        .block(TIMEOUT);
+                if (resp == null || resp.length == 0) continue;
+
+                // 거래소별 중복을 sector별 평균으로 집계
+                Map<String, List<Double>> bySector = new LinkedHashMap<>();
+                for (FmpSectorSnapshot s : resp) {
+                    if (s.sector() == null || s.averageChange() == null) continue;
+                    bySector.computeIfAbsent(s.sector(), k -> new ArrayList<>()).add(s.averageChange());
+                }
+                List<FmpSectorPerformance> out = new ArrayList<>();
+                for (Map.Entry<String, List<Double>> e : bySector.entrySet()) {
+                    double avg = e.getValue().stream().mapToDouble(Double::doubleValue).average().orElse(0);
+                    out.add(new FmpSectorPerformance(e.getKey(), avg));
+                }
+                return out;
+            } catch (Exception ex) {
+                log.warn("fmp sector snapshot {} failed: {}", date, ex.getMessage());
+            }
         }
+        log.warn("fmp sector snapshot: 최근 5일 내 유효 데이터 없음");
+        return List.of();
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FmpSectorPerformance(
             String sector,
             @JsonProperty("changesPercentage") Double changePercent
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpSectorSnapshot(
+            String sector,
+            String exchange,
+            Double averageChange
     ) {
     }
 

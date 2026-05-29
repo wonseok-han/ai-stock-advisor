@@ -1,0 +1,5 @@
+changed_files=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD 2>/dev/null)
+if echo "$changed_files" | grep -q "harness.config.json"; then
+  echo "harness.config.json changed — running harness sync..."
+  npx harness sync
+fi

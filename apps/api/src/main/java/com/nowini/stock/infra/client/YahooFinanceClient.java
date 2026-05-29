@@ -21,7 +21,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import reactor.netty.transport.ProxyProvider;
 
 import java.math.BigDecimal;
@@ -71,7 +70,7 @@ public class YahooFinanceClient {
     private static final String DEFAULT_UA = USER_AGENTS[0];
     private static final String ALL_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory";
     private static final Duration SUMMARY_CACHE_TTL = Duration.ofHours(24);
-    private static final Duration TTL_CHART_OPEN = Duration.ofMinutes(2);
+    private static final Duration TTL_CHART_OPEN = Duration.ofMinutes(3);
     private static final Duration TTL_INTRADAY_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<JsonNode> JSON_NODE_TYPE = new TypeReference<>() {};
     private static final long MIN_REQUEST_INTERVAL_MS = 2_000;
@@ -85,10 +84,11 @@ public class YahooFinanceClient {
     private static final TypeReference<Map<String, String>> CRUMB_MAP_TYPE = new TypeReference<>() {};
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final WebClient[] webClients;
+    private volatile WebClient[] webClients;
     private final RedisCacheAdapter cache;
-    private final String[] proxyUrls;
+    private volatile String[] proxyUrls;
     private final String[] chartHosts;
+    private final String baseUrl;
     private final AtomicInteger hostIndex = new AtomicInteger(0);
 
     private final ReentrantLock crumbLock = new ReentrantLock();
@@ -102,40 +102,22 @@ public class YahooFinanceClient {
     private volatile boolean crumbRotated;
 
     @Autowired
-    public YahooFinanceClient(RedisCacheAdapter cache,
-                              @Value("${app.yahoo.proxy-url:}") String proxyUrlCsv) {
-        this(BASE_URL, cache, proxyUrlCsv);
+    public YahooFinanceClient(RedisCacheAdapter cache) {
+        this(BASE_URL, cache);
     }
 
     YahooFinanceClient(String baseUrl) {
-        this(baseUrl, null, null);
+        this(baseUrl, null);
     }
 
     YahooFinanceClient(String baseUrl, RedisCacheAdapter cache) {
-        this(baseUrl, cache, null);
-    }
-
-    private YahooFinanceClient(String baseUrl, RedisCacheAdapter cache, String proxyUrlCsv) {
         this.cache = cache;
-        this.proxyUrls = parseProxyUrls(proxyUrlCsv);
+        this.baseUrl = baseUrl;
+        this.proxyUrls = new String[0];
         this.chartHosts = BASE_URL.equals(baseUrl) ? CHART_HOSTS : new String[]{baseUrl};
-        if (proxyUrls.length > 0) {
-            this.webClients = new WebClient[proxyUrls.length];
-            for (int i = 0; i < proxyUrls.length; i++) {
-                this.webClients[i] = buildWebClient(baseUrl, proxyUrls[i]);
-            }
-            log.info("yahoo proxy pool: {} proxies configured", proxyUrls.length);
-        } else {
-            this.webClients = new WebClient[]{ buildWebClient(baseUrl, null) };
-        }
-    }
-
-    private static String[] parseProxyUrls(String csv) {
-        if (csv == null || csv.isBlank()) return new String[0];
-        return java.util.Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toArray(String[]::new);
+        // 프록시 풀은 비어 있는 채로 시작하고, WebshareProxyScheduler가 채운다.
+        // 갱신 전(또는 Webshare 비활성)에는 프록시 없는 단일 클라이언트로 직접 호출한다.
+        this.webClients = new WebClient[]{ buildWebClient(baseUrl, null) };
     }
 
     private static WebClient buildWebClient(String baseUrl, String proxyUrl) {
@@ -197,6 +179,34 @@ public class YahooFinanceClient {
                     URI.create(proxyUrls[prev]).getHost(),
                     URI.create(proxyUrls[activeProxyIndex]).getHost());
         }
+    }
+
+    /**
+     * 프록시 풀을 새 리스트로 통째 교체한다 (hot-swap).
+     * Webshare API에서 주기적으로 받아온 최신 프록시 리스트를 반영하는 용도.
+     * <p>
+     * - 빈 리스트면 기존 풀을 유지한다 (Webshare 일시 장애 시 기존 프록시 보존).
+     * - 리스트가 기존과 동일하면 WebClient 재빌드를 건너뛴다.
+     * - 교체 시 activeProxyIndex를 리셋하고 crumb을 무효화한다.
+     */
+    public synchronized void refreshProxyPool(List<String> newProxies) {
+        if (newProxies == null || newProxies.isEmpty()) return;
+        String[] next = newProxies.stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
+        if (next.length == 0) return;
+        if (java.util.Arrays.equals(next, this.proxyUrls)) return;
+
+        WebClient[] clients = new WebClient[next.length];
+        for (int i = 0; i < next.length; i++) {
+            clients[i] = buildWebClient(baseUrl, next[i]);
+        }
+        this.proxyUrls = next;
+        this.webClients = clients;
+        this.activeProxyIndex = 0;
+        invalidateCrumb();
+        log.info("yahoo proxy pool refreshed: {} proxies (webshare)", next.length);
     }
 
     private static String randomUserAgent() {

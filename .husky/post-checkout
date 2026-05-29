@@ -1,0 +1,7 @@
+if [ "$3" = "1" ]; then
+  changed_files=$(git diff --name-only "$1" "$2" 2>/dev/null)
+  if echo "$changed_files" | grep -q "harness.config.json"; then
+    echo "harness.config.json differs on this branch — running harness sync..."
+    npx harness sync
+  fi
+fi

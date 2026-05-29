@@ -6,4 +6,7 @@ echo "🔍 Pre-commit: API build check"
 cd apps/api && ./gradlew check --no-daemon -x test
 cd -
 
+echo "🔍 Pre-commit: harness config check"
+npx harness sync --check
+
 echo "✅ Pre-commit checks passed"
