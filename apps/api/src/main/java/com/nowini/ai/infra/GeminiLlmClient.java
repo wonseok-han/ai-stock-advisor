@@ -17,11 +17,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.transport.ProxyProvider;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -55,31 +58,72 @@ public class GeminiLlmClient implements LlmClient {
     static final long RETRY_BACKOFF_MS = 250L;
     private static final Duration URL_CONTEXT_TIMEOUT = Duration.ofSeconds(90);
 
-    private final WebClient webClient;
-    private final WebClient urlContextWebClient;
+    private volatile WebClient webClient;
+    private volatile WebClient urlContextWebClient;
     private final GeminiProperties props;
     private final Duration timeout;
     private final MeterRegistry meterRegistry;
+    private final String baseUrl;
+    private volatile String proxyUrl;
 
     public GeminiLlmClient(GeminiProperties props, MeterRegistry meterRegistry) {
         this.props = props;
         this.meterRegistry = meterRegistry;
         this.timeout = Duration.ofMillis(props.timeoutMsOrDefault());
-        this.webClient = buildWebClient(props.baseUrlOrDefault(), timeout);
-        this.urlContextWebClient = buildWebClient(props.baseUrlOrDefault(), URL_CONTEXT_TIMEOUT);
+        this.baseUrl = props.baseUrlOrDefault();
+        this.webClient = buildWebClient(baseUrl, timeout, null);
+        this.urlContextWebClient = buildWebClient(baseUrl, URL_CONTEXT_TIMEOUT, null);
     }
 
-    private static WebClient buildWebClient(String baseUrl, Duration timeout) {
+    /**
+     * Gemini 호출에 사용할 프록시를 교체한다 (hot-swap).
+     * <p>
+     * Gemini free tier는 호출 IP의 지역으로 접근을 제한("User location is not supported")하므로,
+     * US 프록시를 적용해 미지원 리전(예: Render Singapore)에서의 차단을 우회한다.
+     * {@code newProxyUrl}이 null이면 프록시 없이 직접 호출한다.
+     */
+    public synchronized void refreshProxy(String newProxyUrl) {
+        if (Objects.equals(newProxyUrl, this.proxyUrl)) return;
+        this.proxyUrl = newProxyUrl;
+        this.webClient = buildWebClient(baseUrl, timeout, newProxyUrl);
+        this.urlContextWebClient = buildWebClient(baseUrl, URL_CONTEXT_TIMEOUT, newProxyUrl);
+        log.info("gemini proxy refreshed: {}",
+                newProxyUrl != null ? URI.create(newProxyUrl).getHost() : "direct");
+    }
+
+    private static WebClient buildWebClient(String baseUrl, Duration timeout, String proxyUrl) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) timeout.toMillis())
                 .doOnConnected(conn -> conn.addHandlerLast(
                         new ReadTimeoutHandler(timeout.toMillis(), TimeUnit.MILLISECONDS)))
                 .responseTimeout(timeout);
+        if (proxyUrl != null && !proxyUrl.isBlank()) {
+            httpClient = applyProxy(httpClient, proxyUrl);
+        }
         return WebClient.builder()
                 .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
+    }
+
+    private static HttpClient applyProxy(HttpClient httpClient, String proxyUrl) {
+        try {
+            URI uri = URI.create(proxyUrl);
+            String host = uri.getHost();
+            int port = uri.getPort() > 0 ? uri.getPort() : 8080;
+            return httpClient.proxy(p -> {
+                var spec = p.type(ProxyProvider.Proxy.HTTP).host(host).port(port);
+                String userInfo = uri.getUserInfo();
+                if (userInfo != null && userInfo.contains(":")) {
+                    String[] parts = userInfo.split(":", 2);
+                    spec.username(parts[0]).password(pw -> parts[1]);
+                }
+            });
+        } catch (Exception ex) {
+            log.warn("invalid gemini proxy URL: {}", ex.getMessage());
+            return httpClient;
+        }
     }
 
     @Override
