@@ -10,8 +10,8 @@ export function MarketDashboard() {
   return (
     <div className="flex flex-col gap-6">
       <MarketOverview />
-      <MarketRegime />
       <SectorPerformance />
+      <MarketRegime />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <MarketMovers />
         <MarketNews />

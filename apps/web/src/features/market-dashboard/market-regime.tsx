@@ -10,7 +10,7 @@ import { useMarketRegimeAi } from '@/features/market-dashboard/hooks/use-market-
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { InlineLoading, PanelLoading } from '@/components/ui/panel-loading';
 
-import type { MarketRegimeComposite, RegimeIndicator } from '@/types/market';
+import type { MarketRegimeComposite, RegimeIndicator, SectorMomentum } from '@/types/market';
 
 const PANEL_TOOLTIP =
   '밸류에이션·심리·매크로·추세 지표를 종합해 현재 시장 국면을 보여줍니다. 모든 수치는 참고용이며 매매 신호가 아닙니다.';
@@ -177,6 +177,9 @@ export function MarketRegime() {
           <IndicatorCard key={it.key} indicator={it} />
         ))}
       </div>
+
+      <MomentumHeatmap title="섹터 모멘텀 (최근 3개월)" tooltip={SECTOR_TOOLTIP} items={data.sectors} />
+      <MomentumHeatmap title="테마 모멘텀 (최근 3개월)" tooltip={THEME_TOOLTIP} items={data.themes} />
 
       <AiSection />
 
@@ -385,6 +388,53 @@ function FearGreedGauge({ indicator }: { indicator: RegimeIndicator }) {
   );
 }
 
+const SECTOR_TOOLTIP =
+  '최근 3개월간 각 섹터 ETF의 누적 수익률입니다. 양수는 강세, 음수는 약세를 뜻하며, 자금이 어느 섹터로 이동하는지(섹터 로테이션) 흐름을 보여줍니다. 참고용입니다.';
+
+const THEME_TOOLTIP =
+  '반도체·AI·클라우드·바이오 등 세부 테마 ETF의 최근 3개월 누적 수익률입니다. 섹터보다 잘게 나눠 어느 테마로 자금이 쏠리는지 봅니다. 색이 진할수록 강도가 큽니다. 참고용입니다.';
+
+/**
+ * 분기 모멘텀 히트맵 — Finviz 스타일 타일 그리드 (섹터/테마 공용).
+ * 수익률 강도에 따라 녹(강세)↔빨(약세) 색 농도. 강세→약세 정렬(BE).
+ */
+function MomentumHeatmap({ title, tooltip, items }: { title: string; tooltip: string; items: SectorMomentum[] }) {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-xl bg-bg-muted p-4 ring-1 ring-border">
+      <div className="mb-3 flex items-center gap-1 text-xs font-medium text-fg-secondary">
+        {title}
+        <InfoTooltip text={tooltip} />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+        {items.map((s) => {
+          const pct = s.returnPct;
+          const positive = pct >= 0;
+          // ±12% 기준으로 색 농도(0~1) 산출. outlier(기술 +32%)는 최대 농도로 clamp.
+          const t = Math.min(Math.abs(pct) / 12, 1);
+          const alpha = (0.15 + 0.6 * t).toFixed(2);
+          const bg = positive ? `rgba(16,185,129,${alpha})` : `rgba(239,68,68,${alpha})`;
+          const strong = t > 0.45; // 진한 타일은 흰 글씨, 연한 타일은 테마 글씨
+          return (
+            <div
+              key={s.sector}
+              className={`flex flex-col gap-0.5 rounded-lg px-2.5 py-2 ${strong ? 'text-white' : 'text-fg'}`}
+              style={{ backgroundColor: bg }}
+            >
+              <span className="truncate text-[11px] font-medium opacity-90">{s.sectorKo}</span>
+              <span className="text-sm font-bold tabular-nums">
+                {positive ? '+' : ''}
+                {pct}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AiSection() {
   const { user, isLoading: authLoading } = useAuth();
   const { data, isLoading } = useMarketRegimeAi(!!user);
@@ -420,7 +470,24 @@ function AiSection() {
         <span className="text-xs font-semibold text-fg">AI 해석</span>
         <span className="rounded-md bg-bg-surface px-1.5 py-0.5 text-[10px] text-fg-secondary ring-1 ring-border">참고</span>
       </div>
-      <p className="whitespace-pre-line text-sm leading-relaxed text-fg-secondary">{data.aiSummary}</p>
+      <div className="space-y-2.5 text-sm leading-relaxed text-fg-secondary">
+        {data.aiSummary.split(/\n\n+/).map((para, i) => (
+          <p key={i}>{renderEmphasis(para)}</p>
+        ))}
+      </div>
     </div>
+  );
+}
+
+/** AI 해석의 **강조** 표기를 굵은 글씨로 변환 (전체 마크다운 파서 없이 **...**만 처리). */
+function renderEmphasis(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') ? (
+      <strong key={i} className="font-semibold text-fg">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
   );
 }

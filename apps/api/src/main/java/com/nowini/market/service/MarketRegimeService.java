@@ -10,6 +10,7 @@ import com.nowini.market.domain.MarketRegimeResponse.Axes;
 import com.nowini.market.domain.MarketRegimeResponse.Axis;
 import com.nowini.market.domain.MarketRegimeResponse.Composite;
 import com.nowini.market.domain.MarketRegimeResponse.Indicator;
+import com.nowini.market.domain.SectorMomentum;
 import com.nowini.market.infra.CnnFearGreedClient;
 import com.nowini.market.infra.CnnFearGreedClient.FearGreedSnapshot;
 import com.nowini.market.infra.FredClient;
@@ -57,14 +58,17 @@ public class MarketRegimeService {
     private final LlmClient llm;
     private final PromptLoader promptLoader;
     private final RedisCacheAdapter cache;
+    private final SectorPerformanceService sectorService;
 
     public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn, LlmClient llm,
-                               PromptLoader promptLoader, RedisCacheAdapter cache) {
+                               PromptLoader promptLoader, RedisCacheAdapter cache,
+                               SectorPerformanceService sectorService) {
         this.fred = fred;
         this.cnn = cnn;
         this.llm = llm;
         this.promptLoader = promptLoader;
         this.cache = cache;
+        this.sectorService = sectorService;
     }
 
     public MarketRegimeResponse getRegime() {
@@ -155,10 +159,28 @@ public class MarketRegimeService {
         if (sp200dev != null) norms.add(clamp(50 + sp200dev * 2.5));   // +20%→100, -20%→0
         Composite composite = norms.isEmpty() ? null : toComposite(avg(norms));
 
+        // 분기(최근 3개월) 섹터·테마 모멘텀 — 자체 캐시. 실패 시 빈 리스트(국면 응답은 정상 제공).
+        List<SectorMomentum> sectors;
+        try {
+            sectors = sectorService.getQuarterlyMomentum();
+        } catch (Exception ex) {
+            log.warn("quarterly sector momentum failed: {}", ex.getMessage());
+            sectors = List.of();
+        }
+        List<SectorMomentum> themes;
+        try {
+            themes = sectorService.getQuarterlyThemes();
+        } catch (Exception ex) {
+            log.warn("quarterly theme momentum failed: {}", ex.getMessage());
+            themes = List.of();
+        }
+
         return new MarketRegimeResponse(
                 OffsetDateTime.now(ZoneOffset.UTC).toString(),
                 composite,
                 new Axes(new Axis(valuation), new Axis(risk), new Axis(macro), new Axis(trend)),
+                sectors,
+                themes,
                 DISCLAIMER
         );
     }
@@ -235,8 +257,31 @@ public class MarketRegimeService {
         appendAxis(sb, r.axes().riskSentiment());
         appendAxis(sb, r.axes().macro());
         appendAxis(sb, r.axes().trendBreadth());
+        appendMomentum(sb, "최근 3개월 섹터 수익률(강세→약세 정렬)", r.sectors(), 0);
+        appendMomentum(sb, "최근 3개월 테마 수익률(강세 상위·약세 하위)", r.themes(), 5);
         sb.append("\n위 지표를 해석하세요.");
         return sb.toString();
+    }
+
+    /**
+     * 분기(최근 3개월) 모멘텀을 프롬프트에 제공. 강세→약세 정렬 가정.
+     * topBottom>0이면 상위·하위 각 N개만(테마처럼 항목이 많을 때 프롬프트 절약).
+     */
+    private static void appendMomentum(StringBuilder sb, String title, List<SectorMomentum> list, int topBottom) {
+        if (list == null || list.isEmpty()) return;
+        List<SectorMomentum> show;
+        if (topBottom > 0 && list.size() > topBottom * 2) {
+            show = new ArrayList<>();
+            show.addAll(list.subList(0, topBottom));
+            show.addAll(list.subList(list.size() - topBottom, list.size()));
+        } else {
+            show = list;
+        }
+        sb.append("\n").append(title).append(":\n");
+        for (SectorMomentum s : show) {
+            sb.append("- ").append(s.sectorKo()).append(": ")
+                    .append(s.returnPct() >= 0 ? "+" : "").append(s.returnPct()).append("%\n");
+        }
     }
 
     private static void appendAxis(StringBuilder sb, Axis axis) {

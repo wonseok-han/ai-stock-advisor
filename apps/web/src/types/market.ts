@@ -23,6 +23,12 @@ export interface SectorPerformance {
   changePercent: number;
 }
 
+export interface SectorMomentum {
+  sector: string;
+  sectorKo: string;
+  returnPct: number;
+}
+
 export interface MarketMover {
   ticker: string;
   name: string;
@@ -83,6 +89,8 @@ export interface MarketRegime {
     macro: RegimeAxis;
     trendBreadth: RegimeAxis;
   };
+  sectors: SectorMomentum[];
+  themes: SectorMomentum[];
   disclaimer: string;
 }
 

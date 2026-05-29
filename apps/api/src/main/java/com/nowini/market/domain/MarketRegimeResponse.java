@@ -11,6 +11,8 @@ public record MarketRegimeResponse(
         String asOf,
         Composite composite,
         Axes axes,
+        List<SectorMomentum> sectors,
+        List<SectorMomentum> themes,
         String disclaimer
 ) {
     /** 종합 국면 점수 (0=공포/저평가 ~ 100=과열/고평가). */
