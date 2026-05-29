@@ -130,7 +130,7 @@ public class MarketRegimeService {
         }
         if (unemp != null) {
             macro.add(Indicator.of("unemployment", "실업률", round(unemp.value()), "%",
-                    "neutral", "경기 지표 (상승 전환 시 둔화 신호)"));
+                    unemploymentZone(unemp.value()), "경기 지표 (상승 전환 시 둔화 신호)"));
         }
         if (netLiq != null) {
             macro.add(Indicator.of("netLiquidity", "순유동성", round(netLiq), "조$",
@@ -262,6 +262,12 @@ public class MarketRegimeService {
 
     private static String sp200Zone(double dev) {
         return dev >= 0 ? "uptrend" : "downtrend";
+    }
+
+    private static String unemploymentZone(double v) {
+        if (v < 4) return "low";
+        if (v <= 5) return "normal";
+        return "elevated";
     }
 
     // ── composite ──

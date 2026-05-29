@@ -19,38 +19,72 @@ const COMPOSITE_TOOLTIP =
 
 const REGIME_TOOLTIPS: Record<string, string> = {
   buffett:
-    '전체 주식 시가총액을 GDP로 나눈 값입니다. 높을수록 경제 규모 대비 주식시장이 고평가됐음을 시사합니다.',
-  fearGreed: '투자 심리를 0(극도 공포)~100(극도 탐욕)으로 나타낸 CNN 지수입니다.',
+    '전체 주식 시가총액을 GDP로 나눈 값입니다. 높을수록 경제 규모 대비 고평가됐음을 뜻합니다. 기준: 100% 미만 저평가 · 150% 초과 고평가 · 200% 초과 역사적 과열.',
+  fearGreed:
+    '투자 심리를 0(극도 공포)~100(극도 탐욕)으로 나타낸 CNN 지수입니다. 기준: 25 이하 극단적 공포 · 55~75 탐욕 · 75 이상 극단적 탐욕.',
   creditSpread:
-    '투기등급(HY) 회사채와 국채의 금리 차이입니다. 벌어질수록 위험 회피 심리가 강함을 뜻합니다.',
-  vix: "S&P500 옵션 기반 변동성 지수입니다. '공포 지수'로 불리지만 단일 지표 해석은 주의가 필요합니다.",
+    '투기등급(HY) 회사채와 국채의 금리 차이입니다. 벌어질수록 위험 회피가 강함을 뜻합니다. 기준: 3% 미만 안정 · 5% 초과 신용 스트레스.',
+  vix: "S&P500 옵션 기반 변동성 지수('공포 지수')입니다. 기준: 15 미만 안정 · 25 초과 불안 심리. 단일 지표 해석은 주의가 필요합니다.",
   yieldCurve2y:
-    '10년물과 2년물 국채 금리차입니다. 마이너스(역전)는 과거 경기 침체에 선행한 사례가 있습니다.',
-  yieldCurve3m: '10년물과 3개월물 국채 금리차입니다. 침체 신호로 자주 인용됩니다.',
-  unemployment: '미국 실업률입니다. 낮으면 경기 호조이나, 상승 전환은 둔화 신호일 수 있습니다.',
+    '10년물−2년물 국채 금리차입니다. 기준: 0 미만(역전)은 과거 경기 침체에 선행한 사례가 있음 · 0.5%p 초과 정상.',
+  yieldCurve3m:
+    '10년물−3개월물 국채 금리차입니다. 기준: 0 미만(역전)이 침체 신호로 자주 인용됨 · 0.5%p 초과 정상.',
+  unemployment:
+    '미국 실업률입니다. 기준: 4% 안팎 완전고용 수준 · 5% 초과 경기 둔화. 절대값보다 상승 전환 여부가 중요합니다.',
   netLiquidity:
-    'Fed 자산에서 재무부 계정과 역레포를 뺀 시중 유동성입니다. 클수록 완화적입니다.',
+    'Fed 자산에서 재무부 계정·역레포를 뺀 시중 유동성입니다. 클수록 완화적이며, 절대 기준보다 증감 추세가 중요합니다.',
   sp500vs200ma:
-    'S&P500이 200일 이동평균 대비 얼마나 위/아래인지를 나타냅니다. 장기 추세 판단에 쓰입니다.',
+    'S&P500이 200일 이동평균 대비 얼마나 위/아래인지입니다. 기준: 0 이상 장기 상승추세 · 0 미만 하락추세.',
 };
 
-const ZONE_KO: Record<string, string> = {
-  cheap: '저평가',
-  calm: '안정',
-  normal: '정상',
-  neutral: '중립',
-  greed: '탐욕',
-  overheated: '과열',
-  fear: '공포',
-  inverted: '역전',
-  uptrend: '상승추세',
-  downtrend: '하락추세',
+/** 지표별 zone 단계 (세그먼트 막대). 정의가 없으면 값만 표시. */
+const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
+  buffett: [
+    { zone: 'cheap', label: '저평가' },
+    { zone: 'normal', label: '정상' },
+    { zone: 'overheated', label: '과열' },
+  ],
+  fearGreed: [
+    { zone: 'fear', label: '공포' },
+    { zone: 'neutral', label: '중립' },
+    { zone: 'greed', label: '탐욕' },
+  ],
+  creditSpread: [
+    { zone: 'calm', label: '안정' },
+    { zone: 'normal', label: '정상' },
+    { zone: 'fear', label: '위험' },
+  ],
+  vix: [
+    { zone: 'calm', label: '안정' },
+    { zone: 'normal', label: '정상' },
+    { zone: 'fear', label: '불안' },
+  ],
+  yieldCurve2y: [
+    { zone: 'inverted', label: '역전' },
+    { zone: 'neutral', label: '평탄' },
+    { zone: 'normal', label: '정상' },
+  ],
+  yieldCurve3m: [
+    { zone: 'inverted', label: '역전' },
+    { zone: 'neutral', label: '평탄' },
+    { zone: 'normal', label: '정상' },
+  ],
+  unemployment: [
+    { zone: 'low', label: '낮음' },
+    { zone: 'normal', label: '보통' },
+    { zone: 'elevated', label: '높음' },
+  ],
+  sp500vs200ma: [
+    { zone: 'downtrend', label: '하락추세' },
+    { zone: 'uptrend', label: '상승추세' },
+  ],
 };
 
 function zoneColor(zone: string): string {
   switch (zone) {
     case 'overheated':
     case 'greed':
+    case 'elevated':
       return 'bg-red-500/10 text-danger';
     case 'fear':
     case 'inverted':
@@ -59,6 +93,7 @@ function zoneColor(zone: string): string {
       return 'bg-blue-500/10 text-blue-400';
     case 'calm':
     case 'uptrend':
+    case 'low':
       return 'bg-emerald-500/10 text-success';
     default:
       return 'bg-bg-surface text-fg-muted';
@@ -135,21 +170,46 @@ function CompositeGauge({ composite }: { composite: MarketRegimeComposite }) {
 function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
   const { key, name, value, unit, zone, note } = indicator;
   const tooltip = REGIME_TOOLTIPS[key];
+  const segments = REGIME_SEGMENTS[key];
   return (
     <div className="rounded-xl bg-bg-muted p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1 truncate text-xs font-medium text-fg-muted">
-          <span className="truncate">{name}</span>
-          {tooltip && <InfoTooltip text={tooltip} />}
-        </span>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${zoneColor(zone)}`}>
-          {ZONE_KO[zone] ?? zone}
-        </span>
+      <div className="flex items-center gap-1 text-xs font-medium text-fg-muted">
+        <span className="truncate">{name}</span>
+        {tooltip && <InfoTooltip text={tooltip} />}
       </div>
-      <div className="mt-1.5 text-lg font-bold tabular-nums text-fg">
+      <div className="mt-1 text-lg font-bold tabular-nums text-fg">
         {value !== null ? `${value}${unit ?? ''}` : '—'}
       </div>
-      {note && <div className="mt-0.5 text-[11px] leading-tight text-fg-muted">{note}</div>}
+      {segments ? (
+        <SegmentBar segments={segments} current={zone} />
+      ) : (
+        zone !== 'neutral' && (
+          <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${zoneColor(zone)}`}>
+            {zone}
+          </span>
+        )
+      )}
+      {note && <div className="mt-1.5 text-[11px] leading-tight text-fg-muted">{note}</div>}
+    </div>
+  );
+}
+
+function SegmentBar({ segments, current }: { segments: { zone: string; label: string }[]; current: string }) {
+  return (
+    <div className="mt-2 flex gap-0.5">
+      {segments.map((seg) => {
+        const active = seg.zone === current;
+        return (
+          <div
+            key={seg.zone}
+            className={`flex-1 rounded py-0.5 text-center text-[9px] font-medium ${
+              active ? zoneColor(seg.zone) : 'bg-bg-surface text-fg-muted/40'
+            }`}
+          >
+            {seg.label}
+          </div>
+        );
+      })}
     </div>
   );
 }
