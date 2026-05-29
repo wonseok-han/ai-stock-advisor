@@ -80,6 +80,19 @@
       "include": ["apps/api/src/main/**/*.java"],
       "exclude": ["apps/web/**/*"]
     },
-    "scaffolderTypes": {}
+    "scaffolderTypes": {
+      "component": {
+        "directory": "apps/web/src/components",
+        "naming": "kebab-case"
+      },
+      "util": {
+        "directory": "apps/web/src/lib",
+        "naming": "kebab-case"
+      },
+      "model": {
+        "directory": "apps/web/src/types",
+        "naming": "kebab-case"
+      }
+    }
   }
 }
