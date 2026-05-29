@@ -46,6 +46,9 @@ hs_err_pid*.log
 node_modules/
 package-lock.json
 
+# harness sync 산출물 중 미사용 (pre-commit이 직접 lint 수행)
+.lintstagedrc.json
+
 # ============================================================
 # Next.js / Node  (apps/web)
 # ============================================================
@@ -80,6 +83,7 @@ apps/api/src/test/resources/application-test-local.yml
 .bkit/state/
 .bkit/runtime/
 .bkit/snapshots/
+.bkit/audit/
 .bkit-memory.json
 
 # ============================================================

@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Harness Configuration",
+  "description": "Configuration schema for @wonseok-han/harness-core",
+  "type": "object",
+  "required": [
+    "project"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "name",
+        "framework",
+        "packageManager",
+        "language"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "framework": {
+          "type": "string",
+          "enum": [
+            "nextjs",
+            "nuxt",
+            "svelte",
+            "remix",
+            "astro",
+            "vite-react",
+            "vite-vue",
+            "express",
+            "fastify",
+            "nest",
+            "unknown"
+          ]
+        },
+        "packageManager": {
+          "type": "string",
+          "enum": [
+            "npm",
+            "yarn",
+            "pnpm",
+            "bun"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "typescript",
+            "javascript"
+          ]
+        }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": [
+            "fsd",
+            "clean",
+            "mvc",
+            "modular",
+            "flat",
+            "custom"
+          ]
+        },
+        "enforceIndexGen": {
+          "type": "boolean",
+          "default": true
+        },
+        "forbiddenImports": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "development": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "linter": {
+          "type": "string"
+        },
+        "formatter": {
+          "type": "string"
+        },
+        "styling": {
+          "type": "string"
+        }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runner": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string",
+          "description": "Custom test command. Overrides runner-based default (e.g., 'npx vitest run --project unit')"
+        },
+        "minCoverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "statements": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "branches": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "functions": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "lines": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "requireTestFileWithImplementation": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "type": "string"
+        },
+        "allowedScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "adapters": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "claude",
+              "cursor",
+              "copilot",
+              "windsurf",
+              "aider",
+              "generic"
+            ]
+          },
+          "default": [
+            "generic"
+          ]
+        }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "description": "Control which files harness sync generates. Exclude paths that are already managed by the project.",
+      "additionalProperties": false,
+      "properties": {
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths to skip during sync (e.g., ['.husky', '.lintstagedrc.json'])"
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "description": "Injectable convention rules. Override defaults or add project-specific standards.",
+      "additionalProperties": false,
+      "properties": {
+        "fileNaming": {
+          "type": "object",
+          "description": "File naming convention per scaffold type.",
+          "additionalProperties": false,
+          "properties": {
+            "components": {
+              "$ref": "#/$defs/namingConvention"
+            },
+            "hooks": {
+              "$ref": "#/$defs/namingConvention"
+            },
+            "utils": {
+              "$ref": "#/$defs/namingConvention"
+            },
+            "services": {
+              "$ref": "#/$defs/namingConvention"
+            },
+            "models": {
+              "$ref": "#/$defs/namingConvention"
+            },
+            "testSuffix": {
+              "type": "string",
+              "description": "Test file suffix. Default: '.test'",
+              "default": ".test"
+            }
+          }
+        },
+        "codingStandards": {
+          "type": "array",
+          "description": "Custom coding rules injected into AI agent context.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Short identifier (e.g., 'no-enum', 'korean-comments')"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable rule text shown to AI agent"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warn",
+                  "info"
+                ],
+                "default": "error"
+              }
+            }
+          }
+        },
+        "testScope": {
+          "type": "object",
+          "description": "Control which files require test companions.",
+          "additionalProperties": false,
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Glob patterns for files that need tests (e.g., ['src/hooks/**/*.ts', 'src/lib/**/*.ts'])"
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Glob patterns to exclude from test requirement"
+            }
+          }
+        },
+        "scaffolderTypes": {
+          "type": "object",
+          "description": "Custom scaffold types or overrides for built-in types.",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "directory"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string",
+                "description": "Target directory relative to project root"
+              },
+              "naming": {
+                "$ref": "#/$defs/namingConvention"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "namingConvention": {
+      "type": "string",
+      "enum": [
+        "PascalCase",
+        "camelCase",
+        "kebab-case",
+        "snake_case"
+      ],
+      "description": "File naming convention"
+    }
+  }
+}
