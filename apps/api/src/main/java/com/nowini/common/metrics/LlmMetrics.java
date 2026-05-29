@@ -27,6 +27,7 @@ public final class LlmMetrics {
     public static final String FEATURE_AI_SIGNAL = "ai-signal";
     public static final String FEATURE_NEWS = "news";
     public static final String FEATURE_SEC_SUMMARY = "sec-summary";
+    public static final String FEATURE_MARKET_REGIME = "market-regime";
     public static final String FEATURE_UNKNOWN = "unknown";
 
     public static final String DIRECTION_INPUT = "input";

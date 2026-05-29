@@ -23,6 +23,12 @@ export interface SectorPerformance {
   changePercent: number;
 }
 
+export interface SectorMomentum {
+  sector: string;
+  sectorKo: string;
+  returnPct: number;
+}
+
 export interface MarketMover {
   ticker: string;
   name: string;
@@ -48,5 +54,48 @@ export interface MarketNewsItem {
   titleKo: string | null;
   summaryKo: string | null;
   publishedAt: number;
+  disclaimer: string;
+}
+
+export interface RegimeIndicator {
+  key: string;
+  name: string;
+  value: number | null;
+  unit: string | null;
+  zone: string;
+  note: string | null;
+  prev1w: number | null;
+  prev1m: number | null;
+  prev1y: number | null;
+  position: number | null;
+}
+
+export interface RegimeAxis {
+  indicators: RegimeIndicator[];
+}
+
+export interface MarketRegimeComposite {
+  score: number;
+  label: string;
+  labelKo: string;
+}
+
+export interface MarketRegime {
+  asOf: string;
+  composite: MarketRegimeComposite | null;
+  axes: {
+    valuation: RegimeAxis;
+    riskSentiment: RegimeAxis;
+    macro: RegimeAxis;
+    trendBreadth: RegimeAxis;
+  };
+  sectors: SectorMomentum[];
+  themes: SectorMomentum[];
+  disclaimer: string;
+}
+
+export interface MarketRegimeAi {
+  asOf: string;
+  aiSummary: string | null;
   disclaimer: string;
 }
