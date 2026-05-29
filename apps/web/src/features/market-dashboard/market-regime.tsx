@@ -80,23 +80,24 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   ],
 };
 
-function zoneColor(zone: string): string {
+/** 활성 세그먼트(현재 구간) 강조 색. */
+function activeZoneColor(zone: string): string {
   switch (zone) {
     case 'overheated':
     case 'greed':
     case 'elevated':
-      return 'bg-red-500/10 text-danger';
+      return 'bg-red-500/15 text-danger ring-red-500/30';
     case 'fear':
     case 'inverted':
     case 'downtrend':
     case 'cheap':
-      return 'bg-blue-500/10 text-blue-400';
+      return 'bg-blue-500/15 text-blue-400 ring-blue-500/30';
     case 'calm':
     case 'uptrend':
     case 'low':
-      return 'bg-emerald-500/10 text-success';
+      return 'bg-emerald-500/15 text-success ring-emerald-500/30';
     default:
-      return 'bg-bg-surface text-fg-muted';
+      return 'bg-fg/10 text-fg ring-border';
   }
 }
 
@@ -122,7 +123,9 @@ export function MarketRegime() {
           <h2 className="text-sm font-semibold text-fg">시장 국면</h2>
           <InfoTooltip text={PANEL_TOOLTIP} />
         </div>
-        <span className="rounded-md bg-bg-muted px-1.5 py-0.5 text-[10px] text-fg-muted">참고용</span>
+        <span className="rounded-md bg-bg-muted px-1.5 py-0.5 text-[10px] text-fg-secondary ring-1 ring-border">
+          참고용
+        </span>
       </div>
 
       {data.composite && <CompositeGauge composite={data.composite} />}
@@ -135,7 +138,7 @@ export function MarketRegime() {
 
       <AiSection />
 
-      <p className="mt-4 text-xs leading-relaxed text-fg-muted">{data.disclaimer}</p>
+      <p className="mt-4 text-xs leading-relaxed text-fg-secondary">{data.disclaimer}</p>
     </section>
   );
 }
@@ -143,23 +146,23 @@ export function MarketRegime() {
 function CompositeGauge({ composite }: { composite: MarketRegimeComposite }) {
   const score = Math.max(0, Math.min(100, composite.score));
   return (
-    <div className="rounded-xl bg-bg-muted p-4">
+    <div className="rounded-xl bg-bg-muted p-4 ring-1 ring-border">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
+        <span className="flex items-center gap-1 text-xs font-medium text-fg-secondary">
           종합 국면 (공포 ↔ 과열)
           <InfoTooltip text={COMPOSITE_TOOLTIP} />
         </span>
         <span className="text-sm font-bold text-fg">
-          {composite.labelKo} <span className="text-fg-muted">· {score}/100</span>
+          {composite.labelKo} <span className="text-fg-secondary">· {score}/100</span>
         </span>
       </div>
-      <div className="relative mt-3 h-2 w-full rounded-full bg-gradient-to-r from-blue-500/40 via-bg-surface to-red-500/40">
+      <div className="relative mt-3 h-2.5 w-full rounded-full bg-gradient-to-r from-blue-500/60 via-bg-skeleton to-red-500/60">
         <div
-          className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-bg-surface bg-fg"
-          style={{ left: `calc(${score}% - 7px)` }}
+          className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-bg-surface bg-fg shadow-md"
+          style={{ left: `calc(${score}% - 8px)` }}
         />
       </div>
-      <div className="mt-1.5 flex justify-between text-[10px] text-fg-muted">
+      <div className="mt-1.5 flex justify-between text-[10px] font-medium text-fg-secondary">
         <span>공포·저평가</span>
         <span>과열·고평가</span>
       </div>
@@ -172,38 +175,40 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
   const tooltip = REGIME_TOOLTIPS[key];
   const segments = REGIME_SEGMENTS[key];
   return (
-    <div className="rounded-xl bg-bg-muted p-3">
-      <div className="flex items-center gap-1 text-xs font-medium text-fg-muted">
+    <div className="rounded-xl bg-bg-muted p-3 ring-1 ring-border">
+      <div className="flex items-center gap-1 text-xs font-medium text-fg-secondary">
         <span className="truncate">{name}</span>
         {tooltip && <InfoTooltip text={tooltip} />}
       </div>
-      <div className="mt-1 text-lg font-bold tabular-nums text-fg">
+      <div className="mt-1 text-xl font-bold tabular-nums text-fg">
         {value !== null ? `${value}${unit ?? ''}` : '—'}
       </div>
       {segments ? (
         <SegmentBar segments={segments} current={zone} />
       ) : (
         zone !== 'neutral' && (
-          <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${zoneColor(zone)}`}>
+          <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${activeZoneColor(zone)}`}>
             {zone}
           </span>
         )
       )}
-      {note && <div className="mt-1.5 text-[11px] leading-tight text-fg-muted">{note}</div>}
+      {note && <div className="mt-1.5 text-[11px] leading-snug text-fg-secondary">{note}</div>}
     </div>
   );
 }
 
 function SegmentBar({ segments, current }: { segments: { zone: string; label: string }[]; current: string }) {
   return (
-    <div className="mt-2 flex gap-0.5">
+    <div className="mt-2 flex gap-1">
       {segments.map((seg) => {
         const active = seg.zone === current;
         return (
           <div
             key={seg.zone}
-            className={`flex-1 rounded py-0.5 text-center text-[9px] font-medium ${
-              active ? zoneColor(seg.zone) : 'bg-bg-surface text-fg-muted/40'
+            className={`flex-1 rounded-md py-1 text-center text-[10px] ring-1 transition-colors ${
+              active
+                ? `font-bold ${activeZoneColor(seg.zone)}`
+                : 'bg-transparent font-medium text-fg-secondary ring-border'
             }`}
           >
             {seg.label}
@@ -236,7 +241,7 @@ function AiSection() {
 
   if (isLoading) {
     return (
-      <div className="mt-4 rounded-xl bg-bg-muted p-4">
+      <div className="mt-4 rounded-xl bg-bg-muted p-4 ring-1 ring-border">
         <InlineLoading text="AI가 시장 국면을 해석하고 있어요" />
       </div>
     );
@@ -244,10 +249,10 @@ function AiSection() {
   if (!data?.aiSummary) return null;
 
   return (
-    <div className="mt-4 rounded-xl bg-bg-muted p-4">
-      <div className="mb-1 flex items-center gap-2">
+    <div className="mt-4 rounded-xl bg-bg-muted p-4 ring-1 ring-border">
+      <div className="mb-1.5 flex items-center gap-2">
         <span className="text-xs font-semibold text-fg">AI 해석</span>
-        <span className="rounded-md bg-bg-surface px-1.5 py-0.5 text-[10px] text-fg-muted">참고</span>
+        <span className="rounded-md bg-bg-surface px-1.5 py-0.5 text-[10px] text-fg-secondary ring-1 ring-border">참고</span>
       </div>
       <p className="text-sm leading-relaxed text-fg-secondary">{data.aiSummary}</p>
     </div>
