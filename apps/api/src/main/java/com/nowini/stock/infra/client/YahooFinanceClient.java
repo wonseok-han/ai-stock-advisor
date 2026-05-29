@@ -85,10 +85,11 @@ public class YahooFinanceClient {
     private static final TypeReference<Map<String, String>> CRUMB_MAP_TYPE = new TypeReference<>() {};
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final WebClient[] webClients;
+    private volatile WebClient[] webClients;
     private final RedisCacheAdapter cache;
-    private final String[] proxyUrls;
+    private volatile String[] proxyUrls;
     private final String[] chartHosts;
+    private final String baseUrl;
     private final AtomicInteger hostIndex = new AtomicInteger(0);
 
     private final ReentrantLock crumbLock = new ReentrantLock();
@@ -117,6 +118,7 @@ public class YahooFinanceClient {
 
     private YahooFinanceClient(String baseUrl, RedisCacheAdapter cache, String proxyUrlCsv) {
         this.cache = cache;
+        this.baseUrl = baseUrl;
         this.proxyUrls = parseProxyUrls(proxyUrlCsv);
         this.chartHosts = BASE_URL.equals(baseUrl) ? CHART_HOSTS : new String[]{baseUrl};
         if (proxyUrls.length > 0) {
@@ -197,6 +199,34 @@ public class YahooFinanceClient {
                     URI.create(proxyUrls[prev]).getHost(),
                     URI.create(proxyUrls[activeProxyIndex]).getHost());
         }
+    }
+
+    /**
+     * 프록시 풀을 새 리스트로 통째 교체한다 (hot-swap).
+     * Webshare API에서 주기적으로 받아온 최신 프록시 리스트를 반영하는 용도.
+     * <p>
+     * - 빈 리스트면 기존 풀을 유지한다 (Webshare 일시 장애 시 기존 프록시 보존).
+     * - 리스트가 기존과 동일하면 WebClient 재빌드를 건너뛴다.
+     * - 교체 시 activeProxyIndex를 리셋하고 crumb을 무효화한다.
+     */
+    public synchronized void refreshProxyPool(List<String> newProxies) {
+        if (newProxies == null || newProxies.isEmpty()) return;
+        String[] next = newProxies.stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
+        if (next.length == 0) return;
+        if (java.util.Arrays.equals(next, this.proxyUrls)) return;
+
+        WebClient[] clients = new WebClient[next.length];
+        for (int i = 0; i < next.length; i++) {
+            clients[i] = buildWebClient(baseUrl, next[i]);
+        }
+        this.proxyUrls = next;
+        this.webClients = clients;
+        this.activeProxyIndex = 0;
+        invalidateCrumb();
+        log.info("yahoo proxy pool refreshed: {} proxies (webshare)", next.length);
     }
 
     private static String randomUserAgent() {

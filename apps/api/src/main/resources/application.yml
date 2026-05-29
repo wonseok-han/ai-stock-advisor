@@ -101,6 +101,13 @@ app:
       cooldown: ${NOTIFICATION_DEDUP_COOLDOWN:PT4H}
   yahoo:
     proxy-url: ${YAHOO_PROXY_URL:}
+    webshare:
+      api-key: ${WEBSHARE_API_KEY:}
+      base-url: ${WEBSHARE_BASE_URL:https://proxy.webshare.io}
+      mode: ${WEBSHARE_MODE:direct}
+      country-codes: ${WEBSHARE_COUNTRY_CODES:}
+      page-size: ${WEBSHARE_PAGE_SIZE:100}
+      refresh-interval: ${WEBSHARE_REFRESH_INTERVAL:PT1H}
   resend:
     api-key: ${RESEND_API_KEY:}
     contact-email: ${CONTACT_EMAIL:}
