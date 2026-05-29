@@ -5,8 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Webshare 프록시 리스트 API 설정.
  * <p>
- * api-key가 비어 있으면 Webshare 연동은 비활성화되고,
- * 기존 {@code app.yahoo.proxy-url}(YAHOO_PROXY_URL) 수동 주입 방식이 fallback으로 사용된다.
+ * api-key가 비어 있으면 Webshare 연동이 비활성화되고, 프록시 없이 Yahoo에 직접 호출한다.
  *
  * @param apiKey       Webshare API 토큰 (Authorization: Token &lt;apiKey&gt;)
  * @param baseUrl      Webshare API 베이스 URL

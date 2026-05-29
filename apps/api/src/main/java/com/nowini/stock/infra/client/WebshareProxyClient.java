@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  * {@code http://username:password@ip:port} 형태의 리스트로 반환한다.
  * <p>
  * {@code WEBSHARE_API_KEY}가 없으면 비활성화되어 빈 리스트를 반환한다
- * (기존 {@code YAHOO_PROXY_URL} 수동 주입이 fallback으로 동작).
+ * (이 경우 Yahoo에 프록시 없이 직접 호출).
  * <p>
  * 참조: https://apidocs.webshare.io/proxy-list/list
  */

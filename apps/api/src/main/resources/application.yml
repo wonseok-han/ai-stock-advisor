@@ -100,7 +100,6 @@ app:
       reset-ratio: ${NOTIFICATION_DEDUP_RESET_RATIO:0.6}
       cooldown: ${NOTIFICATION_DEDUP_COOLDOWN:PT4H}
   yahoo:
-    proxy-url: ${YAHOO_PROXY_URL:}
     webshare:
       api-key: ${WEBSHARE_API_KEY:}
       base-url: ${WEBSHARE_BASE_URL:https://proxy.webshare.io}

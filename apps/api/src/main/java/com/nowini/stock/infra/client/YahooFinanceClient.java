@@ -21,7 +21,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import reactor.netty.transport.ProxyProvider;
 
 import java.math.BigDecimal;
@@ -103,41 +102,22 @@ public class YahooFinanceClient {
     private volatile boolean crumbRotated;
 
     @Autowired
-    public YahooFinanceClient(RedisCacheAdapter cache,
-                              @Value("${app.yahoo.proxy-url:}") String proxyUrlCsv) {
-        this(BASE_URL, cache, proxyUrlCsv);
+    public YahooFinanceClient(RedisCacheAdapter cache) {
+        this(BASE_URL, cache);
     }
 
     YahooFinanceClient(String baseUrl) {
-        this(baseUrl, null, null);
+        this(baseUrl, null);
     }
 
     YahooFinanceClient(String baseUrl, RedisCacheAdapter cache) {
-        this(baseUrl, cache, null);
-    }
-
-    private YahooFinanceClient(String baseUrl, RedisCacheAdapter cache, String proxyUrlCsv) {
         this.cache = cache;
         this.baseUrl = baseUrl;
-        this.proxyUrls = parseProxyUrls(proxyUrlCsv);
+        this.proxyUrls = new String[0];
         this.chartHosts = BASE_URL.equals(baseUrl) ? CHART_HOSTS : new String[]{baseUrl};
-        if (proxyUrls.length > 0) {
-            this.webClients = new WebClient[proxyUrls.length];
-            for (int i = 0; i < proxyUrls.length; i++) {
-                this.webClients[i] = buildWebClient(baseUrl, proxyUrls[i]);
-            }
-            log.info("yahoo proxy pool: {} proxies configured", proxyUrls.length);
-        } else {
-            this.webClients = new WebClient[]{ buildWebClient(baseUrl, null) };
-        }
-    }
-
-    private static String[] parseProxyUrls(String csv) {
-        if (csv == null || csv.isBlank()) return new String[0];
-        return java.util.Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toArray(String[]::new);
+        // 프록시 풀은 비어 있는 채로 시작하고, WebshareProxyScheduler가 채운다.
+        // 갱신 전(또는 Webshare 비활성)에는 프록시 없는 단일 클라이언트로 직접 호출한다.
+        this.webClients = new WebClient[]{ buildWebClient(baseUrl, null) };
     }
 
     private static WebClient buildWebClient(String baseUrl, String proxyUrl) {
