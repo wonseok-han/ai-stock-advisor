@@ -70,7 +70,7 @@ public class YahooFinanceClient {
     private static final String DEFAULT_UA = USER_AGENTS[0];
     private static final String ALL_MODULES = "summaryDetail,defaultKeyStatistics,assetProfile,financialData,recommendationTrend,earningsHistory";
     private static final Duration SUMMARY_CACHE_TTL = Duration.ofHours(24);
-    private static final Duration TTL_CHART_OPEN = Duration.ofMinutes(2);
+    private static final Duration TTL_CHART_OPEN = Duration.ofMinutes(3);
     private static final Duration TTL_INTRADAY_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<JsonNode> JSON_NODE_TYPE = new TypeReference<>() {};
     private static final long MIN_REQUEST_INTERVAL_MS = 2_000;
