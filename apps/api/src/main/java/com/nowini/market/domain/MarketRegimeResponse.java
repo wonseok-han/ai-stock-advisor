@@ -29,10 +29,13 @@ public record MarketRegimeResponse(
             String note,
             Double prev1w,
             Double prev1m,
-            Double prev1y
+            Double prev1y,
+            Double position
     ) {
-        public static Indicator of(String key, String name, Double value, String unit, String zone, String note) {
-            return new Indicator(key, name, value, unit, zone, note, null, null, null);
+        /** position: 스케일 내 위치 0~100 (반원 게이지 바늘용). null이면 게이지 생략. */
+        public static Indicator of(String key, String name, Double value, String unit,
+                                   String zone, String note, Double position) {
+            return new Indicator(key, name, value, unit, zone, note, null, null, null, position);
         }
     }
 }

@@ -32,73 +32,108 @@ const REGIME_TOOLTIPS: Record<string, string> = {
   unemployment:
     '미국 실업률입니다. 기준: 4% 안팎 완전고용 수준 · 5% 초과 경기 둔화. 절대값보다 상승 전환 여부가 중요합니다.',
   netLiquidity:
-    'Fed 자산에서 재무부 계정·역레포를 뺀 시중 유동성입니다. 클수록 완화적이며, 절대 기준보다 증감 추세가 중요합니다.',
+    'Fed 자산에서 재무부 계정·역레포를 뺀 시중 유동성입니다. 클수록 완화적이며, 게이지는 최근 2년 범위(저점~고점) 중 현재 위치를 나타냅니다.',
   sp500vs200ma:
     'S&P500이 200일 이동평균 대비 얼마나 위/아래인지입니다. 기준: 0 이상 장기 상승추세 · 0 미만 하락추세.',
 };
 
-/** 지표별 zone 단계 + 값 범위 (세그먼트 막대). 정의가 없으면 값만 표시. */
-const REGIME_SEGMENTS: Record<string, { zone: string; label: string; range: string }[]> = {
+/** 지표별 zone 단계 (반원 게이지 구간 색). 정의가 없으면 단색 게이지. */
+const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   buffett: [
-    { zone: 'cheap', label: '저평가', range: '<100%' },
-    { zone: 'normal', label: '정상', range: '100~150' },
-    { zone: 'overheated', label: '과열', range: '>150%' },
+    { zone: 'cheap', label: '저평가' },
+    { zone: 'normal', label: '정상' },
+    { zone: 'overheated', label: '과열' },
   ],
   fearGreed: [
-    { zone: 'fear', label: '공포', range: '<45' },
-    { zone: 'neutral', label: '중립', range: '45~55' },
-    { zone: 'greed', label: '탐욕', range: '>55' },
+    { zone: 'fear', label: '공포' },
+    { zone: 'neutral', label: '중립' },
+    { zone: 'greed', label: '탐욕' },
   ],
   creditSpread: [
-    { zone: 'calm', label: '안정', range: '<3%' },
-    { zone: 'normal', label: '정상', range: '3~5%' },
-    { zone: 'fear', label: '위험', range: '>5%' },
+    { zone: 'calm', label: '안정' },
+    { zone: 'normal', label: '정상' },
+    { zone: 'fear', label: '위험' },
   ],
   vix: [
-    { zone: 'calm', label: '안정', range: '<15' },
-    { zone: 'normal', label: '정상', range: '15~25' },
-    { zone: 'fear', label: '불안', range: '>25' },
+    { zone: 'calm', label: '안정' },
+    { zone: 'normal', label: '정상' },
+    { zone: 'fear', label: '불안' },
   ],
   yieldCurve2y: [
-    { zone: 'inverted', label: '역전', range: '<0' },
-    { zone: 'neutral', label: '평탄', range: '0~0.5' },
-    { zone: 'normal', label: '정상', range: '>0.5' },
+    { zone: 'inverted', label: '역전' },
+    { zone: 'neutral', label: '평탄' },
+    { zone: 'normal', label: '정상' },
   ],
   yieldCurve3m: [
-    { zone: 'inverted', label: '역전', range: '<0' },
-    { zone: 'neutral', label: '평탄', range: '0~0.5' },
-    { zone: 'normal', label: '정상', range: '>0.5' },
+    { zone: 'inverted', label: '역전' },
+    { zone: 'neutral', label: '평탄' },
+    { zone: 'normal', label: '정상' },
   ],
   unemployment: [
-    { zone: 'low', label: '낮음', range: '<4%' },
-    { zone: 'normal', label: '보통', range: '4~5%' },
-    { zone: 'elevated', label: '높음', range: '>5%' },
+    { zone: 'low', label: '낮음' },
+    { zone: 'normal', label: '보통' },
+    { zone: 'elevated', label: '높음' },
   ],
   sp500vs200ma: [
-    { zone: 'downtrend', label: '하락추세', range: '<0%' },
-    { zone: 'uptrend', label: '상승추세', range: '≥0%' },
+    { zone: 'downtrend', label: '하락' },
+    { zone: 'uptrend', label: '상승' },
   ],
 };
 
-/** 활성 세그먼트(현재 구간) 강조 색. */
-function activeZoneColor(zone: string): string {
+const ZONE_KO: Record<string, string> = {
+  cheap: '저평가',
+  calm: '안정',
+  normal: '정상',
+  neutral: '중립',
+  greed: '탐욕',
+  overheated: '과열',
+  fear: '공포',
+  inverted: '역전',
+  uptrend: '상승추세',
+  downtrend: '하락추세',
+  low: '낮음',
+  elevated: '높음',
+};
+
+function zoneTextColor(zone: string): string {
   switch (zone) {
     case 'overheated':
     case 'greed':
     case 'elevated':
-      return 'bg-red-500/15 text-danger ring-red-500/30';
+      return 'text-danger';
     case 'fear':
     case 'inverted':
     case 'downtrend':
     case 'cheap':
-      return 'bg-blue-500/15 text-blue-400 ring-blue-500/30';
+      return 'text-blue-400';
     case 'calm':
     case 'uptrend':
     case 'low':
     case 'normal':
-      return 'bg-emerald-500/15 text-success ring-emerald-500/30';
+      return 'text-success';
     default:
-      return 'bg-fg/10 text-fg ring-border';
+      return 'text-fg-secondary';
+  }
+}
+
+function zoneStroke(zone: string): string {
+  switch (zone) {
+    case 'overheated':
+    case 'greed':
+    case 'elevated':
+      return 'stroke-red-500';
+    case 'fear':
+    case 'inverted':
+    case 'downtrend':
+    case 'cheap':
+      return 'stroke-blue-500';
+    case 'calm':
+    case 'uptrend':
+    case 'low':
+    case 'normal':
+      return 'stroke-emerald-500';
+    default:
+      return 'stroke-zinc-500';
   }
 }
 
@@ -172,58 +207,102 @@ function CompositeGauge({ composite }: { composite: MarketRegimeComposite }) {
 }
 
 function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
-  const { key, name, value, unit, zone, note } = indicator;
+  const { key, name, value, unit, zone, note, position } = indicator;
   const tooltip = REGIME_TOOLTIPS[key];
   const segments = REGIME_SEGMENTS[key];
   return (
-    <div className="rounded-xl bg-bg-muted p-3 ring-1 ring-border">
+    <div className="flex flex-col rounded-xl bg-bg-muted p-3 ring-1 ring-border">
       <div className="flex items-center gap-1 text-xs font-medium text-fg-secondary">
         <span className="truncate">{name}</span>
         {tooltip && <InfoTooltip text={tooltip} />}
       </div>
-      <div className="mt-1 text-xl font-bold tabular-nums text-fg">
-        {value !== null ? `${value}${unit ?? ''}` : '—'}
-      </div>
-      {segments ? (
-        <SegmentBar segments={segments} current={zone} />
+
+      {position !== null ? (
+        <RegimeGauge
+          position={position}
+          segments={segments}
+          current={zone}
+          value={value}
+          unit={unit}
+        />
       ) : (
-        zone !== 'neutral' && (
-          <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${activeZoneColor(zone)}`}>
-            {zone}
-          </span>
-        )
+        <div className="mt-1 text-xl font-bold tabular-nums text-fg">
+          {value !== null ? `${value}${unit ?? ''}` : '—'}
+        </div>
       )}
-      {note && <div className="mt-1.5 text-[11px] leading-snug text-fg-secondary">{note}</div>}
+
+      <div className={`text-center text-[11px] font-semibold ${zoneTextColor(zone)}`}>
+        {ZONE_KO[zone] ?? zone}
+      </div>
+      {note && <div className="mt-1 text-[11px] leading-snug text-fg-secondary">{note}</div>}
     </div>
   );
 }
 
-function SegmentBar({
+function polar(cx: number, cy: number, r: number, deg: number) {
+  const rad = (deg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+function arc(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
+  const s = polar(cx, cy, r, startDeg);
+  const e = polar(cx, cy, r, endDeg);
+  // 왼(180°)→오(0°) 위쪽 반원: sweep=1
+  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 0 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+}
+
+/** 미니 반원 게이지 — zone 구간 색 호 + position 바늘 + 중앙 값. */
+function RegimeGauge({
+  position,
   segments,
   current,
+  value,
+  unit,
 }: {
-  segments: { zone: string; label: string; range: string }[];
+  position: number;
+  segments?: { zone: string; label: string }[];
   current: string;
+  value: number | null;
+  unit: string | null;
 }) {
+  const cx = 50;
+  const cy = 47;
+  const r = 38;
+  const pos = Math.max(0, Math.min(100, position));
+  const needleAngle = 180 - (pos / 100) * 180;
+  const tip = polar(cx, cy, r - 5, needleAngle);
+
+  const segs = segments ?? [{ zone: current, label: '' }];
+  const n = segs.length;
+
   return (
-    <div className="mt-2 flex gap-1">
-      {segments.map((seg) => {
+    <svg viewBox="0 0 100 56" className="mt-1 w-full" role="img" aria-label={`${value ?? ''}${unit ?? ''}`}>
+      {/* 배경 호 */}
+      <path d={arc(cx, cy, r, 180, 0)} fill="none" strokeWidth="6" className="stroke-bg-surface" strokeLinecap="round" />
+      {/* zone 구간 호 */}
+      {segs.map((seg, i) => {
+        const a0 = 180 - i * (180 / n);
+        const a1 = 180 - (i + 1) * (180 / n);
         const active = seg.zone === current;
         return (
-          <div
+          <path
             key={seg.zone}
-            className={`flex-1 rounded-md px-0.5 py-1 text-center ring-1 transition-colors ${
-              active ? activeZoneColor(seg.zone) : 'bg-transparent text-fg-secondary ring-border'
-            }`}
-          >
-            <div className={`text-[10px] leading-tight ${active ? 'font-bold' : 'font-medium'}`}>
-              {seg.label}
-            </div>
-            <div className="mt-0.5 text-[9px] leading-tight opacity-60">{seg.range}</div>
-          </div>
+            d={arc(cx, cy, r, a0, a1)}
+            fill="none"
+            strokeWidth="6"
+            strokeLinecap="round"
+            className={`${zoneStroke(seg.zone)} ${active ? 'opacity-100' : 'opacity-25'}`}
+          />
         );
       })}
-    </div>
+      {/* 바늘 */}
+      <line x1={cx} y1={cy} x2={tip.x.toFixed(2)} y2={tip.y.toFixed(2)} className="stroke-fg" strokeWidth="2" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="3" className="fill-fg" />
+      {/* 값 */}
+      <text x={cx} y={cy - 11} textAnchor="middle" className="fill-fg text-[13px] font-bold">
+        {value !== null ? `${value}${unit ?? ''}` : '—'}
+      </text>
+    </svg>
   );
 }
 
@@ -262,7 +341,7 @@ function AiSection() {
         <span className="text-xs font-semibold text-fg">AI 해석</span>
         <span className="rounded-md bg-bg-surface px-1.5 py-0.5 text-[10px] text-fg-secondary ring-1 ring-border">참고</span>
       </div>
-      <p className="text-sm leading-relaxed text-fg-secondary">{data.aiSummary}</p>
+      <p className="whitespace-pre-line text-sm leading-relaxed text-fg-secondary">{data.aiSummary}</p>
     </div>
   );
 }

@@ -61,6 +61,7 @@ export interface RegimeIndicator {
   prev1w: number | null;
   prev1m: number | null;
   prev1y: number | null;
+  position: number | null;
 }
 
 export interface RegimeAxis {

@@ -25,7 +25,9 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 시장 국면 종합 — FRED + CNN 무료 소스 9개 지표를 4축으로 수집·정규화.
@@ -98,49 +100,51 @@ public class MarketRegimeService {
         // ── 추세·폭: S&P500 200일선 이격도(%) ──
         Double sp200dev = sp500DeviationFrom200dma();
 
-        // 지표 조립
+        // 지표 조립 (position: 스케일 내 위치 0~100, 반원 게이지 바늘용)
         List<Indicator> valuation = new ArrayList<>();
         if (buffett != null) {
             valuation.add(Indicator.of("buffett", "버핏지수", round(buffett), "%",
-                    buffettZone(buffett), buffettNote(buffett)));
+                    buffettZone(buffett), buffettNote(buffett), clamp(buffett / 250 * 100)));
         }
 
         List<Indicator> risk = new ArrayList<>();
         if (fg != null) {
             risk.add(new Indicator("fearGreed", "공포·탐욕 지수", round(fg.score()), null,
-                    fearGreedZone(fg.score()), null, fg.prev1Week(), fg.prev1Month(), fg.prev1Year()));
+                    fearGreedZone(fg.score()), null,
+                    fg.prev1Week(), fg.prev1Month(), fg.prev1Year(), clamp(fg.score())));
         }
         if (credit != null) {
             risk.add(Indicator.of("creditSpread", "HY 신용스프레드", round(credit.value()), "%",
-                    creditZone(credit.value()), null));
+                    creditZone(credit.value()), null, clamp(credit.value() / 8 * 100)));
         }
         if (vix != null) {
             risk.add(Indicator.of("vix", "VIX", round(vix.value()), null,
-                    vixZone(vix.value()), "변동성 지수 (단일 지표 해석은 주의)"));
+                    vixZone(vix.value()), "변동성 지수 (단일 지표 해석은 주의)", clamp(vix.value() / 50 * 100)));
         }
 
         List<Indicator> macro = new ArrayList<>();
         if (yc2 != null) {
             macro.add(Indicator.of("yieldCurve2y", "장단기 금리차(10Y-2Y)", round(yc2.value()), "%p",
-                    yieldZone(yc2.value()), yieldNote(yc2.value())));
+                    yieldZone(yc2.value()), yieldNote(yc2.value()), clamp((yc2.value() + 2) / 5 * 100)));
         }
         if (yc3 != null) {
             macro.add(Indicator.of("yieldCurve3m", "장단기 금리차(10Y-3M)", round(yc3.value()), "%p",
-                    yieldZone(yc3.value()), yieldNote(yc3.value())));
+                    yieldZone(yc3.value()), yieldNote(yc3.value()), clamp((yc3.value() + 2) / 5 * 100)));
         }
         if (unemp != null) {
             macro.add(Indicator.of("unemployment", "실업률", round(unemp.value()), "%",
-                    unemploymentZone(unemp.value()), "경기 지표 (상승 전환 시 둔화 신호)"));
+                    unemploymentZone(unemp.value()), "경기 지표 (상승 전환 시 둔화 신호)",
+                    clamp((unemp.value() - 3) / 7 * 100)));
         }
         if (netLiq != null) {
             macro.add(Indicator.of("netLiquidity", "순유동성", round(netLiq), "조$",
-                    "neutral", "Fed 순유동성 (클수록 완화적)"));
+                    "neutral", "Fed 순유동성 (최근 2년 범위 내 위치)", netLiquidityPosition(netLiq)));
         }
 
         List<Indicator> trend = new ArrayList<>();
         if (sp200dev != null) {
             trend.add(Indicator.of("sp500vs200ma", "S&P500 vs 200일선", round(sp200dev), "%",
-                    sp200Zone(sp200dev), "200일 이동평균 대비 이격도"));
+                    sp200Zone(sp200dev), "200일 이동평균 대비 이격도", clamp((sp200dev + 25) / 50 * 100)));
         }
 
         // composite: 과열도 정규화 평균 (버핏·Fear&Greed·신용·200일선)
@@ -167,6 +171,34 @@ public class MarketRegimeService {
         if (walcl == null || tga == null || rrp == null) return null;
         double millions = walcl.value() - tga.value() - rrp.value() * 1000;
         return millions / 1_000_000.0;
+    }
+
+    /**
+     * 순유동성의 최근 2년 역사적 범위 대비 현재 위치(0~100).
+     * WALCL(주간) 날짜에 같은 날짜의 TGA·RRP를 매칭해 순유동성 시계열을 구성, min/max 대비 위치 산출.
+     * 데이터 부족 시 null(게이지 생략).
+     */
+    private Double netLiquidityPosition(double current) {
+        List<FredObservation> walcl = fred.latestSeries("WALCL", 110);   // ~2년 주간
+        if (walcl.size() < 20) return null;
+        Map<String, Double> tgaMap = new HashMap<>();
+        for (FredObservation o : fred.latestSeries("WTREGEN", 760)) tgaMap.put(o.date(), o.value());
+        Map<String, Double> rrpMap = new HashMap<>();
+        for (FredObservation o : fred.latestSeries("RRPONTSYD", 760)) rrpMap.put(o.date(), o.value());
+
+        double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
+        int matched = 0;
+        for (FredObservation w : walcl) {
+            Double t = tgaMap.get(w.date());
+            Double r = rrpMap.get(w.date());
+            if (t == null || r == null) continue;
+            double nl = (w.value() - t - r * 1000) / 1_000_000.0;
+            min = Math.min(min, nl);
+            max = Math.max(max, nl);
+            matched++;
+        }
+        if (matched < 10 || max <= min) return null;
+        return clamp((current - min) / (max - min) * 100);
     }
 
     /** S&P500 200일 이동평균 대비 현재가 이격도(%). 데이터 부족 시 null. */
