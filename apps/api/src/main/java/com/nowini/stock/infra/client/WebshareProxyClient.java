@@ -107,6 +107,35 @@ public class WebshareProxyClient {
         }
     }
 
+    /**
+     * Gemini 위치 차단 우회용 US 프록시 1개를 반환한다 (없거나 비활성이면 null).
+     * Gemini는 IP 위치만 검사하므로 US datacenter 프록시 1개로 충분하다.
+     */
+    public String fetchUsProxyUrl() {
+        if (!props.enabled()) return null;
+        try {
+            WebshareListResponse resp = webClient.get()
+                    .uri(uri -> uri.path("/api/v2/proxy/list/")
+                            .queryParam("mode", "direct")
+                            .queryParam("valid", "true")
+                            .queryParam("country_code__in", "US")
+                            .queryParam("page", 1)
+                            .queryParam("page_size", 1)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(WebshareListResponse.class)
+                    .block(TIMEOUT);
+            if (resp == null || resp.results() == null || resp.results().isEmpty()) return null;
+            WebshareProxy p = resp.results().get(0);
+            if (!p.valid()) return null;
+            return "http://" + p.username() + ":" + p.password()
+                    + "@" + p.proxyAddress() + ":" + p.port();
+        } catch (Exception ex) {
+            log.warn("webshare US proxy fetch failed: {}", ex.getMessage());
+            return null;
+        }
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     record WebshareListResponse(
             int count,
