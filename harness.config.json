@@ -1,0 +1,85 @@
+{
+  "$schema": "./.harness/harness.config.schema.json",
+  "project": {
+    "name": "nowini",
+    "framework": "nextjs",
+    "packageManager": "pnpm",
+    "language": "typescript"
+  },
+  "architecture": {
+    "style": "modular",
+    "enforceIndexGen": false,
+    "forbiddenImports": {
+      "apps/web": ["apps/api"],
+      "apps/api": ["apps/web"]
+    }
+  },
+  "development": {
+    "linter": "eslint",
+    "formatter": "none",
+    "styling": "tailwindcss"
+  },
+  "testing": {
+    "runner": "gradle",
+    "minCoverage": {
+      "statements": 0,
+      "branches": 0,
+      "functions": 0,
+      "lines": 0
+    },
+    "requireTestFileWithImplementation": false
+  },
+  "sync": {
+    "exclude": [
+      ".husky",
+      ".lintstagedrc.json"
+    ]
+  },
+  "agent": {
+    "persona": "senior-developer",
+    "allowedScopes": [
+      "apps/web/src/**/*",
+      "apps/api/src/**/*"
+    ],
+    "adapters": [
+      "claude"
+    ]
+  },
+  "rules": {
+    "fileNaming": {
+      "components": "kebab-case",
+      "hooks": "kebab-case",
+      "utils": "kebab-case",
+      "services": "PascalCase",
+      "models": "PascalCase",
+      "testSuffix": "Test"
+    },
+    "codingStandards": [
+      {
+        "id": "fe-kebab-case-filenames",
+        "description": "FE의 모든 .ts/.tsx 파일명은 kebab-case로 작성한다. 컴포넌트 export는 PascalCase, 함수/훅은 camelCase를 유지하되 파일명만 케밥케이스. Next.js 예약 파일(page.tsx, layout.tsx, route.ts 등)은 예외.",
+        "severity": "error"
+      },
+      {
+        "id": "be-domain-driven-packages",
+        "description": "BE는 도메인 주도 패키지 레이아웃(stock/, market/, ai/, auth/, bookmark/, notification/ 등)을 따른다. 클래스는 PascalCase, 메서드는 camelCase, DTO는 *Request/*Response.",
+        "severity": "error"
+      },
+      {
+        "id": "fe-import-order",
+        "description": "FE import 순서: (1) 외부 라이브러리 → (2) @/ 절대경로 → (3) 상대경로 → (4) import type → (5) 스타일.",
+        "severity": "warn"
+      },
+      {
+        "id": "no-investment-advice",
+        "description": "이 서비스는 투자 자문이 아님. 모든 UI/API/문구에 '참고용', '투자 판단과 책임은 사용자 본인' 원칙이 일관되게 반영되어야 한다.",
+        "severity": "error"
+      }
+    ],
+    "testScope": {
+      "include": ["apps/api/src/main/**/*.java"],
+      "exclude": ["apps/web/**/*"]
+    },
+    "scaffolderTypes": {}
+  }
+}
