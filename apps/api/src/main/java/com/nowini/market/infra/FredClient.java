@@ -11,6 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -68,6 +69,34 @@ public class FredClient {
         } catch (Exception ex) {
             log.warn("fred {} fetch failed: {}", seriesId, ex.getMessage());
             return null;
+        }
+    }
+
+    /** 최신순 다건 관측값 (결측 제외). 200일 이동평균 등 계산용. 비활성/실패 시 빈 리스트. */
+    public List<FredObservation> latestSeries(String seriesId, int limit) {
+        if (!props.enabled()) return List.of();
+        try {
+            FredResponse resp = webClient.get()
+                    .uri(b -> b.path("/series/observations")
+                            .queryParam("series_id", seriesId)
+                            .queryParam("api_key", props.apiKey())
+                            .queryParam("file_type", "json")
+                            .queryParam("sort_order", "desc")
+                            .queryParam("limit", limit)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(FredResponse.class)
+                    .block(TIMEOUT);
+            if (resp == null || resp.observations() == null) return List.of();
+            List<FredObservation> out = new ArrayList<>();
+            for (Obs o : resp.observations()) {
+                if (o.value() == null || ".".equals(o.value())) continue;
+                out.add(new FredObservation(o.date(), Double.parseDouble(o.value())));
+            }
+            return out;
+        } catch (Exception ex) {
+            log.warn("fred series {} fetch failed: {}", seriesId, ex.getMessage());
+            return List.of();
         }
     }
 

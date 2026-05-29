@@ -3,6 +3,7 @@ package com.nowini.market.service;
 import com.nowini.ai.infra.LlmClient;
 import com.nowini.cache.RedisCacheAdapter;
 import com.nowini.common.metrics.LlmMetrics;
+import com.nowini.common.prompt.PromptLoader;
 import com.nowini.market.domain.MarketRegimeAiResponse;
 import com.nowini.market.domain.MarketRegimeResponse;
 import com.nowini.market.domain.MarketRegimeResponse.Axes;
@@ -27,11 +28,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 시장 국면 종합 — FRED(버핏지수·금리차·신용스프레드) + CNN(Fear&Greed)를 4축으로 수집·정규화.
+ * 시장 국면 종합 — FRED + CNN 무료 소스 9개 지표를 4축으로 수집·정규화.
  * <p>
- * MVP: 밸류에이션/위험심리/매크로 3축. 추세폭(200일선·RSP/SPY)은 후속.
- * composite(0=공포/저평가 ~ 100=과열/고평가)는 과열도가 명확한 지표(버핏·Fear&Greed·신용)를 정규화 평균.
- * 부분 실패 허용 — 일부 소스 실패해도 나머지로 composite 산출. 면책 문구 동반.
+ * 밸류에이션(버핏지수) / 위험심리(Fear&Greed, 신용스프레드, VIX) /
+ * 매크로(금리차 10Y-2Y·10Y-3M, 실업률, 순유동성) / 추세폭(S&P 200일선).
+ * composite(0=공포/저평가 ~ 100=과열/고평가)는 과열도가 명확한 지표(버핏·Fear&Greed·신용·200일선)만 정규화 평균.
+ * 매크로 사이클 지표(금리차·실업률·순유동성)와 VIX는 zone 표시만(composite 미반영).
+ * 부분 실패 허용. AI 해석은 로그인 전용(/regime/ai), 프롬프트는 classpath:prompts/market-regime.system.txt.
  * <p>
  * 참조: docs/02-design/features/market-regime.design.md
  */
@@ -43,28 +46,22 @@ public class MarketRegimeService {
     private static final Duration TTL = Duration.ofHours(6);
     private static final TypeReference<MarketRegimeResponse> TYPE = new TypeReference<>() {};
     private static final TypeReference<MarketRegimeAiResponse> AI_TYPE = new TypeReference<>() {};
+    private static final String AI_PROMPT_FILE = "market-regime.system.txt";
     private static final String DISCLAIMER =
             "본 지표는 투자 자문이 아닌 정보 제공·참고용입니다. 투자 판단과 책임은 사용자 본인에게 있습니다.";
-
-    private static final String AI_SYSTEM_PROMPT = """
-            당신은 미국 시장 국면 지표를 객관적으로 설명하는 보조자입니다.
-            규칙:
-            1) 투자 자문이 아닌 정보·참고 제공.
-            2) 매수/매도 지시 및 '사세요', '파세요', '매수 추천', '투자 권유', '추천드립니다' 등 표현 금지.
-            3) 단정적 예측 금지 — '~를 시사하나 확정적이지 않습니다' 톤 유지.
-            4) 한국어 1~2문장, 제공된 지표 사실에만 근거.
-            출력은 JSON 형식으로만: {"summary": "<요약>"}
-            """;
 
     private final FredClient fred;
     private final CnnFearGreedClient cnn;
     private final LlmClient llm;
+    private final PromptLoader promptLoader;
     private final RedisCacheAdapter cache;
 
-    public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn, LlmClient llm, RedisCacheAdapter cache) {
+    public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn, LlmClient llm,
+                               PromptLoader promptLoader, RedisCacheAdapter cache) {
         this.fred = fred;
         this.cnn = cnn;
         this.llm = llm;
+        this.promptLoader = promptLoader;
         this.cache = cache;
     }
 
@@ -80,11 +77,113 @@ public class MarketRegimeService {
         });
     }
 
+    private MarketRegimeResponse fetch() {
+        // ── 밸류에이션: 버핏지수 = (시총 NCBEILQ027S[백만$]/1000 → 십억$) / GDP[십억$] × 100 ──
+        FredObservation ncb = fred.latestValue("NCBEILQ027S");
+        FredObservation gdp = fred.latestValue("GDP");
+        Double buffett = (ncb != null && gdp != null && gdp.value() > 0)
+                ? (ncb.value() / 1000.0) / gdp.value() * 100 : null;
+
+        // ── 위험·심리 ──
+        FearGreedSnapshot fg = cnn.fetch();
+        FredObservation credit = fred.latestValue("BAMLH0A0HYM2");
+        FredObservation vix = fred.latestValue("VIXCLS");
+
+        // ── 매크로 ──
+        FredObservation yc2 = fred.latestValue("T10Y2Y");
+        FredObservation yc3 = fred.latestValue("T10Y3M");
+        FredObservation unemp = fred.latestValue("UNRATE");
+        Double netLiq = netLiquidity();   // 조$
+
+        // ── 추세·폭: S&P500 200일선 이격도(%) ──
+        Double sp200dev = sp500DeviationFrom200dma();
+
+        // 지표 조립
+        List<Indicator> valuation = new ArrayList<>();
+        if (buffett != null) {
+            valuation.add(Indicator.of("buffett", "버핏지수", round(buffett), "%",
+                    buffettZone(buffett), buffettNote(buffett)));
+        }
+
+        List<Indicator> risk = new ArrayList<>();
+        if (fg != null) {
+            risk.add(new Indicator("fearGreed", "공포·탐욕 지수", round(fg.score()), null,
+                    fearGreedZone(fg.score()), null, fg.prev1Week(), fg.prev1Month(), fg.prev1Year()));
+        }
+        if (credit != null) {
+            risk.add(Indicator.of("creditSpread", "HY 신용스프레드", round(credit.value()), "%",
+                    creditZone(credit.value()), null));
+        }
+        if (vix != null) {
+            risk.add(Indicator.of("vix", "VIX", round(vix.value()), null,
+                    vixZone(vix.value()), "변동성 지수 (단일 지표 해석은 주의)"));
+        }
+
+        List<Indicator> macro = new ArrayList<>();
+        if (yc2 != null) {
+            macro.add(Indicator.of("yieldCurve2y", "장단기 금리차(10Y-2Y)", round(yc2.value()), "%p",
+                    yieldZone(yc2.value()), yieldNote(yc2.value())));
+        }
+        if (yc3 != null) {
+            macro.add(Indicator.of("yieldCurve3m", "장단기 금리차(10Y-3M)", round(yc3.value()), "%p",
+                    yieldZone(yc3.value()), yieldNote(yc3.value())));
+        }
+        if (unemp != null) {
+            macro.add(Indicator.of("unemployment", "실업률", round(unemp.value()), "%",
+                    "neutral", "경기 지표 (상승 전환 시 둔화 신호)"));
+        }
+        if (netLiq != null) {
+            macro.add(Indicator.of("netLiquidity", "순유동성", round(netLiq), "조$",
+                    "neutral", "Fed 순유동성 (클수록 완화적)"));
+        }
+
+        List<Indicator> trend = new ArrayList<>();
+        if (sp200dev != null) {
+            trend.add(Indicator.of("sp500vs200ma", "S&P500 vs 200일선", round(sp200dev), "%",
+                    sp200Zone(sp200dev), "200일 이동평균 대비 이격도"));
+        }
+
+        // composite: 과열도 정규화 평균 (버핏·Fear&Greed·신용·200일선)
+        List<Double> norms = new ArrayList<>();
+        if (buffett != null) norms.add(clamp((buffett - 80) / (220 - 80) * 100));
+        if (fg != null) norms.add(clamp(fg.score()));
+        if (credit != null) norms.add(clamp((5 - credit.value()) / (5 - 2) * 100));
+        if (sp200dev != null) norms.add(clamp(50 + sp200dev * 2.5));   // +20%→100, -20%→0
+        Composite composite = norms.isEmpty() ? null : toComposite(avg(norms));
+
+        return new MarketRegimeResponse(
+                OffsetDateTime.now(ZoneOffset.UTC).toString(),
+                composite,
+                new Axes(new Axis(valuation), new Axis(risk), new Axis(macro), new Axis(trend)),
+                DISCLAIMER
+        );
+    }
+
+    /** 순유동성(조$) = WALCL[백만$] - WTREGEN[백만$] - RRPONTSYD[십억$ → 백만 ×1000]. */
+    private Double netLiquidity() {
+        FredObservation walcl = fred.latestValue("WALCL");
+        FredObservation tga = fred.latestValue("WTREGEN");
+        FredObservation rrp = fred.latestValue("RRPONTSYD");
+        if (walcl == null || tga == null || rrp == null) return null;
+        double millions = walcl.value() - tga.value() - rrp.value() * 1000;
+        return millions / 1_000_000.0;
+    }
+
+    /** S&P500 200일 이동평균 대비 현재가 이격도(%). 데이터 부족 시 null. */
+    private Double sp500DeviationFrom200dma() {
+        List<FredObservation> sp = fred.latestSeries("SP500", 300);
+        if (sp.size() < 200) return null;
+        double current = sp.get(0).value();
+        double ma200 = sp.subList(0, 200).stream().mapToDouble(FredObservation::value).average().orElse(0);
+        if (ma200 <= 0) return null;
+        return (current - ma200) / ma200 * 100;
+    }
+
     private String generateAiSummary(MarketRegimeResponse regime) {
         if (regime.composite() == null) return null;
         try {
             LlmClient.LlmResult result = llm.generate(
-                    AI_SYSTEM_PROMPT, buildAiPrompt(regime), LlmMetrics.FEATURE_MARKET_REGIME);
+                    promptLoader.load(AI_PROMPT_FILE), buildAiPrompt(regime), LlmMetrics.FEATURE_MARKET_REGIME);
             JsonNode node = MAPPER.readTree(result.content());
             String summary = node.path("summary").asText(null);
             return (summary == null || summary.isBlank()) ? null : summary;
@@ -104,7 +203,7 @@ public class MarketRegimeService {
         appendAxis(sb, r.axes().riskSentiment());
         appendAxis(sb, r.axes().macro());
         appendAxis(sb, r.axes().trendBreadth());
-        sb.append("\n위 지표를 바탕으로 현재 시장 국면을 1~2문장으로 요약하세요.");
+        sb.append("\n위 지표를 해석하세요.");
         return sb.toString();
     }
 
@@ -115,59 +214,6 @@ public class MarketRegimeService {
             if (i.unit() != null) sb.append(i.unit());
             sb.append(" (").append(i.zone()).append(")\n");
         }
-    }
-
-    private MarketRegimeResponse fetch() {
-        // ── 밸류에이션: 버핏지수 = (시총 NCBEILQ027S[백만$]/1000 → 십억$) / GDP[십억$] × 100 ──
-        FredObservation ncb = fred.latestValue("NCBEILQ027S");
-        FredObservation gdp = fred.latestValue("GDP");
-        Double buffett = (ncb != null && gdp != null && gdp.value() > 0)
-                ? (ncb.value() / 1000.0) / gdp.value() * 100 : null;
-
-        // ── 위험·심리: Fear&Greed + 신용스프레드 ──
-        FearGreedSnapshot fg = cnn.fetch();
-        FredObservation credit = fred.latestValue("BAMLH0A0HYM2");
-
-        // ── 매크로: 장단기 금리차 ──
-        FredObservation yieldCurve = fred.latestValue("T10Y2Y");
-
-        // 지표 조립
-        List<Indicator> valuation = new ArrayList<>();
-        if (buffett != null) {
-            valuation.add(Indicator.of("buffett", "버핏지수", round(buffett), "%",
-                    buffettZone(buffett), buffettNote(buffett)));
-        }
-
-        List<Indicator> risk = new ArrayList<>();
-        if (fg != null) {
-            risk.add(new Indicator("fearGreed", "공포·탐욕 지수", round(fg.score()), null,
-                    fearGreedZone(fg.score()), null,
-                    fg.prev1Week(), fg.prev1Month(), fg.prev1Year()));
-        }
-        if (credit != null) {
-            risk.add(Indicator.of("creditSpread", "HY 신용스프레드", round(credit.value()), "%",
-                    creditZone(credit.value()), null));
-        }
-
-        List<Indicator> macro = new ArrayList<>();
-        if (yieldCurve != null) {
-            macro.add(Indicator.of("yieldCurve", "장단기 금리차(10Y-2Y)", round(yieldCurve.value()), "%p",
-                    yieldZone(yieldCurve.value()), yieldNote(yieldCurve.value())));
-        }
-
-        // composite: 과열도 정규화 평균 (가용 지표만)
-        List<Double> norms = new ArrayList<>();
-        if (buffett != null) norms.add(clamp((buffett - 80) / (220 - 80) * 100));     // 80%→0, 220%→100
-        if (fg != null) norms.add(clamp(fg.score()));                                 // 탐욕=과열
-        if (credit != null) norms.add(clamp((5 - credit.value()) / (5 - 2) * 100));   // 낮은 스프레드(안일)=과열, 2%→100/5%→0
-        Composite composite = norms.isEmpty() ? null : toComposite(avg(norms));
-
-        return new MarketRegimeResponse(
-                OffsetDateTime.now(ZoneOffset.UTC).toString(),
-                composite,
-                new Axes(new Axis(valuation), new Axis(risk), new Axis(macro), new Axis(List.of())),
-                DISCLAIMER
-        );
     }
 
     // ── zone 정규화 (design §3) ──
@@ -186,16 +232,20 @@ public class MarketRegimeService {
     }
 
     private static String fearGreedZone(double v) {
-        if (v < 25) return "fear";
         if (v < 45) return "fear";
         if (v <= 55) return "neutral";
-        if (v <= 75) return "greed";
         return "greed";
     }
 
     private static String creditZone(double v) {
         if (v < 3) return "calm";
         if (v <= 5) return "normal";
+        return "fear";
+    }
+
+    private static String vixZone(double v) {
+        if (v < 15) return "calm";
+        if (v <= 25) return "normal";
         return "fear";
     }
 
@@ -206,8 +256,12 @@ public class MarketRegimeService {
     }
 
     private static String yieldNote(double v) {
-        if (v < 0) return "장단기 금리 역전 — 과거 경기 침체에 선행한 사례가 있음 (확정적 예측 아님)";
+        if (v < 0) return "금리 역전 — 과거 경기 침체에 선행한 사례가 있음 (확정적 예측 아님)";
         return "정상(우상향) 구간";
+    }
+
+    private static String sp200Zone(double dev) {
+        return dev >= 0 ? "uptrend" : "downtrend";
     }
 
     // ── composite ──
