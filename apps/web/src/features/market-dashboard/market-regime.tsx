@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { GaugeComponent } from 'react-gauge-component';
 
 import { useAuth } from '@/features/auth/auth-provider';
 import { useMarketRegime } from '@/features/market-dashboard/hooks/use-market-regime';
@@ -116,24 +117,24 @@ function zoneTextColor(zone: string): string {
   }
 }
 
-function zoneStroke(zone: string): string {
+function zoneBg(zone: string): string {
   switch (zone) {
     case 'overheated':
     case 'greed':
     case 'elevated':
-      return 'stroke-red-500';
+      return 'bg-red-500';
     case 'fear':
     case 'inverted':
     case 'downtrend':
     case 'cheap':
-      return 'stroke-blue-500';
+      return 'bg-blue-500';
     case 'calm':
     case 'uptrend':
     case 'low':
     case 'normal':
-      return 'stroke-emerald-500';
+      return 'bg-emerald-500';
     default:
-      return 'stroke-zinc-500';
+      return 'bg-zinc-500';
   }
 }
 
@@ -145,12 +146,15 @@ export function MarketRegime() {
   }
   if (!data) return null;
 
-  const indicators: RegimeIndicator[] = [
+  const all: RegimeIndicator[] = [
     ...data.axes.valuation.indicators,
     ...data.axes.riskSentiment.indicators,
     ...data.axes.macro.indicators,
     ...data.axes.trendBreadth.indicators,
   ];
+  // 공포·탐욕 지수는 헤드라인 CNN형 게이지로 분리, 나머지는 바 그리드로.
+  const fearGreed = all.find((it) => it.key === 'fearGreed') ?? null;
+  const indicators = all.filter((it) => it.key !== 'fearGreed');
 
   return (
     <section aria-label="시장 국면" className="card p-5">
@@ -166,6 +170,8 @@ export function MarketRegime() {
 
       {data.composite && <CompositeGauge composite={data.composite} />}
 
+      {fearGreed && <FearGreedGauge indicator={fearGreed} />}
+
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {indicators.map((it) => (
           <IndicatorCard key={it.key} indicator={it} />
@@ -179,6 +185,7 @@ export function MarketRegime() {
   );
 }
 
+/** 종합 국면 — 수평 그라디언트 바 + 흰 점 마커. */
 function CompositeGauge({ composite }: { composite: MarketRegimeComposite }) {
   const score = Math.max(0, Math.min(100, composite.score));
   return (
@@ -210,6 +217,8 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
   const { key, name, value, unit, zone, note, position } = indicator;
   const tooltip = REGIME_TOOLTIPS[key];
   const segments = REGIME_SEGMENTS[key];
+  const isRange = key === 'netLiquidity';
+
   return (
     <div className="flex flex-col rounded-xl bg-bg-muted p-3 ring-1 ring-border">
       <div className="flex items-center gap-1 text-xs font-medium text-fg-secondary">
@@ -217,92 +226,162 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
         {tooltip && <InfoTooltip text={tooltip} />}
       </div>
 
-      {position !== null ? (
-        <RegimeGauge
-          position={position}
-          segments={segments}
-          current={zone}
-          value={value}
-          unit={unit}
-        />
-      ) : (
-        <div className="mt-1 text-xl font-bold tabular-nums text-fg">
+      <div className="mt-1.5 flex items-baseline gap-2">
+        <span className="text-xl font-bold tabular-nums text-fg">
           {value !== null ? `${value}${unit ?? ''}` : '—'}
-        </div>
+        </span>
+        <span className={`text-[11px] font-semibold ${zoneTextColor(zone)}`}>{ZONE_KO[zone] ?? zone}</span>
+      </div>
+      {position !== null && (
+        <RegimeBar position={position} segments={isRange ? undefined : segments} current={zone} range={isRange} />
       )}
 
-      <div className={`text-center text-[11px] font-semibold ${zoneTextColor(zone)}`}>
-        {ZONE_KO[zone] ?? zone}
-      </div>
-      {note && <div className="mt-1 text-[11px] leading-snug text-fg-secondary">{note}</div>}
+      {note && <div className="mt-1.5 text-[11px] leading-snug text-fg-secondary">{note}</div>}
     </div>
   );
 }
 
-function polar(cx: number, cy: number, r: number, deg: number) {
-  const rad = (deg * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
-}
-
-function arc(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
-  const s = polar(cx, cy, r, startDeg);
-  const e = polar(cx, cy, r, endDeg);
-  // 왼(180°)→오(0°) 위쪽 반원: sweep=1
-  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 0 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
-}
-
-/** 미니 반원 게이지 — zone 구간 색 호 + position 바늘 + 중앙 값. */
-function RegimeGauge({
+/**
+ * 수평 존 바 — 레벨/발산형 지표용. 존 밴드(활성 강조) + position 흰 점 마커.
+ * range=true면 단색 트랙 + 저점~고점 라벨(순유동성 등 절대값 → 범위 내 위치).
+ */
+function RegimeBar({
   position,
   segments,
   current,
-  value,
-  unit,
+  range,
 }: {
   position: number;
   segments?: { zone: string; label: string }[];
   current: string;
-  value: number | null;
-  unit: string | null;
+  range?: boolean;
 }) {
-  const cx = 50;
-  const cy = 47;
-  const r = 38;
   const pos = Math.max(0, Math.min(100, position));
-  const needleAngle = 180 - (pos / 100) * 180;
-  const tip = polar(cx, cy, r - 5, needleAngle);
-
-  const segs = segments ?? [{ zone: current, label: '' }];
-  const n = segs.length;
+  const segs = !range && segments && segments.length > 0 ? segments : null;
+  // 바 양 끝 방향 범례 — 좌(낮은 쪽) / 우(높은 쪽). 라벨이 방향을 안내해 오해 방지.
+  const endLabels: [string, string] | null = range
+    ? ['2년 저점', '고점']
+    : segs
+      ? [segs[0].label, segs[segs.length - 1].label]
+      : null;
 
   return (
-    <svg viewBox="0 0 100 56" className="mt-1 w-full" role="img" aria-label={`${value ?? ''}${unit ?? ''}`}>
-      {/* 배경 호 */}
-      <path d={arc(cx, cy, r, 180, 0)} fill="none" strokeWidth="6" className="stroke-bg-surface" strokeLinecap="round" />
-      {/* zone 구간 호 */}
-      {segs.map((seg, i) => {
-        const a0 = 180 - i * (180 / n);
-        const a1 = 180 - (i + 1) * (180 / n);
-        const active = seg.zone === current;
-        return (
-          <path
-            key={seg.zone}
-            d={arc(cx, cy, r, a0, a1)}
-            fill="none"
-            strokeWidth="6"
-            strokeLinecap="round"
-            className={`${zoneStroke(seg.zone)} ${active ? 'opacity-100' : 'opacity-25'}`}
-          />
-        );
-      })}
-      {/* 바늘 */}
-      <line x1={cx} y1={cy} x2={tip.x.toFixed(2)} y2={tip.y.toFixed(2)} className="stroke-fg" strokeWidth="2" strokeLinecap="round" />
-      <circle cx={cx} cy={cy} r="3" className="fill-fg" />
-      {/* 값 */}
-      <text x={cx} y={cy - 11} textAnchor="middle" className="fill-fg text-[13px] font-bold">
-        {value !== null ? `${value}${unit ?? ''}` : '—'}
-      </text>
-    </svg>
+    <div className="mt-2">
+      <div className="relative h-3 w-full">
+        {segs ? (
+          <div className="absolute inset-0 flex gap-0.5 overflow-hidden rounded-full">
+            {segs.map((seg) => (
+              <div
+                key={seg.zone}
+                className={`flex-1 ${zoneBg(seg.zone)} ${seg.zone === current ? 'opacity-90' : 'opacity-20'}`}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/30 via-bg-skeleton to-emerald-500/40" />
+        )}
+        <div
+          className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-bg-surface bg-fg shadow"
+          style={{ left: `calc(${pos}% - 7px)` }}
+        />
+      </div>
+      {endLabels && (
+        <div className="mt-1 flex justify-between text-[10px] font-medium text-fg-muted">
+          <span>{endLabels[0]}</span>
+          <span>{endLabels[1]}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 공포·탐욕 5개 존 (CNN 기준). 게이지 색과 일치. */
+const FG_ZONES: { label: string; color: string; max: number }[] = [
+  { label: '극도공포', color: '#1d4ed8', max: 25 },
+  { label: '공포', color: '#3b82f6', max: 45 },
+  { label: '중립', color: '#71717a', max: 55 },
+  { label: '탐욕', color: '#f87171', max: 75 },
+  { label: '극도탐욕', color: '#dc2626', max: 100 },
+];
+
+/**
+ * 공포·탐욕 지수 — CNN Fear&Greed 스타일 반원 게이지 (react-gauge-component).
+ * 5개 존 색 호 + 눈금 + 바늘. 영역명은 아래 범례(현재 영역 강조)로 표기.
+ */
+function FearGreedGauge({ indicator }: { indicator: RegimeIndicator }) {
+  const { value, note } = indicator;
+  const v = value ?? 50;
+  const activeZone = FG_ZONES.find((z) => v <= z.max) ?? FG_ZONES[FG_ZONES.length - 1];
+
+  return (
+    <div className="mt-3 rounded-xl bg-bg-muted p-4 ring-1 ring-border">
+      <div className="flex items-center gap-1 text-xs font-medium text-fg-secondary">
+        공포·탐욕 지수
+        <InfoTooltip text={REGIME_TOOLTIPS.fearGreed} />
+      </div>
+
+      <div className="mx-auto max-w-[300px]">
+        <GaugeComponent
+          type="semicircle"
+          value={v}
+          minValue={0}
+          maxValue={100}
+          marginInPercent={{ top: 0.08, bottom: 0.24, left: 0.07, right: 0.07 }}
+          arc={{
+            cornerRadius: 3,
+            padding: 0.008,
+            width: 0.22,
+            subArcs: FG_ZONES.map((z) => ({ limit: z.max, color: z.color })),
+          }}
+          pointer={{
+            type: 'needle',
+            color: 'var(--fg)',
+            baseColor: 'var(--fg)',
+            length: 0.7,
+            width: 10,
+            elastic: true,
+          }}
+          labels={{
+            valueLabel: {
+              formatTextValue: (val: number) => `${Math.round(val)}`,
+              offsetY: 42,
+              style: { fontSize: '30px', fontWeight: '800', fill: 'var(--fg)', textShadow: 'none' },
+            },
+            tickLabels: {
+              type: 'outer',
+              hideMinMax: true,
+              ticks: [{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }],
+              defaultTickValueConfig: {
+                formatTextValue: (val: number) => `${val}`,
+                style: { fontSize: '10px', fill: 'var(--fg-muted)' },
+              },
+              defaultTickLineConfig: { color: 'var(--fg-muted)' },
+            },
+          }}
+        />
+      </div>
+
+      {/* 영역 범례 — 현재 영역 강조 */}
+      <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1">
+        {FG_ZONES.map((z) => {
+          const active = z.label === activeZone.label;
+          return (
+            <span
+              key={z.label}
+              className={`flex items-center gap-1 text-[10px] ${active ? 'font-bold text-fg' : 'text-fg-muted'}`}
+            >
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: z.color, opacity: active ? 1 : 0.5 }}
+              />
+              {z.label}
+            </span>
+          );
+        })}
+      </div>
+
+      {note && <p className="mt-1.5 text-center text-[11px] leading-snug text-fg-secondary">{note}</p>}
+    </div>
   );
 }
 
