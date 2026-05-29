@@ -27,7 +27,8 @@ export function DisclaimerFooter() {
         </nav>
         <p className="mt-4 text-[11px] text-fg-muted">
           © {new Date().getFullYear()} 지금이니?! 시세: Yahoo Finance ·
-          Finnhub · Twelve Data · FMP · AI: Google Gemini · 차트: TradingView
+          Finnhub · Twelve Data · FMP · 거시지표: FRED(세인트루이스 연준) ·
+          시장심리: CNN Fear &amp; Greed · AI: Google Gemini · 차트: TradingView
           Lightweight Charts.
         </p>
       </div>
