@@ -5,7 +5,7 @@ package com.nowini.market.domain;
  * 참조: docs/02-design/features/market-dashboard.design.md §3.1
  */
 public record MarketNewsItem(
-        long id,
+        String id,
         String source,
         String sourceUrl,
         String titleEn,

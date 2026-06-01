@@ -30,7 +30,7 @@ export interface SectorMomentum {
 }
 
 export interface MarketNewsItem {
-  id: number;
+  id: string;
   source: string;
   sourceUrl: string;
   titleEn: string;
