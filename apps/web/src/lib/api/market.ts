@@ -1,7 +1,6 @@
 import { apiFetch } from '@/lib/api/client';
 
 import type {
-  MarketMovers,
   MarketNewsItem,
   MarketOverview,
   MarketRegime,
@@ -15,10 +14,6 @@ export function getMarketOverview(): Promise<MarketOverview> {
 
 export function getMarketNews(limit = 10): Promise<MarketNewsItem[]> {
   return apiFetch<MarketNewsItem[]>(`/market/news?limit=${limit}`);
-}
-
-export function getMarketMovers(): Promise<MarketMovers> {
-  return apiFetch<MarketMovers>('/market/movers');
 }
 
 export function getSectorPerformance(): Promise<SectorPerformance[]> {
