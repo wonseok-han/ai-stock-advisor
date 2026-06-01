@@ -14,6 +14,7 @@
 - **차트**: TradingView Lightweight Charts 기반 캔들 + 보조지표 (MACD / Bollinger / RSI)
 - **뉴스**: 종목별 최신 뉴스 LLM 번역·요약 (Gemini 2.5 Flash)
 - **시장 대시보드**: 주요 지수 (S&P500, Nasdaq, Dow, VIX, 선물), USD/KRW, 섹터 퍼포먼스, 매크로 지표
+- **시장 국면 종합**: FRED·CNN 무료 소스 기반 밸류에이션·위험심리·매크로·추세 지표 + 종합 국면 점수(0~100), CNN형 공포·탐욕 게이지, 분기 섹터·테마 모멘텀 히트맵, AI 해석
 - **종목 상세**: 기업 정보, 시가총액, P/E, EPS, 52주 고저, 애널리스트 평점·목표가, 분기 실적
 - **인증**: Supabase Auth (이메일/비밀번호 + Google OAuth)
 - **북마크 & 알림**: 종목별 조건 설정 (가격 변동 %, 뉴스, 시그널) + Web Push
@@ -125,7 +126,7 @@ make test               # FE + BE 테스트
 | `REDIS_URL` | Redis 접속 URL |
 | `FINNHUB_API_KEY` | Finnhub API 키 (시세/뉴스) |
 | `TWELVE_DATA_API_KEY` | TwelveData API 키 (fallback 캔들) |
-| `FMP_API_KEY` | Financial Modeling Prep API 키 (섹터/movers) |
+| `FMP_API_KEY` | Financial Modeling Prep API 키 (섹터/기업정보/애널리스트) |
 | `GEMINI_API_KEY` | Google Gemini API 키 (AI 분석) |
 | `SUPABASE_URL` | Supabase 프로젝트 URL (JWT 검증) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push VAPID 키 |
@@ -150,7 +151,7 @@ main (배포) ← develop (통합) ← feat/xxx (작업)
 
 - `changelogs/vX.Y.Z.md` 작성 → develop PR → main 머지 → GitHub Actions 자동 태그/릴리즈
 - 시맨틱 버전: `v{major}.{minor}.{patch}-beta`
-- 현재 버전: **v0.4.0-beta**
+- 현재 버전: **v0.7.0-beta**
 
 ## 문서
 
