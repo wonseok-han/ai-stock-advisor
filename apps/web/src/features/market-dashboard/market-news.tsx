@@ -6,13 +6,23 @@ import { useMarketNews } from '@/features/market-dashboard/hooks/use-market-news
 import type { MarketNewsItem } from '@/types/market';
 
 export function MarketNews() {
-  const { data, isLoading, error, refetch } = useMarketNews();
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMarketNews();
 
   if (isLoading) {
     return <PanelLoading title="시장 뉴스" text="최신 뉴스를 불러오고 있어요" />;
   }
 
-  if (error || !data) {
+  const items = data?.pages.flat() ?? [];
+
+  if (error && items.length === 0) {
     return (
       <section className="card p-5">
         <p className="text-sm text-danger">시장 뉴스를 불러올 수 없습니다.</p>
@@ -26,7 +36,7 @@ export function MarketNews() {
     );
   }
 
-  if (data.length === 0) {
+  if (items.length === 0) {
     return (
       <section className="card p-5 text-sm text-fg-muted">
         최근 시장 뉴스가 없습니다.
@@ -40,12 +50,23 @@ export function MarketNews() {
         <h2 className="text-sm font-semibold text-fg">시장 뉴스</h2>
       </div>
       <ul className="divide-y divide-border">
-        {data.map((item) => (
+        {items.map((item) => (
           <NewsRow key={item.id} item={item} />
         ))}
       </ul>
+      {hasNextPage && (
+        <div className="border-t border-border px-5 py-3">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full cursor-pointer rounded-lg border border-border py-2 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-muted/50 disabled:cursor-default disabled:opacity-60"
+          >
+            {isFetchingNextPage ? '불러오는 중…' : '더 보기'}
+          </button>
+        </div>
+      )}
       <div className="border-t border-border px-5 py-2.5">
-        <p className="text-[11px] text-fg-muted">{data[0]?.disclaimer}</p>
+        <p className="text-[11px] text-fg-muted">{items[0]?.disclaimer}</p>
       </div>
     </section>
   );

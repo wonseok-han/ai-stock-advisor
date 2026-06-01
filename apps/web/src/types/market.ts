@@ -29,25 +29,8 @@ export interface SectorMomentum {
   returnPct: number;
 }
 
-export interface MarketMover {
-  ticker: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-  volume: number;
-}
-
-export interface MarketMovers {
-  gainers: MarketMover[];
-  losers: MarketMover[];
-  poolSize: number;
-  updatedAt: string;
-  disclaimer: string;
-}
-
 export interface MarketNewsItem {
-  id: number;
+  id: string;
   source: string;
   sourceUrl: string;
   titleEn: string;

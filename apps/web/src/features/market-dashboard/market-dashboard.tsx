@@ -1,6 +1,5 @@
 'use client';
 
-import { MarketMovers } from '@/features/market-dashboard/market-movers';
 import { MarketNews } from '@/features/market-dashboard/market-news';
 import { MarketOverview } from '@/features/market-dashboard/market-overview';
 import { MarketRegime } from '@/features/market-dashboard/market-regime';
@@ -12,10 +11,7 @@ export function MarketDashboard() {
       <MarketOverview />
       <SectorPerformance />
       <MarketRegime />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <MarketMovers />
-        <MarketNews />
-      </div>
+      <MarketNews />
     </div>
   );
 }

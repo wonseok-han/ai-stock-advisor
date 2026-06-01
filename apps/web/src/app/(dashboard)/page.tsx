@@ -1,7 +1,6 @@
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 
 import {
-  getMarketMovers,
   getMarketNews,
   getMarketOverview,
   getSectorPerformance,
@@ -20,13 +19,10 @@ export default async function Home() {
       queryKey: ['market', 'sectors'],
       queryFn: () => getSectorPerformance(),
     }),
-    queryClient.prefetchQuery({
-      queryKey: ['market', 'movers'],
-      queryFn: () => getMarketMovers(),
-    }),
-    queryClient.prefetchQuery({
+    queryClient.prefetchInfiniteQuery({
       queryKey: ['market', 'news'],
-      queryFn: () => getMarketNews(),
+      queryFn: ({ pageParam }) => getMarketNews(10, pageParam),
+      initialPageParam: undefined as number | undefined,
     }),
   ]);
 

@@ -5,6 +5,7 @@ import com.nowini.common.error.BusinessException;
 import com.nowini.common.error.ErrorCode;
 import com.nowini.stock.domain.MarketStatus;
 import com.nowini.stock.domain.MarketStatusResolver;
+import com.nowini.stock.domain.Quote;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,8 +22,11 @@ import reactor.netty.http.client.HttpClient;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +35,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Financial Modeling Prep REST 어댑터.
- * 무료 250 req/day. Market movers (gainers/losers) 전담.
+ * 무료 250 req/day (계정 전체 공유). 시세(지수·VIX·귀금속) · 섹터 퍼포먼스 ·
+ * 기업 프로필 · 재무비율 담당. 무료는 콤마 batch 불가 → 심볼당 1요청.
  */
 @Component
 public class FmpClient {
@@ -43,7 +48,7 @@ public class FmpClient {
     private static final Duration TTL_TICKER_OPEN  = Duration.ofHours(24);
     private static final Duration TTL_TICKER_CLOSED = Duration.ofHours(24);
 
-    private static final TypeReference<List<FmpMover>> MOVERS_TYPE = new TypeReference<>() {};
+    private static final TypeReference<Quote> QUOTE_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<FmpSectorPerformance>> SECTORS_TYPE = new TypeReference<>() {};
     private static final TypeReference<FmpProfile> PROFILE_TYPE = new TypeReference<>() {};
     private static final TypeReference<FmpRatiosTtm> RATIOS_TYPE = new TypeReference<>() {};
@@ -69,42 +74,71 @@ public class FmpClient {
                 .build();
     }
 
-    public List<FmpMover> gainers() {
-        return cache.getOrLoad("fmp:gainers", MOVERS_TYPE, marketTtl(),
-                () -> fetchMovers("/biggest-gainers"));
-    }
-
-    public List<FmpMover> losers() {
-        return cache.getOrLoad("fmp:losers", MOVERS_TYPE, marketTtl(),
-                () -> fetchMovers("/biggest-losers"));
-    }
-
     private Duration marketTtl() {
         return MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_MARKET_OPEN : MarketStatusResolver.durationUntilNextOpen();
     }
 
-    private List<FmpMover> fetchMovers(String path) {
+    /**
+     * /quote. 단일 심볼 시세. 지수(^GSPC·^IXIC·^DJI·^RUT)·VIX(^VIX)·귀금속(GCUSD·SIUSD)을
+     * FMP 무료로 커버 — 프록시 불필요. 무료에서 막힌 심볼(에너지·환율·금리·선물·콤마 batch)은
+     * "Premium..." 문자열을 200으로 반환하므로, 디코딩 실패 → null → 호출측 폴백으로 처리된다.
+     * 데이터 없거나 실패 시 null.
+     */
+    public Quote quote(String symbol) {
+        if (symbol == null || symbol.isBlank()) return null;
+        return cache.getOrLoad("fmp:quote:" + symbol, QUOTE_TYPE, marketTtl(),
+                () -> fetchQuote(symbol));
+    }
+
+    private Quote fetchQuote(String symbol) {
         try {
-            FmpMover[] resp = webClient.get()
-                    .uri(b -> b.path(path)
+            FmpQuote[] resp = webClient.get()
+                    .uri(b -> b.path("/quote")
+                            .queryParam("symbol", symbol)
                             .queryParam("apikey", apiKey)
                             .build())
                     .retrieve()
-                    .bodyToMono(FmpMover[].class)
+                    .bodyToMono(FmpQuote[].class)
                     .block(TIMEOUT);
-            return resp == null ? List.of() : List.of(resp);
-        } catch (WebClientResponseException ex) {
-            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
-            log.warn("fmp {} failed: status={} body={}", path, status, ex.getResponseBodyAsString());
-            if (status == HttpStatus.TOO_MANY_REQUESTS) {
-                throw new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex);
-            }
-            throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex);
-        } catch (RuntimeException ex) {
-            log.warn("fmp {} timeout/io: {}", path, ex.getMessage());
-            throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
+            return (resp != null && resp.length > 0) ? toQuote(resp[0]) : null;
+        } catch (Exception ex) {
+            log.warn("fmp quote {} failed: {}", symbol, ex.getMessage());
+            return null;
         }
+    }
+
+    private Quote toQuote(FmpQuote q) {
+        if (q == null || q.price() == null) return null;
+        BigDecimal price = q.price();
+        BigDecimal change = q.change() != null ? q.change() : BigDecimal.ZERO;
+        BigDecimal pct = q.changePercentage() != null ? q.changePercentage() : BigDecimal.ZERO;
+        BigDecimal prev = q.previousClose() != null ? q.previousClose() : BigDecimal.ZERO;
+        long ts = q.timestamp() != null ? q.timestamp() : Instant.now().getEpochSecond();
+        OffsetDateTime updatedAt = OffsetDateTime.ofInstant(Instant.ofEpochSecond(ts), ZoneOffset.UTC);
+        MarketStatus status = MarketStatusResolver.resolve();
+        return new Quote(q.symbol(), price, change, pct,
+                q.dayHigh() != null ? q.dayHigh() : price,
+                q.dayLow() != null ? q.dayLow() : price,
+                q.open() != null ? q.open() : price,
+                prev, q.volume() != null ? q.volume() : 0L,
+                updatedAt, status, MarketStatusResolver.priceLabel(status, updatedAt),
+                null, null);
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FmpQuote(
+            String symbol,
+            BigDecimal price,
+            BigDecimal change,
+            BigDecimal changePercentage,
+            BigDecimal dayHigh,
+            BigDecimal dayLow,
+            BigDecimal open,
+            BigDecimal previousClose,
+            Long volume,
+            Long timestamp
+    ) {
     }
 
     public List<FmpSectorPerformance> sectorPerformance() {
@@ -197,17 +231,6 @@ public class FmpClient {
             log.warn("fmp profile {} timeout/io: {}", ticker, ex.getMessage());
             throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
         }
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record FmpMover(
-            String symbol,
-            String name,
-            BigDecimal price,
-            BigDecimal change,
-            BigDecimal changesPercentage,
-            String exchange
-    ) {
     }
 
     public FmpRatiosTtm ratiosTtm(String ticker) {

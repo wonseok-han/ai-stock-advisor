@@ -35,7 +35,7 @@ public class FinnhubMarketNewsClient {
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
     private static final Duration TTL_OPEN   = Duration.ofMinutes(15);
     private static final Duration TTL_CLOSED = Duration.ofMinutes(30);
-    private static final int MAX_ITEMS = 10;
+    private static final int MAX_ITEMS = 50;
     private static final TypeReference<List<CompanyNews>> NEWS_TYPE = new TypeReference<>() {};
 
     private final WebClient webClient;
@@ -57,7 +57,7 @@ public class FinnhubMarketNewsClient {
     }
 
     /**
-     * 시장 일반 뉴스 최대 10건.
+     * 시장 일반 뉴스 최신순 최대 {@value #MAX_ITEMS}건 (배치 적재용 — DB dedup 으로 중복 무시).
      * Finnhub /news?category=general 은 최신순 정렬 반환.
      */
     public List<CompanyNews> fetchGeneralNews() {

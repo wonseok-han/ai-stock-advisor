@@ -5,10 +5,10 @@ import com.nowini.common.error.BusinessException;
 import com.nowini.legal.Disclaimers;
 import com.nowini.market.domain.MarketIndex;
 import com.nowini.market.domain.MarketOverviewResponse;
+import com.nowini.market.infra.FmpClient;
 import com.nowini.stock.domain.Quote;
 import com.nowini.stock.infra.client.FinnhubClient;
 import com.nowini.stock.infra.client.StooqClient;
-import com.nowini.stock.infra.client.TwelveDataClient;
 import com.nowini.stock.infra.client.YahooFinanceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
@@ -24,100 +24,93 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 
 /**
  * 시장 개요: 주요 지수(S&P500, Nasdaq, Dow, Russell 2000) + 매크로(VIX, 국채, 금, 유가) + USD/KRW.
- * 캐시: market:overview (5분).
+ * 심볼별 1차 소스(해석 순서 FMP → Stooq → Yahoo → Finnhub):
+ * 지수·VIX·금·은 = FMP(프록시 불필요), 유가·구리·선물(ES·NQ) = Stooq, DXY·국채·USD/KRW = Yahoo.
+ * 캐시: market:overview (장중 30분, FMP 250/day 한도 고려).
  * 참조: docs/02-design/features/market-dashboard.design.md §5.1
  */
 @Service
 public class MarketOverviewService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketOverviewService.class);
-    private static final Duration TTL_OPEN = Duration.ofMinutes(5);
+    /** 워밍 주기(30분)보다 길게 잡아 갱신이 항상 만료보다 먼저 일어나게(콜드 빈틈 방지). */
+    private static final Duration TTL_OPEN = Duration.ofMinutes(40);
     private static final TypeReference<MarketOverviewResponse> TYPE = new TypeReference<>() {
     };
 
     private final FinnhubClient finnhubClient;
     private final YahooFinanceClient yahooFinanceClient;
-    private final TwelveDataClient twelveDataClient;
+    private final FmpClient fmpClient;
     private final StooqClient stooqClient;
     private final RedisCacheAdapter cache;
 
-    /** 지수 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명, Stooq} (Stooq 빈값 = 미지원) */
+    /** 지수 심볼 매핑: {Finnhub, Yahoo, FMP, Stooq, 표시명} (빈값=미사용, 해석 순서 FMP→Stooq→Yahoo→Finnhub) */
     private static final String[][] INDEX_SYMBOLS = {
-            {"^GSPC", "^GSPC", "SPX",  "S&P 500",      "^spx"},
-            {"^IXIC", "^IXIC", "IXIC", "Nasdaq",       "^ndq"},
-            {"^DJI",  "^DJI",  "DJI",  "Dow Jones",    "^dji"},
-            {"^RUT",  "^RUT",  "RUT",  "Russell 2000", ""},
-            {"ES=F",  "ES=F",  "ES",   "S&P 500 선물", "es.f"},
-            {"NQ=F",  "NQ=F",  "NQ",   "Nasdaq 선물",  "nq.f"},
+            {"^GSPC", "^GSPC", "^GSPC", "",     "S&P 500"},
+            {"^IXIC", "^IXIC", "^IXIC", "",     "Nasdaq"},
+            {"^DJI",  "^DJI",  "^DJI",  "",     "Dow Jones"},
+            {"^RUT",  "^RUT",  "^RUT",  "",     "Russell 2000"},
+            {"ES=F",  "ES=F",  "",      "es.f", "S&P 500 선물"},
+            {"NQ=F",  "NQ=F",  "",      "nq.f", "Nasdaq 선물"},
     };
 
-    /** 매크로 심볼 매핑: {Finnhub, Yahoo, TwelveData, 표시명, Stooq} (Stooq 빈값 = 미지원) */
+    /** 매크로 심볼 매핑: {Finnhub, Yahoo, FMP, Stooq, 표시명} */
     private static final String[][] MACRO_SYMBOLS = {
-            {"^VIX",  "^VIX",  "VIX",     "VIX",          ""},
-            {"DX-Y.NYB", "DX-Y.NYB", "DXY", "DXY",        ""},
-            {"^TNX",  "^TNX",  "TNX",     "10Y Treasury", ""},
-            {"GC=F",  "GC=F",  "XAU/USD", "Gold",         "xauusd"},
-            {"SI=F",  "SI=F",  "XAG/USD", "Silver",       "xagusd"},
-            {"CL=F",  "CL=F",  "WTI/USD", "WTI Oil",      "cl.f"},
-            {"HG=F",  "HG=F",  "XCU/USD", "Copper",       "hg.f"},
+            {"^VIX",  "^VIX",  "^VIX",  "",     "VIX"},
+            {"DX-Y.NYB", "DX-Y.NYB", "", "",    "DXY"},
+            {"^TNX",  "^TNX",  "",      "",     "10Y Treasury"},
+            {"GC=F",  "GC=F",  "GCUSD", "",     "Gold"},
+            {"SI=F",  "SI=F",  "SIUSD", "",     "Silver"},
+            {"CL=F",  "CL=F",  "",      "cl.f", "WTI Oil"},
+            {"HG=F",  "HG=F",  "",      "hg.f", "Copper"},
     };
 
     public MarketOverviewService(FinnhubClient finnhubClient,
                                  YahooFinanceClient yahooFinanceClient,
-                                 TwelveDataClient twelveDataClient,
+                                 FmpClient fmpClient,
                                  StooqClient stooqClient,
                                  RedisCacheAdapter cache) {
         this.finnhubClient = finnhubClient;
         this.yahooFinanceClient = yahooFinanceClient;
-        this.twelveDataClient = twelveDataClient;
+        this.fmpClient = fmpClient;
         this.stooqClient = stooqClient;
         this.cache = cache;
     }
 
     public MarketOverviewResponse getOverview() {
-        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
-                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
-        return cache.getOrLoad("market:overview", TYPE, ttl, this::fetchOverview);
+        return cache.getOrLoad("market:overview", TYPE, ttl(), this::fetchOverview);
     }
 
-    /** TwelveData batch에 사용할 전체 심볼 목록 (지수 4 + 매크로 7 + USD/KRW = 12종). */
-    private static final List<String> ALL_TWELVE_SYMBOLS;
-    static {
-        List<String> syms = new ArrayList<>();
-        for (String[] s : INDEX_SYMBOLS) syms.add(s[2]);
-        for (String[] s : MACRO_SYMBOLS) syms.add(s[2]);
-        syms.add("USD/KRW");
-        ALL_TWELVE_SYMBOLS = List.copyOf(syms);
+    /** 캐시 워밍 — 콜드패스 방지용으로 스케줄러가 만료 전 미리 캐시를 덮어쓴다. */
+    public void refresh() {
+        cache.set("market:overview", fetchOverview(), ttl());
+    }
+
+    private Duration ttl() {
+        return MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
     }
 
     private MarketOverviewResponse fetchOverview() {
-        // 1. TwelveData batch quote — 12종을 1 req로 조회
-        Map<String, Quote> batch = twelveDataClient.batchQuote(ALL_TWELVE_SYMBOLS);
-        log.debug("twelvedata batch: {}/{} symbols returned", batch.size(), ALL_TWELVE_SYMBOLS.size());
-
-        // 2. 지수 조합 (batch hit → Yahoo → Finnhub fallback)
+        // 심볼별 소스 해석: FMP(가능 시) → Yahoo → Finnhub
         List<MarketIndex> indices = new ArrayList<>();
         for (String[] sym : INDEX_SYMBOLS) {
-            MarketIndex idx = resolveFromBatch(batch, sym[2], sym[3]);
-            if (idx == null) idx = fallbackIndex(sym[0], sym[1], sym[4], sym[3]);
+            MarketIndex idx = resolve(sym);
             if (idx != null) indices.add(idx);
         }
 
-        // 3. 매크로 조합 (batch hit → Finnhub → Yahoo fallback)
         List<MarketIndex> macro = new ArrayList<>();
         for (String[] sym : MACRO_SYMBOLS) {
-            MarketIndex idx = resolveFromBatch(batch, sym[2], sym[3]);
-            if (idx == null) idx = fallbackMacro(sym[0], sym[1], sym[4], sym[3]);
+            MarketIndex idx = resolve(sym);
             if (idx != null) macro.add(idx);
         }
 
-        // 4. USD/KRW (batch hit → Finnhub → Yahoo fallback)
-        BigDecimal[] forex = resolveForexFromBatch(batch);
+        // USD/KRW (FMP 무료 미지원 → Yahoo → Finnhub)
+        BigDecimal[] forex = resolveForex();
 
         if (indices.isEmpty() && forex[0] == null) {
             throw new BusinessException(
@@ -134,58 +127,34 @@ public class MarketOverviewService {
         );
     }
 
-    private MarketIndex resolveFromBatch(Map<String, Quote> batch, String twelveSymbol, String displayName) {
-        Quote q = batch.get(twelveSymbol);
-        if (q != null && q.price() != null && q.price().signum() > 0) {
-            return toMarketIndex(twelveSymbol, displayName, q);
+    /** sym = {Finnhub, Yahoo, FMP, Stooq, 표시명}. 빈값 컬럼은 건너뛰고 FMP → Stooq → Yahoo → Finnhub 순. */
+    private MarketIndex resolve(String[] sym) {
+        String finnhubSymbol = sym[0], yahooSymbol = sym[1], fmpSymbol = sym[2], stooqSymbol = sym[3], displayName = sym[4];
+
+        if (!fmpSymbol.isEmpty()) {
+            Quote q = tryQuote(() -> fmpClient.quote(fmpSymbol));
+            if (q != null) return toMarketIndex(fmpSymbol, displayName, q);
         }
-        return null;
-    }
 
-    private BigDecimal[] resolveForexFromBatch(Map<String, Quote> batch) {
-        Quote q = batch.get("USD/KRW");
-        if (q != null && q.price() != null && q.price().signum() > 0) {
-            return new BigDecimal[]{q.price(), resolveChange(q)};
+        if (!stooqSymbol.isEmpty()) {
+            Quote q = tryQuote(() -> stooqClient.quote(stooqSymbol));
+            if (q != null) return toMarketIndex(stooqSymbol, displayName, q);
         }
-        return fallbackForex();
-    }
 
-    private MarketIndex fallbackIndex(String finnhubSymbol, String yahooSymbol, String stooqSymbol, String displayName) {
-        Quote q = tryQuote(() -> stooqClient.quote(stooqSymbol));
-        if (q != null) return toMarketIndex(stooqSymbol, displayName, q);
-
-        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
+        Quote q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
         if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
 
         q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
         if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
 
-        log.warn("index {} unavailable from all sources", displayName);
+        log.warn("{} unavailable from all sources", displayName);
         return null;
     }
 
-    private MarketIndex fallbackMacro(String finnhubSymbol, String yahooSymbol, String stooqSymbol, String displayName) {
-        Quote q = tryQuote(() -> stooqClient.quote(stooqSymbol));
-        if (q != null) return toMarketIndex(stooqSymbol, displayName, q);
-
-        q = tryQuote(() -> finnhubClient.quote(finnhubSymbol));
-        if (q != null) return toMarketIndex(finnhubSymbol, displayName, q);
-
-        q = tryQuote(() -> yahooFinanceClient.quote(yahooSymbol));
-        if (q != null) return toMarketIndex(yahooSymbol, displayName, q);
-
-        log.warn("macro {} unavailable from all sources", displayName);
-        return null;
-    }
-
-    private BigDecimal[] fallbackForex() {
-        Quote q = tryQuote(() -> stooqClient.quote("usdkrw"));
-        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
-
-        q = tryQuote(() -> finnhubClient.quote("USDKRW=X"));
-        if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
-
-        q = tryQuote(() -> yahooFinanceClient.quote("USDKRW=X"));
+    private BigDecimal[] resolveForex() {
+        Quote q = tryQuote(() -> yahooFinanceClient.quote("USDKRW=X"));
+        if (q == null) q = tryQuote(() -> stooqClient.quote("usdkrw"));
+        if (q == null) q = tryQuote(() -> finnhubClient.quote("USDKRW=X"));
         if (q != null) return new BigDecimal[]{q.price(), resolveChange(q)};
 
         return new BigDecimal[]{null, null};
