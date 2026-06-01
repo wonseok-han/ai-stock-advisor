@@ -29,7 +29,7 @@ import java.util.Objects;
 public class SectorPerformanceService {
 
     private static final Logger log = LoggerFactory.getLogger(SectorPerformanceService.class);
-    private static final Duration TTL_OPEN = Duration.ofMinutes(15);
+    private static final Duration TTL_OPEN = Duration.ofMinutes(30);
     /** 분기 모멘텀은 일 단위로만 의미가 있어 길게 캐시(장 마감까지). */
     private static final Duration TTL_QUARTERLY = Duration.ofHours(12);
     private static final TypeReference<List<SectorPerformance>> TYPE = new TypeReference<>() {};
@@ -105,6 +105,23 @@ public class SectorPerformanceService {
         Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
         return cache.getOrLoad("market:sectors", TYPE, ttl, this::fetchWithFallback);
+    }
+
+    /** 캐시 워밍 (콜드패스 방지). 빈 결과면 기존 캐시 유지. */
+    public void refresh() {
+        List<SectorPerformance> data = fetchWithFallback();
+        if (data.isEmpty()) return;
+        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+                ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
+        cache.set("market:sectors", data, ttl);
+    }
+
+    /** 분기 섹터·테마 모멘텀 캐시 워밍 (콜드패스 방지). 빈 결과면 기존 캐시 유지. */
+    public void refreshQuarterly() {
+        List<SectorMomentum> sectors = fetchMomentum(SECTOR_ETFS);
+        if (!sectors.isEmpty()) cache.set("market:sectors:quarterly", sectors, TTL_QUARTERLY);
+        List<SectorMomentum> themes = fetchMomentum(THEME_ETFS);
+        if (!themes.isEmpty()) cache.set("market:themes:quarterly", themes, TTL_QUARTERLY);
     }
 
     private List<SectorPerformance> fetchWithFallback() {
