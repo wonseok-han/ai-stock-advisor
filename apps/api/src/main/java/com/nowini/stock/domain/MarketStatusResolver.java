@@ -58,6 +58,19 @@ public final class MarketStatusResolver {
         return Duration.between(now, nextOpenTime(now));
     }
 
+    /**
+     * 다음 정규장 마감(ET 16:00)까지 남은 시간.
+     * 장중·개장 전 평일이면 당일 마감까지, 마감 후·주말이면 다음 거래일 마감까지.
+     * regime/AI 해석처럼 장마감 기준 일 단위로 갱신하는 캐시 TTL 용도(주말은 월요일 마감까지 유지).
+     */
+    public static Duration durationUntilNextClose() {
+        return durationUntilNextClose(ZonedDateTime.now(ET));
+    }
+
+    static Duration durationUntilNextClose(ZonedDateTime now) {
+        return Duration.between(now, nextCloseTime(now));
+    }
+
     private static ZonedDateTime nextOpenTime(ZonedDateTime now) {
         ZonedDateTime today930 = now.toLocalDate().atTime(OPEN).atZone(ET);
 
@@ -66,6 +79,20 @@ public final class MarketStatusResolver {
         }
 
         ZonedDateTime next = today930.plusDays(1);
+        while (!isWeekday(next.getDayOfWeek())) {
+            next = next.plusDays(1);
+        }
+        return next;
+    }
+
+    private static ZonedDateTime nextCloseTime(ZonedDateTime now) {
+        ZonedDateTime today1600 = now.toLocalDate().atTime(CLOSE).atZone(ET);
+
+        if (now.isBefore(today1600) && isWeekday(now.getDayOfWeek())) {
+            return today1600;
+        }
+
+        ZonedDateTime next = today1600.plusDays(1);
         while (!isWeekday(next.getDayOfWeek())) {
             next = next.plusDays(1);
         }

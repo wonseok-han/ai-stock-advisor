@@ -15,6 +15,7 @@ import com.nowini.market.infra.CnnFearGreedClient;
 import com.nowini.market.infra.CnnFearGreedClient.FearGreedSnapshot;
 import com.nowini.market.infra.FredClient;
 import com.nowini.market.infra.FredClient.FredObservation;
+import com.nowini.stock.domain.MarketStatusResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,7 +47,6 @@ public class MarketRegimeService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketRegimeService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Duration TTL = Duration.ofHours(6);
     private static final TypeReference<MarketRegimeResponse> TYPE = new TypeReference<>() {};
     private static final TypeReference<MarketRegimeAiResponse> AI_TYPE = new TypeReference<>() {};
     private static final String AI_PROMPT_FILE = "market-regime.system.txt";
@@ -71,13 +71,18 @@ public class MarketRegimeService {
         this.sectorService = sectorService;
     }
 
+    /** 장마감 기준 일 단위 갱신 — 다음 정규장 마감까지 캐시 유지(주말은 월요일 마감까지). */
+    private static Duration ttl() {
+        return MarketStatusResolver.durationUntilNextClose();
+    }
+
     public MarketRegimeResponse getRegime() {
-        return cache.getOrLoad("market:regime", TYPE, TTL, this::fetch);
+        return cache.getOrLoad("market:regime", TYPE, ttl(), this::fetch);
     }
 
     /** AI 해석 (로그인 사용자 전용). 동일 지표 스냅샷 기반, 실패 시 aiSummary=null. */
     public MarketRegimeAiResponse getRegimeAi() {
-        return cache.getOrLoad("market:regime:ai", AI_TYPE, TTL, () -> {
+        return cache.getOrLoad("market:regime:ai", AI_TYPE, ttl(), () -> {
             MarketRegimeResponse regime = getRegime();
             return new MarketRegimeAiResponse(regime.asOf(), generateAiSummary(regime), DISCLAIMER);
         });
