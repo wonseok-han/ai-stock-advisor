@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Financial Modeling Prep REST 어댑터.
- * 무료 250 req/day. Market movers (gainers/losers) 전담.
+ * 무료 250 req/day. 섹터 퍼포먼스 · 기업 프로필 · 재무비율 · 애널리스트 추정치 전담.
  */
 @Component
 public class FmpClient {
@@ -43,7 +43,6 @@ public class FmpClient {
     private static final Duration TTL_TICKER_OPEN  = Duration.ofHours(24);
     private static final Duration TTL_TICKER_CLOSED = Duration.ofHours(24);
 
-    private static final TypeReference<List<FmpMover>> MOVERS_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<FmpSectorPerformance>> SECTORS_TYPE = new TypeReference<>() {};
     private static final TypeReference<FmpProfile> PROFILE_TYPE = new TypeReference<>() {};
     private static final TypeReference<FmpRatiosTtm> RATIOS_TYPE = new TypeReference<>() {};
@@ -69,42 +68,9 @@ public class FmpClient {
                 .build();
     }
 
-    public List<FmpMover> gainers() {
-        return cache.getOrLoad("fmp:gainers", MOVERS_TYPE, marketTtl(),
-                () -> fetchMovers("/biggest-gainers"));
-    }
-
-    public List<FmpMover> losers() {
-        return cache.getOrLoad("fmp:losers", MOVERS_TYPE, marketTtl(),
-                () -> fetchMovers("/biggest-losers"));
-    }
-
     private Duration marketTtl() {
         return MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_MARKET_OPEN : MarketStatusResolver.durationUntilNextOpen();
-    }
-
-    private List<FmpMover> fetchMovers(String path) {
-        try {
-            FmpMover[] resp = webClient.get()
-                    .uri(b -> b.path(path)
-                            .queryParam("apikey", apiKey)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(FmpMover[].class)
-                    .block(TIMEOUT);
-            return resp == null ? List.of() : List.of(resp);
-        } catch (WebClientResponseException ex) {
-            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
-            log.warn("fmp {} failed: status={} body={}", path, status, ex.getResponseBodyAsString());
-            if (status == HttpStatus.TOO_MANY_REQUESTS) {
-                throw new BusinessException(ErrorCode.UPSTREAM_RATE_LIMIT, null, null, ex);
-            }
-            throw new BusinessException(ErrorCode.UPSTREAM_UNAVAILABLE, null, null, ex);
-        } catch (RuntimeException ex) {
-            log.warn("fmp {} timeout/io: {}", path, ex.getMessage());
-            throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
-        }
     }
 
     public List<FmpSectorPerformance> sectorPerformance() {
@@ -197,17 +163,6 @@ public class FmpClient {
             log.warn("fmp profile {} timeout/io: {}", ticker, ex.getMessage());
             throw new BusinessException(ErrorCode.UPSTREAM_TIMEOUT, null, null, ex);
         }
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record FmpMover(
-            String symbol,
-            String name,
-            BigDecimal price,
-            BigDecimal change,
-            BigDecimal changesPercentage,
-            String exchange
-    ) {
     }
 
     public FmpRatiosTtm ratiosTtm(String ticker) {

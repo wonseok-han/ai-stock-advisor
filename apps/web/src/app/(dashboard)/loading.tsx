@@ -56,29 +56,17 @@ export default function DashboardLoading() {
         <div className="mt-4 h-28 animate-pulse rounded-xl bg-bg-skeleton" />
       </section>
 
-      {/* Market Movers + News */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="card p-5">
-          <div className="mb-4">
-            <InlineLoading text="주요 종목을 확인하고 있어요" />
-          </div>
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-bg-skeleton" />
-            ))}
-          </div>
-        </section>
-        <section className="card p-5">
-          <div className="mb-4">
-            <InlineLoading text="최신 뉴스를 가져오고 있어요" />
-          </div>
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-lg bg-bg-skeleton" />
-            ))}
-          </div>
-        </section>
-      </div>
+      {/* Market News */}
+      <section className="card p-5">
+        <div className="mb-4">
+          <InlineLoading text="최신 뉴스를 가져오고 있어요" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-16 animate-pulse rounded-lg bg-bg-skeleton" />
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

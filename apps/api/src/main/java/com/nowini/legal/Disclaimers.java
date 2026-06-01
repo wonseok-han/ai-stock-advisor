@@ -23,9 +23,6 @@ public final class Disclaimers {
     public static final String MARKET_NEWS =
             "본 뉴스 번역/요약은 AI에 의한 참고용이며, 원문과 차이가 있을 수 있습니다. 투자 판단과 책임은 사용자 본인에게 있습니다.";
 
-    public static final String MARKET_MOVERS =
-            "미국 전체 시장 기준 급등/급락 종목입니다. 모든 투자 판단과 책임은 사용자 본인에게 있습니다.";
-
     private Disclaimers() {
     }
 }

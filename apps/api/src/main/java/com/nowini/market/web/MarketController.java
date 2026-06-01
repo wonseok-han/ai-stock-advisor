@@ -1,10 +1,8 @@
 package com.nowini.market.web;
 
-import com.nowini.market.domain.MarketMoversResponse;
 import com.nowini.market.domain.MarketNewsItem;
 import com.nowini.market.domain.MarketOverviewResponse;
 import com.nowini.market.domain.SectorPerformance;
-import com.nowini.market.service.MarketMoversService;
 import com.nowini.market.service.MarketNewsService;
 import com.nowini.market.service.MarketOverviewService;
 import com.nowini.market.service.SectorPerformanceService;
@@ -21,16 +19,13 @@ public class MarketController {
 
     private final MarketOverviewService overviewService;
     private final MarketNewsService newsService;
-    private final MarketMoversService moversService;
     private final SectorPerformanceService sectorService;
 
     public MarketController(MarketOverviewService overviewService,
                             MarketNewsService newsService,
-                            MarketMoversService moversService,
                             SectorPerformanceService sectorService) {
         this.overviewService = overviewService;
         this.newsService = newsService;
-        this.moversService = moversService;
         this.sectorService = sectorService;
     }
 
@@ -43,11 +38,6 @@ public class MarketController {
     public List<MarketNewsItem> news(
             @RequestParam(value = "limit", defaultValue = "10") int limit) {
         return newsService.getNews(limit);
-    }
-
-    @GetMapping("/movers")
-    public MarketMoversResponse movers() {
-        return moversService.getMovers();
     }
 
     @GetMapping("/sectors")
