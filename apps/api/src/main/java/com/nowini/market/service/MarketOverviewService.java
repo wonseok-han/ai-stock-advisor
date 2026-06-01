@@ -37,7 +37,8 @@ import java.util.function.Supplier;
 public class MarketOverviewService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketOverviewService.class);
-    private static final Duration TTL_OPEN = Duration.ofMinutes(30);
+    /** 워밍 주기(30분)보다 길게 잡아 갱신이 항상 만료보다 먼저 일어나게(콜드 빈틈 방지). */
+    private static final Duration TTL_OPEN = Duration.ofMinutes(40);
     private static final TypeReference<MarketOverviewResponse> TYPE = new TypeReference<>() {
     };
 
@@ -81,9 +82,17 @@ public class MarketOverviewService {
     }
 
     public MarketOverviewResponse getOverview() {
-        Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
+        return cache.getOrLoad("market:overview", TYPE, ttl(), this::fetchOverview);
+    }
+
+    /** 캐시 워밍 — 콜드패스 방지용으로 스케줄러가 만료 전 미리 캐시를 덮어쓴다. */
+    public void refresh() {
+        cache.set("market:overview", fetchOverview(), ttl());
+    }
+
+    private Duration ttl() {
+        return MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
-        return cache.getOrLoad("market:overview", TYPE, ttl, this::fetchOverview);
     }
 
     private MarketOverviewResponse fetchOverview() {
