@@ -12,8 +12,10 @@ export function getMarketOverview(): Promise<MarketOverview> {
   return apiFetch<MarketOverview>('/market/overview');
 }
 
-export function getMarketNews(limit = 10): Promise<MarketNewsItem[]> {
-  return apiFetch<MarketNewsItem[]>(`/market/news?limit=${limit}`);
+export function getMarketNews(limit = 10, before?: number): Promise<MarketNewsItem[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (before != null) params.set('before', String(before));
+  return apiFetch<MarketNewsItem[]>(`/market/news?${params.toString()}`);
 }
 
 export function getSectorPerformance(): Promise<SectorPerformance[]> {

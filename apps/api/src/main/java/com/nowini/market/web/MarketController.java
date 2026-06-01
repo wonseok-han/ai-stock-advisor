@@ -36,8 +36,9 @@ public class MarketController {
 
     @GetMapping("/news")
     public List<MarketNewsItem> news(
-            @RequestParam(value = "limit", defaultValue = "10") int limit) {
-        return newsService.getNews(limit);
+            @RequestParam(value = "limit", defaultValue = "10") int limit,
+            @RequestParam(value = "before", required = false) Long before) {
+        return newsService.getNews(limit, before);
     }
 
     @GetMapping("/sectors")
