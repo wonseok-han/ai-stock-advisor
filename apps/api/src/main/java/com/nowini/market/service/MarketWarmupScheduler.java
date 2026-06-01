@@ -35,10 +35,11 @@ public class MarketWarmupScheduler {
     }
 
     /**
-     * overview + 섹터 퍼포먼스: 25분마다(장중에만). 각 TTL 30분 대비 5분 마진.
+     * overview + 섹터 퍼포먼스: 매시 정각·30분(벽시계 기준), 장중에만. 각 TTL 40분 대비 10분 마진
+     * (30분마다 갱신이 항상 만료보다 먼저 → 빈틈 없음). cron 이라 배포와 무관하게 시각 고정.
      * 장 마감 시간대에는 데이터가 정적이고 FMP 한도를 아끼기 위해 워밍하지 않는다(읽기 경로가 처리).
      */
-    @Scheduled(fixedRate = 25 * 60 * 1000)
+    @Scheduled(cron = "0 0,30 * * * *")
     public void warmIntraday() {
         if (MarketStatusResolver.resolve() != MarketStatus.OPEN) return;
         warm("overview", overviewService::refresh);

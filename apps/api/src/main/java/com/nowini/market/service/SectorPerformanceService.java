@@ -29,7 +29,8 @@ import java.util.Objects;
 public class SectorPerformanceService {
 
     private static final Logger log = LoggerFactory.getLogger(SectorPerformanceService.class);
-    private static final Duration TTL_OPEN = Duration.ofMinutes(30);
+    /** 워밍 주기(30분)보다 길게 잡아 갱신이 항상 만료보다 먼저 일어나게(콜드 빈틈 방지). */
+    private static final Duration TTL_OPEN = Duration.ofMinutes(40);
     /** 분기 모멘텀은 일 단위로만 의미가 있어 길게 캐시(장 마감까지). */
     private static final Duration TTL_QUARTERLY = Duration.ofHours(12);
     private static final TypeReference<List<SectorPerformance>> TYPE = new TypeReference<>() {};
