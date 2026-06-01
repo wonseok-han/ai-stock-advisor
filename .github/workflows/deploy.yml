@@ -1,0 +1,25 @@
+name: Deploy BE (Render)
+
+# main 에 머지되면(릴리즈) Render Deploy Hook 을 호출해 BE 배포를 트리거한다.
+# Render 의 Root Directory(apps/api) 경로 필터가 모노레포 머지에서 배포를 누락시키는
+# 문제를 우회하기 위해, 경로와 무관하게 명시적으로 배포를 건다.
+# (Render 대시보드 Auto-Deploy 는 Off 로 두어 중복 배포를 방지하는 것을 권장.)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK secret 이 설정되지 않았습니다."
+            exit 1
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "Render deploy triggered."
