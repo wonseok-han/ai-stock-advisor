@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 public class StooqClient {
 
     private static final Logger log = LoggerFactory.getLogger(StooqClient.class);
-    private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration TIMEOUT = Duration.ofSeconds(3);
     private static final Duration TTL_OPEN = Duration.ofMinutes(2);
     private static final TypeReference<Quote> QUOTE_TYPE = new TypeReference<>() {};
 
