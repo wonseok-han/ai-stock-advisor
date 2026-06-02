@@ -10,6 +10,7 @@ import com.nowini.stock.domain.Quote;
 import com.nowini.stock.service.QuoteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
  *   - 푸시 발송이 실제로 성공한 경우에만 상태를 저장 → 실패 시 다음 사이클 재시도 가능
  */
 @Service
+@Profile("!local & !test")   // 로컬·테스트에선 스케줄러 끔 (운영과 동시 실행 시 중복 알림 방지)
 public class NotificationCheckService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationCheckService.class);
