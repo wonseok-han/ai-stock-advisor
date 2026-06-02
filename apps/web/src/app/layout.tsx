@@ -9,7 +9,7 @@ import { SwRegister } from '@/components/sw-register';
 import { DisclaimerBanner } from '@/components/legal/disclaimer-banner';
 import { DisclaimerFooter } from '@/components/legal/disclaimer-footer';
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
 
@@ -26,6 +26,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: '지금이니?!',
   description: '초보 투자자를 위한 미국 주식 참고/분석 도구 (투자 자문 아님).',
+  appleWebApp: {
+    capable: true,
+    title: '지금이니?!',
+    statusBarStyle: 'black-translucent',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+    { media: '(prefers-color-scheme: light)', color: '#f4f8f6' },
+  ],
 };
 
 export default function RootLayout({
