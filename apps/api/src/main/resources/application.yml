@@ -32,6 +32,8 @@ spring:
       url: ${REDIS_URL:redis://localhost:6379}
       timeout: 2s
       client-type: lettuce
+      repositories:
+        enabled: false   # Redis 는 캐시(RedisTemplate)로만 사용 — 리포지토리 스캔 끔(기동 로그 노이즈 제거)
   threads:
     virtual:
       enabled: true

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * 참조: docs/02-design/features/signal-accuracy.design.md §11.2 Step 4
  */
 @Component
-@Profile("!test")
+@Profile("!local & !test")   // 로컬·테스트에선 스케줄러 끔 (운영과 동시 실행 시 중복 평가 방지)
 public class SignalEvaluationScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(SignalEvaluationScheduler.class);

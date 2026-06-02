@@ -5,6 +5,7 @@ import com.nowini.stock.infra.CandleRepository;
 import com.nowini.stock.infra.client.YahooFinanceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import java.util.List;
  * 참조: docs/02-design/features/phase4.5-improvements.design.md §5.3
  */
 @Component
+@Profile("!local & !test")   // 로컬·테스트에선 스케줄러 끔 (운영과 동시 실행 시 중복 호출 방지)
 public class CandleBatchScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(CandleBatchScheduler.class);
