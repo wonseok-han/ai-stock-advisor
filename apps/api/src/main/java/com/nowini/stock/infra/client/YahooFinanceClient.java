@@ -654,6 +654,11 @@ public class YahooFinanceClient {
         this.crumbRotated = true;
     }
 
+    /** 무효(401) crumb은 Redis에서도 제거 — 재시작/잔존으로 다시 로드돼 고착되는 것을 막는다. */
+    private void evictPersistedCrumb() {
+        if (cache != null) cache.evict(REDIS_CRUMB_KEY);
+    }
+
     // ── quoteSummary (Redis 24h 캐시 + curl) ──
 
     private JsonNode fetchQuoteSummaryRaw(String ticker) {
@@ -763,7 +768,7 @@ public class YahooFinanceClient {
             return data != null ? parseQuoteSummary(data) : null;
         } catch (Exception ex) {
             String msg = ex.getMessage();
-            if (msg != null && msg.contains("401")) invalidateCrumb();
+            if (msg != null && msg.contains("401")) { invalidateCrumb(); evictPersistedCrumb(); }
             log.warn("yahoo quoteSummary {} failed: {}", ticker, msg);
             return null;
         }
@@ -819,7 +824,7 @@ public class YahooFinanceClient {
             return data != null ? parseAnalystData(data) : null;
         } catch (Exception ex) {
             String msg = ex.getMessage();
-            if (msg != null && msg.contains("401")) invalidateCrumb();
+            if (msg != null && msg.contains("401")) { invalidateCrumb(); evictPersistedCrumb(); }
             log.warn("yahoo analystEstimates {} failed: {}", ticker, msg);
             return null;
         }

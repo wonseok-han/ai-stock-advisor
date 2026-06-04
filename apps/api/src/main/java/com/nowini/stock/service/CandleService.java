@@ -14,6 +14,7 @@ import com.nowini.stock.infra.client.YahooFinanceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,7 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 캔들 조회. Phase 4.5: DB-first (daily+) + TwelveData fallback (intraday).
@@ -49,15 +51,28 @@ public class CandleService {
     private final YahooFinanceClient yahooFinance;
     private final CandleRepository candleRepo;
     private final RedisCacheAdapter cache;
+    private final JdbcTemplate jdbc;
+
+    /**
+     * on-demand 캔들 persist 전용 executor(동시 2). 공용 ForkJoinPool 대신 사용해
+     * 캔들 적재가 DB 커넥션 풀을 다 잡아 다른 요청을 굶기는 것을 방지한다.
+     */
+    private final ExecutorService persistExecutor = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r, "candle-persist");
+        t.setDaemon(true);
+        return t;
+    });
 
     public CandleService(TwelveDataClient twelveData,
                          YahooFinanceClient yahooFinance,
                          CandleRepository candleRepo,
-                         RedisCacheAdapter cache) {
+                         RedisCacheAdapter cache,
+                         JdbcTemplate jdbc) {
         this.twelveData = twelveData;
         this.yahooFinance = yahooFinance;
         this.candleRepo = candleRepo;
         this.cache = cache;
+        this.jdbc = jdbc;
     }
 
     public List<Candle> getCandles(String ticker, TimeFrame tf) {
@@ -142,16 +157,30 @@ public class CandleService {
         log.info("on-demand candle load: {} [{} ~ {}]", ticker, from, to);
         List<CandleEntity> fetched = yahooFinance.fetchDailyCandles(ticker, from, to);
         if (!fetched.isEmpty()) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    candleRepo.saveAll(fetched);
-                    log.info("on-demand candle persist: {} ({} rows)", ticker, fetched.size());
-                } catch (Exception ex) {
-                    log.warn("on-demand candle persist failed for {}: {}", ticker, ex.getMessage());
-                }
-            });
+            persistExecutor.execute(() -> upsertCandles(ticker, fetched));
         }
         return fetched;
+    }
+
+    /** 중복키 무시(ON CONFLICT) 배치 upsert. 겹치는 구간 동시 적재 시 candles_pkey 충돌 방지. */
+    private void upsertCandles(String ticker, List<CandleEntity> rows) {
+        String sql = "INSERT INTO candles (ticker, trade_date, open, high, low, close, adj_close, volume) "
+                + "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (ticker, trade_date) DO NOTHING";
+        try {
+            jdbc.batchUpdate(sql, rows, rows.size(), (ps, c) -> {
+                ps.setString(1, c.getTicker());
+                ps.setObject(2, c.getTradeDate());
+                ps.setBigDecimal(3, c.getOpen());
+                ps.setBigDecimal(4, c.getHigh());
+                ps.setBigDecimal(5, c.getLow());
+                ps.setBigDecimal(6, c.getClose());
+                ps.setBigDecimal(7, c.getAdjClose());
+                ps.setLong(8, c.getVolume());
+            });
+            log.info("on-demand candle persist: {} ({} rows)", ticker, rows.size());
+        } catch (Exception ex) {
+            log.warn("on-demand candle persist failed for {}: {}", ticker, ex.getMessage());
+        }
     }
 
     /**

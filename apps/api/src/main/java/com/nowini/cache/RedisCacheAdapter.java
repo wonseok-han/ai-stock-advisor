@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -19,6 +20,8 @@ import java.util.function.Supplier;
 public class RedisCacheAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(RedisCacheAdapter.class);
+    /** 불완전/실패 결과는 이 짧은 TTL로만 캐시 → 곧 자동 재시도(자가복구). 수동 캐시 삭제 불필요. */
+    private static final Duration FALLBACK_TTL = Duration.ofSeconds(60);
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
@@ -37,6 +40,24 @@ public class RedisCacheAdapter {
         T loaded = loader.get();
         if (loaded != null) {
             set(key, loaded, ttl);
+        }
+        return loaded;
+    }
+
+    /**
+     * Cache-or-load with 유효성 판정. {@code cacheable}이 true면 정상 TTL, false(불완전/실패)면
+     * 짧은 {@link #FALLBACK_TTL}로만 캐시해 곧 자동 재시도되게 한다(자가복구).
+     * 일시적 업스트림 실패가 긴 TTL로 고착돼 수동 캐시 삭제가 필요하던 문제를 방지.
+     */
+    public <T> T getOrLoad(String key, TypeReference<T> type, Duration ttl,
+                           Supplier<T> loader, Predicate<T> cacheable) {
+        T cached = get(key, type);
+        if (cached != null) {
+            return cached;
+        }
+        T loaded = loader.get();
+        if (loaded != null) {
+            set(key, loaded, cacheable.test(loaded) ? ttl : FALLBACK_TTL);
         }
         return loaded;
     }

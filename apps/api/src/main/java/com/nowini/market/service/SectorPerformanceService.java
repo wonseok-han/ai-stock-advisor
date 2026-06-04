@@ -105,7 +105,8 @@ public class SectorPerformanceService {
     public List<SectorPerformance> getSectors() {
         Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
-        return cache.getOrLoad("market:sectors", TYPE, ttl, this::fetchWithFallback);
+        return cache.getOrLoad("market:sectors", TYPE, ttl, this::fetchWithFallback,
+                list -> !list.isEmpty());
     }
 
     /** 캐시 워밍 (콜드패스 방지). 빈 결과면 기존 캐시 유지. */
@@ -169,7 +170,7 @@ public class SectorPerformanceService {
      */
     public List<SectorMomentum> getQuarterlyMomentum() {
         return cache.getOrLoad("market:sectors:quarterly", MOMENTUM_TYPE, TTL_QUARTERLY,
-                () -> fetchMomentum(SECTOR_ETFS));
+                () -> fetchMomentum(SECTOR_ETFS), list -> !list.isEmpty());
     }
 
     /**
@@ -177,7 +178,7 @@ public class SectorPerformanceService {
      */
     public List<SectorMomentum> getQuarterlyThemes() {
         return cache.getOrLoad("market:themes:quarterly", MOMENTUM_TYPE, TTL_QUARTERLY,
-                () -> fetchMomentum(THEME_ETFS));
+                () -> fetchMomentum(THEME_ETFS), list -> !list.isEmpty());
     }
 
     /**
