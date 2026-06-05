@@ -1,6 +1,7 @@
 package com.nowini.sec.service;
 
 import com.nowini.ai.infra.LlmClient;
+import com.nowini.ai.infra.LlmJson;
 import com.nowini.common.metrics.LlmMetrics;
 import com.nowini.common.prompt.PromptLoader;
 import com.nowini.sec.domain.SecFiling;
@@ -45,7 +46,8 @@ public class SecFilingSummarizer {
             LlmClient.LlmResult result = llmClient.generateWithUrlContext(system, user,
                     LlmMetrics.FEATURE_SEC_SUMMARY);
 
-            List<Map<String, String>> parsed = objectMapper.readValue(result.content(), LIST_TYPE);
+            List<Map<String, String>> parsed = objectMapper.readValue(
+                    LlmJson.extract(result.content()), LIST_TYPE);
             if (parsed.size() != filings.size()) {
                 log.warn("sec summary size mismatch: expected={} got={}", filings.size(), parsed.size());
                 return filings.stream().map(f -> (SummaryResult) null).toList();
