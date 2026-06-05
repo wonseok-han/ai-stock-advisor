@@ -1,8 +1,8 @@
-name: Deploy (BE → FE)
+name: Deploy & Release
 
-# main 에 머지되면(릴리즈) BE(Render) 를 먼저 배포하고, BE 가 live 가 된 뒤에야
-# FE(Vercel) 배포를 트리거한다. 이렇게 순서를 강제해 "새 FE ↔ 구 BE" 가 만나는
-# 배포 시차 윈도우를 없앤다.
+# main 에 머지되면(릴리즈): BE(Render) → FE(Vercel) 순차 배포가 모두 성공한 뒤에야
+# 태그 + GitHub Release 를 발행한다. 배포가 실패하면 release job 이 skip 되어
+# "릴리즈됨인데 실제 배포는 안 됨" 불일치를 방지한다.
 #
 # 전제:
 #   - Vercel: apps/web/vercel.json 의 git.deploymentEnabled.main=false 로 git push 자동배포 OFF.
@@ -85,3 +85,71 @@ jobs:
           fi
           curl -fsS -X POST "$VERCEL_HOOK" > /dev/null
           echo "Vercel deploy triggered (BE live 확인 후)."
+
+  # 배포(deploy job)가 모두 성공한 뒤에만 태그 + GitHub Release 를 발행한다.
+  release:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find latest changelog
+        id: changelog
+        run: |
+          LATEST=$(ls -1 changelogs/*.md 2>/dev/null | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "::error::No changelog files found"
+            exit 1
+          fi
+          VERSION=$(basename "$LATEST" .md)
+          echo "FILE=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          VERSION="${{ steps.changelog.outputs.VERSION }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "EXISTS=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "EXISTS=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag
+        if: steps.check_tag.outputs.EXISTS == 'false'
+        run: |
+          VERSION="${{ steps.changelog.outputs.VERSION }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "$VERSION"
+          git push origin "$VERSION"
+
+      - name: Build release body
+        if: steps.check_tag.outputs.EXISTS == 'false'
+        id: body
+        run: |
+          CHANGELOG="${{ steps.changelog.outputs.FILE }}"
+          VERSION="${{ steps.changelog.outputs.VERSION }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          {
+            echo "BODY<<EOF"
+            cat "$CHANGELOG"
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: ${{ github.server_url }}/${{ github.repository }}/compare/${PREV_TAG}...${VERSION}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.EXISTS == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.VERSION }}
+          name: ${{ steps.changelog.outputs.VERSION }}
+          body: ${{ steps.body.outputs.BODY }}
+          make_latest: true
