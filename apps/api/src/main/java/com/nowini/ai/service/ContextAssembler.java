@@ -82,8 +82,9 @@ public class ContextAssembler {
         this.timingScorer = timingScorer;
     }
 
-    /** LLM 프롬프트용 컨텍스트 맵 + 코드로 계산한 진입 타이밍(결정론적). */
-    public record AssembledContext(Map<String, Object> prompt, TimingVerdict timing) {}
+    /** LLM 프롬프트용 컨텍스트 맵 + 코드로 계산한 단기/장기 진입 타이밍(결정론적). */
+    public record AssembledContext(Map<String, Object> prompt,
+                                   TimingVerdict timingShort, TimingVerdict timingLong) {}
 
     public AssembledContext assemble(String ticker) {
         try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -114,9 +115,10 @@ public class ContextAssembler {
             ctx.put("fundamentals", fundamentalsOf(await(coF)));
             if (vix != null) ctx.put("vix", vix);
 
-            // 타이밍은 LLM이 아니라 코드가 결정론적으로 계산
-            TimingVerdict timing = timingScorer.score(quote, ind, analyst, vix);
-            return new AssembledContext(ctx, timing);
+            // 타이밍은 LLM이 아니라 코드가 결정론적으로 계산 (단기/장기 분리)
+            TimingVerdict timingShort = timingScorer.scoreShort(quote, ind, vix);
+            TimingVerdict timingLong = timingScorer.scoreLong(quote, ind, analyst, vix);
+            return new AssembledContext(ctx, timingShort, timingLong);
         }
     }
 

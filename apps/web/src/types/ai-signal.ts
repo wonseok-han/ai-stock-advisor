@@ -53,7 +53,8 @@ export interface AiSignal {
   ticker: string;
   shortTerm: SignalPerspective;
   longTerm: SignalPerspective;
-  timing?: TimingVerdict | null;
+  timingShort?: TimingVerdict | null;
+  timingLong?: TimingVerdict | null;
   generatedAt: string;
   modelName: string;
   disclaimer: string;

@@ -21,6 +21,12 @@ public record IndicatorSnapshot(
     public record Bollinger(double upper, double middle, double lower, double percentB) {
     }
 
-    public record MovingAverage(double ma5, double ma20, double ma60) {
+    /**
+     * 이동평균. ma5/20/60 은 항상 산출(지표 계산 최소 60봉 보장).
+     * ma10/50/120/200 은 봉 수 부족(예: 상장 1년 미만) 시 null.
+     */
+    public record MovingAverage(
+            double ma5, Double ma10, double ma20, Double ma50,
+            double ma60, Double ma120, Double ma200) {
     }
 }

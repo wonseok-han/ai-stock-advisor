@@ -82,8 +82,12 @@ export interface IndicatorSnapshot {
   };
   movingAverage: {
     ma5: number;
+    ma10: number | null;
     ma20: number;
+    ma50: number | null;
     ma60: number;
+    ma120: number | null;
+    ma200: number | null;
   };
   tooltipsKo: Record<string, string>;
 }

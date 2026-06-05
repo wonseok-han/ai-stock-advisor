@@ -105,8 +105,8 @@ function AiSignalContent({ ticker }: { ticker: string }) {
 
   return (
     <>
-      {data.timing && (
-        <TimingCard timing={data.timing} signal={data.shortTerm.signal} />
+      {data.timingShort && data.timingLong && (
+        <TimingCard short={data.timingShort} long={data.timingLong} />
       )}
 
       <section aria-label="AI 참고 분석" className="card brand-glow p-5">

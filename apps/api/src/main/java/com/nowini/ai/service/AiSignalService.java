@@ -63,7 +63,7 @@ public class AiSignalService {
     }
 
     public AiSignal getSignal(String ticker) {
-        String cacheKey = "ai:" + ticker + ":v3";
+        String cacheKey = "ai:" + ticker + ":v4";
         AiSignal cached = cache.get(cacheKey, CACHE_TYPE);
         if (isUsable(cached)) {
             return cached;
@@ -87,7 +87,7 @@ public class AiSignalService {
             if (!validated.valid()) {
                 log.warn("ai-signal validation failed ticker={} reason={} hits={}",
                         ticker, validated.reason(), validated.forbiddenDetected());
-                result = fallback(ticker, ac.timing());
+                result = fallback(ticker, ac.timingShort(), ac.timingLong());
                 saveAudit(requestId, ticker, result, ctx, validated.rawMap(),
                         validated.forbiddenDetected(), null, true,
                         (int) (System.currentTimeMillis() - started),
@@ -97,7 +97,8 @@ public class AiSignalService {
                         ticker,
                         validated.shortTerm(),
                         validated.longTerm(),
-                        ac.timing(),
+                        ac.timingShort(),
+                        ac.timingLong(),
                         Instant.now(),
                         raw.modelName(),
                         Disclaimers.AI_SIGNAL,
@@ -110,7 +111,7 @@ public class AiSignalService {
             }
         } catch (Exception ex) {
             log.warn("ai-signal upstream failure ticker={} reason={}", ticker, ex.getMessage());
-            result = fallback(ticker, ac.timing());
+            result = fallback(ticker, ac.timingShort(), ac.timingLong());
             saveAudit(requestId, ticker, result, ctx, null, List.of(), null, true,
                     (int) (System.currentTimeMillis() - started), null, null);
         }
@@ -130,7 +131,7 @@ public class AiSignalService {
                 && s.longTerm() != null && s.longTerm().signal() != null;
     }
 
-    private AiSignal fallback(String ticker, TimingVerdict timing) {
+    private AiSignal fallback(String ticker, TimingVerdict timingShort, TimingVerdict timingLong) {
         SignalPerspective neutral = new SignalPerspective(
                 Signal.NEUTRAL,
                 0.5,
@@ -141,7 +142,7 @@ public class AiSignalService {
                 "일시적으로 AI 분석이 제한되어 중립(NEUTRAL) 관점으로 제공됩니다. 투자 판단 시 참고용으로만 활용해주세요.",
                 null, null, null, null
         );
-        return new AiSignal(ticker, neutral, neutral, timing, Instant.now(),
+        return new AiSignal(ticker, neutral, neutral, timingShort, timingLong, Instant.now(),
                 modelName, Disclaimers.AI_SIGNAL, true);
     }
 
