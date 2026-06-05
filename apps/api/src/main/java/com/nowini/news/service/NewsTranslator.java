@@ -1,6 +1,7 @@
 package com.nowini.news.service;
 
 import com.nowini.ai.infra.LlmClient;
+import com.nowini.ai.infra.LlmJson;
 import com.nowini.common.prompt.PromptLoader;
 import com.nowini.legal.ForbiddenTermsRegistry;
 import com.nowini.news.domain.NewsItem.Sentiment;
@@ -66,7 +67,8 @@ public class NewsTranslator {
         try {
             LlmClient.LlmResult result = llmClient.generate(systemPrompt(), userPrompt,
                     com.nowini.common.metrics.LlmMetrics.FEATURE_NEWS);
-            TranslateResponse parsed = objectMapper.readValue(result.content(), TranslateResponse.class);
+            TranslateResponse parsed = objectMapper.readValue(
+                    LlmJson.extract(result.content()), TranslateResponse.class);
             if (parsed.title_ko == null || parsed.summary_ko == null || parsed.sentiment == null) {
                 log.warn("news-translator incomplete payload id={}", news.id());
                 return null;
