@@ -20,7 +20,11 @@ export function SignalGuide() {
         </li>
         <li className="flex items-start gap-2">
           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" aria-hidden="true" />
-          <span>방향 일치율은 과거 시그널이 실제 주가 방향과 얼마나 일치했는지 보여줍니다</span>
+          <span>
+            위쪽 &lsquo;진입 타이밍&rsquo;은 차트 지표만 보는 <strong className="font-semibold text-fg-secondary">진입 자리</strong> 판정이고,
+            이 &lsquo;AI 분석&rsquo;은 뉴스·실적까지 포함한 <strong className="font-semibold text-fg-secondary">방향 전망</strong>입니다.
+            방향이 좋아 보여도 지금이 진입 자리는 아닐 수 있어요
+          </span>
         </li>
       </ul>
     </CollapsibleSection>

@@ -50,7 +50,7 @@ public class IndicatorService {
     public IndicatorSnapshot compute(String ticker) {
         Duration ttl = MarketStatusResolver.resolve() == MarketStatus.OPEN
                 ? TTL_OPEN : MarketStatusResolver.durationUntilNextOpen();
-        return cache.getOrLoad("ind:v2:" + ticker, TYPE, ttl, () -> doCompute(ticker));
+        return cache.getOrLoad("ind:v3:" + ticker, TYPE, ttl, () -> doCompute(ticker));
     }
 
     private IndicatorSnapshot doCompute(String ticker) {
@@ -78,9 +78,15 @@ public class IndicatorService {
         double bbLower = lastDouble(bb.lower(), last);
         double percentB = lastDouble(new PercentBIndicator(close, 20, 2.0), last);
 
+        int barCount = series.getBarCount();
         double ma5 = lastDouble(new SMAIndicator(close, 5), last);
         double ma20 = lastDouble(new SMAIndicator(close, 20), last);
         double ma60 = lastDouble(new SMAIndicator(close, 60), last);
+        // 봉 수가 기간 미만이면 ta4j 가 부분 평균을 내므로, period 이상일 때만 신뢰값 사용
+        Double ma10 = sma(close, 10, last, barCount);
+        Double ma50 = sma(close, 50, last, barCount);
+        Double ma120 = sma(close, 120, last, barCount);
+        Double ma200 = sma(close, 200, last, barCount);
 
         long avgVolume20d = computeAvgVolume(candles, 20);
 
@@ -89,7 +95,7 @@ public class IndicatorService {
                 rsi14,
                 new IndicatorSnapshot.Macd(macdValue, signalValue, macdValue - signalValue),
                 new IndicatorSnapshot.Bollinger(bbUpper, bbMiddle, bbLower, percentB),
-                new IndicatorSnapshot.MovingAverage(ma5, ma20, ma60),
+                new IndicatorSnapshot.MovingAverage(ma5, ma10, ma20, ma50, ma60, ma120, ma200),
                 avgVolume20d,
                 IndicatorTooltips.KO
         );
@@ -120,6 +126,13 @@ public class IndicatorService {
             sum += candles.get(i).volume();
         }
         return sum / days;
+    }
+
+    /** period 이상 봉이 있을 때만 SMA 산출, 부족하면 null(부분 평균 방지). */
+    private static Double sma(ClosePriceIndicator close, int period, int last, int barCount) {
+        if (barCount < period) return null;
+        double v = lastDouble(new SMAIndicator(close, period), last);
+        return v > 0 ? v : null;
     }
 
     private static double lastDouble(Indicator<Num> ind, int idx) {
