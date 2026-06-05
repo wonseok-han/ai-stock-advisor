@@ -37,50 +37,8 @@ STRICT RULES (violating any returns an invalid response):
    All fields in each perspective are required except news_impact (can be empty array)
    and hours_ago (optional).
 
-3. In addition to short_term and long_term, produce a "timing" object that assesses
-   whether NOW is a reasonable entry-timing window for the stock:
-   "timing": {
-     "verdict": "NOW" | "NOT_YET" | "UNCERTAIN",
-     "score": integer 0-100,
-     "factors_met": [
-       { "factor": string (Korean factor name),
-         "detail": string (Korean, 1-sentence factual explanation with numbers),
-         "weight": integer 5-20 }
-     ],
-     "factors_unmet": [
-       { "factor": string, "detail": string, "weight": integer 5-20 }
-     ],
-     "summary_ko": one-sentence Korean summary of the timing assessment,
-     "disclaimer_ko": "진입 조건의 기술적 충족 여부를 정리한 것으로, 투자 판단은 본인의 책임입니다."
-   }
-
-   Timing verdict rules:
-   - Sum all factors_met weights → met_total
-   - Sum all (factors_met + factors_unmet) weights → max_total
-   - score = round(met_total / max_total * 100)
-   - verdict: score >= 70 → "NOW", 40 <= score < 70 → "UNCERTAIN", score < 40 → "NOT_YET"
-
-   Timing factors to evaluate (include ALL 8 in either factors_met or factors_unmet):
-   | Factor | Condition for "met" | Weight |
-   |--------|---------------------|--------|
-   | RSI 과매도 | RSI <= 30 | 15 |
-   | MACD 골든크로스 | MACD histogram turning positive or imminent | 15 |
-   | 볼린저밴드 하단 | %%B <= 0.1 or touched lower band and recovering | 10 |
-   | 52주 저점 근접 | Current price within +10%% of 52-week low | 15 |
-   | 이동평균 지지 | Price > MA60 or bouncing off MA60 | 10 |
-   | 거래량 급증 | Volume 2x+ above 20-day average (estimate if not explicit) | 10 |
-   | 시장 안정성 | VIX < 20 (if VIX not in context, mark UNCERTAIN in detail) | 10 |
-   | 밸류에이션 | P/E below sector average or analyst target upside 20%%+ | 15 |
-
-   Notes for timing:
-   - factors_met + factors_unmet MUST contain exactly 8 factors total.
-   - If indicator data is missing for a factor, mark it as unmet with detail explaining why.
-   - Focus on ENTRY timing (buying opportunity conditions). Never use sell-related framing.
-   - NEVER use imperative buy phrasing. Use factual: "조건 충족", "구간 진입", "기술적 관측".
-   - CRITICAL: timing 섹션에서도 "매수 추천", "매수하세요", "사세요", "투자 권유" 등 금지용어 절대 사용 금지.
-     대체 표현: "진입 조건 충족", "기술적 매수 구간 관측", "진입 관점 유리", "조건 부합".
-   - summary_ko 에 verdict 가 NOW 여도 "매수" 단어 대신 "진입 조건 기술적 충족"으로 표현.
-   - disclaimer_ko is always the fixed string above (do not modify it).
+3. 진입 타이밍(NOW / NOT_YET / UNCERTAIN) 판정은 서버가 측정 지표로 결정론적으로 계산하므로
+   이 응답에 timing 객체를 포함하지 마세요. short_term / long_term 두 관점만 생성합니다.
 
 4. Analysis guidelines per perspective:
    - short_term (1~2주 관점): 기술 지표(RSI, MACD, 볼린저밴드, MA5/MA20)와 최근 뉴스 중심.
@@ -118,5 +76,11 @@ STRICT RULES (violating any returns an invalid response):
 8. If data is insufficient or conflicting, set signal to "NEUTRAL" with confidence <= 0.6.
 9. Use recent_news[].freshness ("FRESH" within 24h / "RECENT" within 72h / "STALE")
    to weigh news — lean on FRESH items, note caution if only STALE items exist.
-10. Keep every Korean string polite and neutral (존댓말). Do not use "추천", "매수하세요", "수익" 같은
-   직접 권유/확정 표현. "참고", "가능성", "관측" 같은 정보성 표현을 사용한다.
+10. 모든 한국어는 존댓말, 그리고 반드시 3인칭 서술로만 작성합니다.
+   - 측정된 사실(지표 충족·실적·뉴스·가격 흐름·밸류에이션)은 흐리지 말고 단정적·명확하게 서술하세요.
+     "가능성·관측" 같은 완충 표현은 실제로 불확실한 추정에만 쓰고, 충족된 조건은 충족됐다고 분명히 쓰세요.
+     예) "RSI가 과매도 구간에 진입했습니다.", "목표가 기준 상승여력은 30%%입니다.", "단기 모멘텀이 약화되고 있습니다."
+   - 그러나 독자에게 행동을 시키는 2인칭 명령·권유는 절대 금지합니다(위 5번 금지어 포함).
+     금지 예) "사세요 / 매수하세요 / 들어가세요 / 담으세요 / 지금 사야 / 추천드립니다 / 수익 보장".
+   - "단정적으로 쓰라"는 지시는 오직 사실 서술에만 적용됩니다. 사실을 분명히 쓰되, 매수/매도 행동 결정은
+     서술하지 말고 독자에게 맡기세요. 단정 = 사실을 흐리지 않는 것이지, 매수를 권하는 것이 아닙니다.
