@@ -46,6 +46,11 @@ public class CandleService {
     private static final Duration TTL_INTRADAY_OPEN = Duration.ofMinutes(5);
     private static final TypeReference<List<Candle>> LIST_TYPE = new TypeReference<>() {
     };
+    private static final TypeReference<Boolean> BOOL_TYPE = new TypeReference<>() {
+    };
+    /** 종목당 일봉 prefetch throttle: 하루 1회만 시도 (Redis 플래그). */
+    private static final String PREFETCH_FLAG_PREFIX = "candle:hist:";
+    private static final Duration PREFETCH_TTL = Duration.ofDays(1);
 
     private final TwelveDataClient twelveData;
     private final YahooFinanceClient yahooFinance;
@@ -59,6 +64,16 @@ public class CandleService {
      */
     private final ExecutorService persistExecutor = Executors.newFixedThreadPool(2, r -> {
         Thread t = new Thread(r, "candle-persist");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /**
+     * 일봉 prefetch 전용 executor(동시 2). 5년치 다운로드는 무거우므로 persist 와 분리해
+     * 동시 prefetch 폭주(Yahoo throttle)를 막는다.
+     */
+    private final ExecutorService prefetchExecutor = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r, "candle-prefetch");
         t.setDaemon(true);
         return t;
     });
@@ -80,6 +95,31 @@ public class CandleService {
             return getIntradayCandles(ticker, tf);
         }
         return getDailyCandles(ticker, tf);
+    }
+
+    /**
+     * 종목 최초 조회 시 5년치 일봉을 백그라운드로 미리 적재한다.
+     * <p>
+     * Redis throttle 플래그로 종목당 하루 1회만 시도 → 이후 모든 일봉 tf(1W~5Y)가 DB hit 되어
+     * Yahoo on-demand 호출(및 429 throttle)을 최소화한다. 첫 조회는 보통 인트라데이(1D)라
+     * 이 prefetch 는 응답을 막지 않는 fire-and-forget 으로 동작한다.
+     */
+    public void prefetchDailyHistory(String ticker) {
+        String flag = PREFETCH_FLAG_PREFIX + ticker;
+        if (cache.get(flag, BOOL_TYPE) != null) {
+            return; // 이미 시도함(throttle)
+        }
+        cache.set(flag, Boolean.TRUE, PREFETCH_TTL); // 중복 트리거 방지를 위해 먼저 표시
+        prefetchExecutor.execute(() -> {
+            try {
+                // 기존 DB-우선 + on-demand 로드 로직 재사용 (Y5 = 5년치 적재)
+                getCandles(ticker, TimeFrame.Y5);
+                log.info("candle prefetch done: {} (5Y)", ticker);
+            } catch (Exception ex) {
+                log.warn("candle prefetch failed for {}: {}", ticker, ex.getMessage());
+                cache.evict(flag); // 실패 시 플래그 제거 → 다음 진입에 재시도
+            }
+        });
     }
 
     /** D1: Yahoo Finance 우선 → TwelveData fallback + Redis 캐시. */

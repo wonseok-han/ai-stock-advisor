@@ -73,6 +73,10 @@ public class StockDetailService {
     public StockDetailResponse getDetail(String ticker, TimeFrame tf) {
         List<BlockError> errors = new ArrayList<>();
 
+        // 종목 진입 시 5년치 일봉을 백그라운드로 prefetch (응답을 막지 않음).
+        // 이후 모든 일봉 tf(1W~5Y)가 DB hit 되어 Yahoo on-demand 호출을 최소화한다.
+        candleService.prefetchDailyHistory(ticker);
+
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Future<StockProfile> profileF = executor.submit(() -> profileService.getProfile(ticker));
             Future<Quote> quoteF = executor.submit(() -> quoteService.getQuote(ticker));
