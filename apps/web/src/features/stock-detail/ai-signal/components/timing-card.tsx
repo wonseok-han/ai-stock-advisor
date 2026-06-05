@@ -1,22 +1,38 @@
 "use client";
 
+import { overallRead } from "@/features/stock-detail/ai-signal/lib/overall-read";
 import { cn } from "@/lib/cn";
 
 import type {
+  AiSignalClass,
   TimingFactor,
   TimingVerdict,
   TimingVerdictType,
 } from "@/types/ai-signal";
 
-export function TimingCard({ timing }: { timing: TimingVerdict }) {
+export function TimingCard({
+  timing,
+  signal,
+}: {
+  timing: TimingVerdict;
+  signal: AiSignalClass;
+}) {
   const { label, colorCls, bgCls, barCls } = verdictStyle(timing.verdict);
+  const overall = overallRead(signal, timing.verdict);
 
   return (
     <section aria-label="타이밍 판정" className="card brand-glow p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <VerdictIcon verdict={timing.verdict} />
-          <h2 className={cn("text-lg font-bold", colorCls)}>{label}</h2>
+          <div>
+            <h2 className={cn("text-lg font-bold leading-tight", colorCls)}>
+              {label}
+            </h2>
+            <p className="text-[11px] text-fg-muted">
+              저점·눌림목 진입 조건 기준
+            </p>
+          </div>
         </div>
         <span className="text-sm font-medium tabular-nums text-fg-secondary">
           조건 충족도 <span className="text-fg">{timing.score}%</span>
@@ -49,6 +65,15 @@ export function TimingCard({ timing }: { timing: TimingVerdict }) {
       <p className={cn("mt-4 rounded-xl p-3 text-sm text-fg-secondary", bgCls)}>
         {timing.summaryKo}
       </p>
+
+      {overall && (
+        <div className="mt-3 rounded-xl border border-border bg-bg-muted/60 p-3">
+          <p className="mb-1 text-xs font-semibold text-fg-muted">
+            종합 해석 <span className="font-normal">(방향 전망 + 진입 조건)</span>
+          </p>
+          <p className="text-sm text-fg">{overall}</p>
+        </div>
+      )}
 
       <p className="mt-3 text-xs text-fg-muted">{timing.disclaimerKo}</p>
     </section>

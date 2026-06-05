@@ -1,5 +1,6 @@
 package com.nowini.ai.service;
 
+import com.nowini.ai.domain.TimingVerdict;
 import com.nowini.market.domain.MarketIndex;
 import com.nowini.market.domain.MarketOverviewResponse;
 import com.nowini.market.service.MarketOverviewService;
@@ -59,6 +60,7 @@ public class ContextAssembler {
     private final SecFilingService secFilingService;
     private final MarketOverviewService marketOverviewService;
     private final CompanyOverviewService companyOverviewService;
+    private final TimingScorer timingScorer;
 
     public ContextAssembler(StockProfileService profileService,
                             QuoteService quoteService,
@@ -67,7 +69,8 @@ public class ContextAssembler {
                             AnalystEstimatesService analystService,
                             SecFilingService secFilingService,
                             MarketOverviewService marketOverviewService,
-                            CompanyOverviewService companyOverviewService) {
+                            CompanyOverviewService companyOverviewService,
+                            TimingScorer timingScorer) {
         this.profileService = profileService;
         this.quoteService = quoteService;
         this.indicatorService = indicatorService;
@@ -76,9 +79,13 @@ public class ContextAssembler {
         this.secFilingService = secFilingService;
         this.marketOverviewService = marketOverviewService;
         this.companyOverviewService = companyOverviewService;
+        this.timingScorer = timingScorer;
     }
 
-    public Map<String, Object> assemble(String ticker) {
+    /** LLM 프롬프트용 컨텍스트 맵 + 코드로 계산한 진입 타이밍(결정론적). */
+    public record AssembledContext(Map<String, Object> prompt, TimingVerdict timing) {}
+
+    public AssembledContext assemble(String ticker) {
         try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
             Future<StockProfile> pF = ex.submit(() -> safely(() -> profileService.getProfile(ticker)));
             Future<Quote> qF = ex.submit(() -> safely(() -> quoteService.getQuote(ticker)));
@@ -90,19 +97,26 @@ public class ContextAssembler {
             Future<BigDecimal> vixF = ex.submit(() -> safely(this::fetchVix));
             Future<CompanyOverview> coF = ex.submit(() -> safely(() -> companyOverviewService.getOverview(ticker)));
 
+            Quote quote = await(qF);
+            IndicatorSnapshot ind = await(iF);
+            AnalystEstimates analyst = await(aF);
+            BigDecimal vix = await(vixF);
+
             Map<String, Object> ctx = new LinkedHashMap<>();
             ctx.put("ticker", ticker);
             ctx.put("profile", profileOf(await(pF)));
-            ctx.put("quote", quoteOf(await(qF)));
-            ctx.put("indicators", indicatorsOf(await(iF)));
+            ctx.put("quote", quoteOf(quote));
+            ctx.put("indicators", indicatorsOf(ind));
             ctx.put("recent_news", newsOf(await(nF)));
-            ctx.put("analyst_estimates", analystOf(await(aF)));
+            ctx.put("analyst_estimates", analystOf(analyst));
             ctx.put("sec_filings", secFilingsOf(await(sfF)));
             ctx.put("sec_financials", secFinancialsOf(await(sxF)));
             ctx.put("fundamentals", fundamentalsOf(await(coF)));
-            BigDecimal vix = await(vixF);
             if (vix != null) ctx.put("vix", vix);
-            return ctx;
+
+            // 타이밍은 LLM이 아니라 코드가 결정론적으로 계산
+            TimingVerdict timing = timingScorer.score(quote, ind, analyst, vix);
+            return new AssembledContext(ctx, timing);
         }
     }
 
