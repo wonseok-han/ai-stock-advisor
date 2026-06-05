@@ -13,7 +13,6 @@ import { SignalGuide } from "@/features/stock-detail/ai-signal/components/signal
 import { TimingCard } from "@/features/stock-detail/ai-signal/components/timing-card";
 import { WhatToWatch } from "@/features/stock-detail/ai-signal/components/what-to-watch";
 import { useAiSignal } from "@/features/stock-detail/ai-signal/hooks/use-ai-signal";
-import { AiAccuracyBadge } from "@/features/stock-detail/components/ai-accuracy-badge";
 import { cn } from "@/lib/cn";
 
 import type { AiSignalClass, SignalPerspective } from "@/types/ai-signal";
@@ -106,7 +105,9 @@ function AiSignalContent({ ticker }: { ticker: string }) {
 
   return (
     <>
-      {data.timing && <TimingCard timing={data.timing} />}
+      {data.timingShort && data.timingLong && (
+        <TimingCard short={data.timingShort} long={data.timingLong} />
+      )}
 
       <section aria-label="AI 참고 분석" className="card brand-glow p-5">
       <div className="mb-3">
@@ -139,10 +140,6 @@ function AiSignalContent({ ticker }: { ticker: string }) {
         모델: {data.modelName} · 생성:{" "}
         {new Date(data.generatedAt).toLocaleString("ko-KR")}
       </p>
-
-      <div className="mt-4 border-t border-border pt-3">
-        <AiAccuracyBadge window={30} />
-      </div>
     </section>
     </>
   );
@@ -227,17 +224,18 @@ function mapSignal(signal: AiSignalClass): {
   switch (signal) {
     case "STRONG_BUY":
       return {
-        label: "강한 상승 신호",
+        label: "강한 상승 전망",
         barCls: "bg-emerald-500",
         badgeCls: "bg-emerald-500/15 text-success",
       };
     case "BUY":
       return {
-        label: "상승 신호",
+        label: "상승 전망",
         barCls: "bg-emerald-400",
         badgeCls: "bg-emerald-500/10 text-success",
       };
     case "NEUTRAL":
+    default:
       return {
         label: "중립",
         barCls: "bg-zinc-400 dark:bg-zinc-500",
@@ -245,13 +243,13 @@ function mapSignal(signal: AiSignalClass): {
       };
     case "SELL":
       return {
-        label: "하락 신호",
+        label: "하락 전망",
         barCls: "bg-red-400",
         badgeCls: "bg-red-500/10 text-danger",
       };
     case "STRONG_SELL":
       return {
-        label: "강한 하락 신호",
+        label: "강한 하락 전망",
         barCls: "bg-red-500",
         badgeCls: "bg-red-500/15 text-danger",
       };

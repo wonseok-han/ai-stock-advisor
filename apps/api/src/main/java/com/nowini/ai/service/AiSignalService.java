@@ -4,6 +4,7 @@ import com.nowini.ai.domain.AiSignal;
 import com.nowini.ai.domain.AiSignal.Signal;
 import com.nowini.ai.domain.AiSignal.Timeframe;
 import com.nowini.ai.domain.SignalPerspective;
+import com.nowini.ai.domain.TimingVerdict;
 import com.nowini.ai.infra.AiSignalAuditEntity;
 import com.nowini.ai.infra.AiSignalAuditRepository;
 import com.nowini.ai.infra.GeminiProperties;
@@ -62,16 +63,17 @@ public class AiSignalService {
     }
 
     public AiSignal getSignal(String ticker) {
-        String cacheKey = "ai:" + ticker + ":v3";
+        String cacheKey = "ai:" + ticker + ":v4";
         AiSignal cached = cache.get(cacheKey, CACHE_TYPE);
-        if (cached != null && cached.shortTerm() != null && cached.longTerm() != null) {
+        if (isUsable(cached)) {
             return cached;
         }
 
         rateLimiter.checkOrThrow();
 
         UUID requestId = UUID.randomUUID();
-        Map<String, Object> ctx = contextAssembler.assemble(ticker);
+        ContextAssembler.AssembledContext ac = contextAssembler.assemble(ticker);
+        Map<String, Object> ctx = ac.prompt();
         String systemPrompt = promptBuilder.systemPrompt();
         String userPrompt = promptBuilder.userPrompt(ctx);
 
@@ -85,7 +87,7 @@ public class AiSignalService {
             if (!validated.valid()) {
                 log.warn("ai-signal validation failed ticker={} reason={} hits={}",
                         ticker, validated.reason(), validated.forbiddenDetected());
-                result = fallback(ticker);
+                result = fallback(ticker, ac.timingShort(), ac.timingLong());
                 saveAudit(requestId, ticker, result, ctx, validated.rawMap(),
                         validated.forbiddenDetected(), null, true,
                         (int) (System.currentTimeMillis() - started),
@@ -95,7 +97,8 @@ public class AiSignalService {
                         ticker,
                         validated.shortTerm(),
                         validated.longTerm(),
-                        validated.timing(),
+                        ac.timingShort(),
+                        ac.timingLong(),
                         Instant.now(),
                         raw.modelName(),
                         Disclaimers.AI_SIGNAL,
@@ -108,7 +111,7 @@ public class AiSignalService {
             }
         } catch (Exception ex) {
             log.warn("ai-signal upstream failure ticker={} reason={}", ticker, ex.getMessage());
-            result = fallback(ticker);
+            result = fallback(ticker, ac.timingShort(), ac.timingLong());
             saveAudit(requestId, ticker, result, ctx, null, List.of(), null, true,
                     (int) (System.currentTimeMillis() - started), null, null);
         }
@@ -117,7 +120,18 @@ public class AiSignalService {
         return result;
     }
 
-    private AiSignal fallback(String ticker) {
+    /**
+     * 캐시 hit 재사용 가능 여부. shortTerm/longTerm 객체뿐 아니라 signal enum 까지 검사한다.
+     * 레거시/손상 캐시(perspective 는 있으나 signal=null)가 그대로 응답돼 FE 가 깨지는 것을 막고,
+     * 그런 값은 무시 → 재생성으로 정상 데이터가 캐시를 덮어쓰게 한다.
+     */
+    private static boolean isUsable(AiSignal s) {
+        return s != null
+                && s.shortTerm() != null && s.shortTerm().signal() != null
+                && s.longTerm() != null && s.longTerm().signal() != null;
+    }
+
+    private AiSignal fallback(String ticker, TimingVerdict timingShort, TimingVerdict timingLong) {
         SignalPerspective neutral = new SignalPerspective(
                 Signal.NEUTRAL,
                 0.5,
@@ -128,7 +142,7 @@ public class AiSignalService {
                 "일시적으로 AI 분석이 제한되어 중립(NEUTRAL) 관점으로 제공됩니다. 투자 판단 시 참고용으로만 활용해주세요.",
                 null, null, null, null
         );
-        return new AiSignal(ticker, neutral, neutral, null, Instant.now(),
+        return new AiSignal(ticker, neutral, neutral, timingShort, timingLong, Instant.now(),
                 modelName, Disclaimers.AI_SIGNAL, true);
     }
 

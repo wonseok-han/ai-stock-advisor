@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/auth-provider';
+import { usePwaInstall } from '@/features/pwa/use-pwa-install';
 import { useTheme } from '@/components/theme/theme-provider';
 import { cn } from '@/lib/cn';
 
@@ -18,6 +19,7 @@ export function FloatingToolbox() {
   const fabRef = useRef<HTMLButtonElement>(null);
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { canInstall, promptInstall } = usePwaInstall();
   const router = useRouter();
 
   const close = useCallback(() => {
@@ -133,6 +135,22 @@ export function FloatingToolbox() {
               ))}
             </div>
           </div>
+
+          {/* 앱 설치 (설치 가능할 때만) */}
+          {canInstall && (
+            <button
+              onClick={async () => {
+                await promptInstall();
+                close();
+              }}
+              className="flex w-full cursor-pointer items-center gap-2.5 border-b border-border px-3 py-2.5 text-sm text-fg-secondary transition-colors hover:bg-bg-muted"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              앱 설치
+            </button>
+          )}
 
           {/* 피드백 */}
           <Link

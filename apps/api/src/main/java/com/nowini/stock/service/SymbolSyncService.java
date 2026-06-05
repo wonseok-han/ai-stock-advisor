@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.List;
  * 100건씩 독립 트랜잭션 커밋 (Supabase statement_timeout 120s 대응).
  */
 @Service
+@Profile("!local & !test")   // 로컬·테스트에선 스케줄러 끔 (운영과 동시 실행 시 중복 동기화 방지)
 public class SymbolSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(SymbolSyncService.class);

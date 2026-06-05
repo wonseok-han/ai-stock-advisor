@@ -77,12 +77,18 @@ public class MarketRegimeService {
     }
 
     public MarketRegimeResponse getRegime() {
-        return cache.getOrLoad("market:regime", TYPE, ttl(), this::fetch);
+        // 종합 점수가 없으면(핵심 지표 전부 실패) 불완전 → 짧은 TTL로만 캐시(자가복구)
+        return cache.getOrLoad("market:regime", TYPE, ttl(), this::fetch,
+                r -> r.composite() != null);
     }
 
     /** 국면 지표 캐시 워밍 (콜드패스 방지). AI 해석은 비싼 LLM이라 워밍 제외. */
     public void refresh() {
-        cache.set("market:regime", fetch(), ttl());
+        MarketRegimeResponse data = fetch();
+        // 불완전(종합 점수 없음) 결과로 last-good 캐시를 덮어쓰지 않음
+        if (data.composite() != null) {
+            cache.set("market:regime", data, ttl());
+        }
     }
 
     /** AI 해석 (로그인 사용자 전용). 동일 지표 스냅샷 기반, 실패 시 aiSummary=null. */

@@ -1,9 +1,18 @@
-name: Deploy BE (Render)
+name: Deploy (BE → FE)
 
-# main 에 머지되면(릴리즈) Render Deploy Hook 을 호출해 BE 배포를 트리거한다.
-# Render 의 Root Directory(apps/api) 경로 필터가 모노레포 머지에서 배포를 누락시키는
-# 문제를 우회하기 위해, 경로와 무관하게 명시적으로 배포를 건다.
-# (Render 대시보드 Auto-Deploy 는 Off 로 두어 중복 배포를 방지하는 것을 권장.)
+# main 에 머지되면(릴리즈) BE(Render) 를 먼저 배포하고, BE 가 live 가 된 뒤에야
+# FE(Vercel) 배포를 트리거한다. 이렇게 순서를 강제해 "새 FE ↔ 구 BE" 가 만나는
+# 배포 시차 윈도우를 없앤다.
+#
+# 전제:
+#   - Vercel: apps/web/vercel.json 의 git.deploymentEnabled.main=false 로 git push 자동배포 OFF.
+#             (Deploy Hook 은 이 설정의 영향을 받지 않으므로 아래 스텝에서 정상 트리거된다.)
+#   - Render: 대시보드 Auto-Deploy 는 Off (Deploy Hook 으로만 트리거).
+#
+# 필요한 secrets:
+#   - RENDER_DEPLOY_HOOK  : Render 서비스 Deploy Hook URL (.../deploy/srv-xxx?key=yyy)
+#   - RENDER_API_KEY      : Render Account API Key (배포 status 폴링용, rnd_xxx)
+#   - VERCEL_DEPLOY_HOOK  : Vercel Deploy Hook URL (FE 배포 트리거)
 
 on:
   push:
@@ -13,7 +22,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render deploy hook
+      - name: Trigger Render deploy (BE)
+        id: render
         env:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
@@ -21,5 +31,57 @@ jobs:
             echo "::error::RENDER_DEPLOY_HOOK secret 이 설정되지 않았습니다."
             exit 1
           fi
-          curl -fsS -X POST "$HOOK"
-          echo "Render deploy triggered."
+          RESP=$(curl -fsS -X POST "$HOOK")
+          echo "hook response: $RESP"
+          DEPLOY_ID=$(echo "$RESP" | jq -r '.deploy.id // empty')
+          # Deploy Hook URL 에서 service id(srv-xxx) 추출 → 별도 secret 불필요
+          SERVICE_ID=$(echo "$HOOK" | sed -n 's#.*/deploy/\(srv-[^/?]*\).*#\1#p')
+          if [ -z "$DEPLOY_ID" ] || [ -z "$SERVICE_ID" ]; then
+            echo "::error::deploy id 또는 service id 추출 실패 (deploy_id='$DEPLOY_ID' service_id='$SERVICE_ID')"
+            exit 1
+          fi
+          echo "deploy_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+          echo "service_id=$SERVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "Render deploy triggered: $DEPLOY_ID (service $SERVICE_ID)"
+
+      - name: Wait for Render to go live
+        env:
+          API_KEY: ${{ secrets.RENDER_API_KEY }}
+          DEPLOY_ID: ${{ steps.render.outputs.deploy_id }}
+          SERVICE_ID: ${{ steps.render.outputs.service_id }}
+        run: |
+          if [ -z "$API_KEY" ]; then
+            echo "::error::RENDER_API_KEY secret 이 설정되지 않았습니다."
+            exit 1
+          fi
+          # 15s * 80 = 최대 20분 대기
+          for i in $(seq 1 80); do
+            STATUS=$(curl -fsS -H "Authorization: Bearer $API_KEY" \
+              "https://api.render.com/v1/services/$SERVICE_ID/deploys/$DEPLOY_ID" \
+              | jq -r '.status')
+            echo "[$i] render deploy status: $STATUS"
+            case "$STATUS" in
+              live)
+                echo "BE is live."
+                exit 0
+                ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Render deploy failed with status: $STATUS"
+                exit 1
+                ;;
+            esac
+            sleep 15
+          done
+          echo "::error::Render deploy 가 20분 내 live 가 되지 않았습니다."
+          exit 1
+
+      - name: Trigger Vercel deploy (FE)
+        env:
+          VERCEL_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_HOOK" ]; then
+            echo "::error::VERCEL_DEPLOY_HOOK secret 이 설정되지 않았습니다."
+            exit 1
+          fi
+          curl -fsS -X POST "$VERCEL_HOOK" > /dev/null
+          echo "Vercel deploy triggered (BE live 확인 후)."

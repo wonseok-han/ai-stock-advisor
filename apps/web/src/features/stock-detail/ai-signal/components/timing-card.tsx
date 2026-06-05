@@ -1,5 +1,6 @@
 "use client";
 
+import { overallRead } from "@/features/stock-detail/ai-signal/lib/overall-read";
 import { cn } from "@/lib/cn";
 
 import type {
@@ -8,22 +9,78 @@ import type {
   TimingVerdictType,
 } from "@/types/ai-signal";
 
-export function TimingCard({ timing }: { timing: TimingVerdict }) {
+export function TimingCard({
+  short,
+  long,
+}: {
+  short: TimingVerdict;
+  long: TimingVerdict;
+}) {
+  const overall = overallRead(short.verdict, long.verdict);
+
+  return (
+    <section aria-label="진입 타이밍" className="card brand-glow p-5">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold text-fg">진입 타이밍</h2>
+        <span className="text-[11px] text-fg-muted">단기 · 장기 관점</span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <TimingSection
+          period="단기 (1~2주)"
+          basis="눌림목·단기 반등 기준"
+          timing={short}
+        />
+        <TimingSection
+          period="장기 (6개월~1년)"
+          basis="추세선 지지·저평가 기준"
+          timing={long}
+        />
+      </div>
+
+      {overall && (
+        <div className="mt-3 rounded-xl border border-border bg-bg-muted/60 p-3">
+          <p className="mb-1 text-xs font-semibold text-fg-muted">종합 해석</p>
+          <p className="text-sm text-fg">{overall}</p>
+        </div>
+      )}
+
+      <p className="mt-3 text-xs text-fg-muted">{short.disclaimerKo}</p>
+    </section>
+  );
+}
+
+function TimingSection({
+  period,
+  basis,
+  timing,
+}: {
+  period: string;
+  basis: string;
+  timing: TimingVerdict;
+}) {
   const { label, colorCls, bgCls, barCls } = verdictStyle(timing.verdict);
 
   return (
-    <section aria-label="타이밍 판정" className="card brand-glow p-5">
+    <div className="rounded-xl border border-border p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <VerdictIcon verdict={timing.verdict} />
-          <h2 className={cn("text-lg font-bold", colorCls)}>{label}</h2>
+          <div>
+            <p className="text-[11px] text-fg-muted">
+              {period} · {basis}
+            </p>
+            <p className={cn("text-base font-bold leading-tight", colorCls)}>
+              {label}
+            </p>
+          </div>
         </div>
         <span className="text-sm font-medium tabular-nums text-fg-secondary">
           조건 충족도 <span className="text-fg">{timing.score}%</span>
         </span>
       </div>
 
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-muted">
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg-muted">
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500",
@@ -33,25 +90,19 @@ export function TimingCard({ timing }: { timing: TimingVerdict }) {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <FactorList title="충족" factors={timing.factorsMet} icon={<CheckIcon />} />
         <FactorList
-          title="충족된 조건"
-          factors={timing.factorsMet}
-          icon={<CheckIcon />}
-        />
-        <FactorList
-          title="미충족 조건"
+          title="미충족"
           factors={timing.factorsUnmet}
           icon={<XIcon />}
         />
       </div>
 
-      <p className={cn("mt-4 rounded-xl p-3 text-sm text-fg-secondary", bgCls)}>
+      <p className={cn("mt-2 rounded-lg p-2 text-xs text-fg-secondary", bgCls)}>
         {timing.summaryKo}
       </p>
-
-      <p className="mt-3 text-xs text-fg-muted">{timing.disclaimerKo}</p>
-    </section>
+    </div>
   );
 }
 
@@ -66,13 +117,13 @@ function FactorList({
 }) {
   if (factors.length === 0) return null;
   return (
-    <div className="rounded-xl bg-bg-muted p-3">
-      <h3 className="mb-2 text-xs font-semibold text-fg-muted">{title}</h3>
-      <ul className="flex flex-col gap-1.5">
+    <div className="rounded-lg bg-bg-muted p-2">
+      <h3 className="mb-1 text-[11px] font-semibold text-fg-muted">{title}</h3>
+      <ul className="flex flex-col gap-1">
         {factors.map((f, i) => (
           <li
             key={i}
-            className="flex items-start gap-2 text-xs text-fg-secondary"
+            className="flex items-start gap-1.5 text-[11px] text-fg-secondary"
           >
             <span className="mt-px shrink-0">{icon}</span>
             <span>
@@ -91,17 +142,13 @@ function CheckIcon() {
   return (
     <svg
       aria-hidden="true"
-      className="h-4 w-4 text-success"
+      className="h-3.5 w-3.5 text-success"
       fill="none"
       viewBox="0 0 24 24"
       strokeWidth={3}
       stroke="currentColor"
     >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4.5 12.75l6 6 9-13.5"
-      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   );
 }
@@ -110,17 +157,13 @@ function XIcon() {
   return (
     <svg
       aria-hidden="true"
-      className="h-4 w-4 text-danger"
+      className="h-3.5 w-3.5 text-danger"
       fill="none"
       viewBox="0 0 24 24"
       strokeWidth={3}
       stroke="currentColor"
     >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 18L18 6M6 6l12 12"
-      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   );
 }

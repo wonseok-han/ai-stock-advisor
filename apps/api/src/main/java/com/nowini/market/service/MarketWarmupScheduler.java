@@ -4,6 +4,7 @@ import com.nowini.stock.domain.MarketStatus;
 import com.nowini.stock.domain.MarketStatusResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
  * 주기는 각 캐시 TTL보다 짧게(마진 확보) 잡되 FMP 250/day 한도를 고려한다.
  */
 @Component
+@Profile("!local & !test")   // 로컬·테스트에선 스케줄러 끔 (운영과 동시 실행 시 중복 호출 방지)
 public class MarketWarmupScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(MarketWarmupScheduler.class);

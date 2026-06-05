@@ -82,12 +82,18 @@ public class MarketOverviewService {
     }
 
     public MarketOverviewResponse getOverview() {
-        return cache.getOrLoad("market:overview", TYPE, ttl(), this::fetchOverview);
+        // 지수가 비면 불완전 → 짧은 TTL로만 캐시(자가복구)
+        return cache.getOrLoad("market:overview", TYPE, ttl(), this::fetchOverview,
+                r -> r.indices() != null && !r.indices().isEmpty());
     }
 
     /** 캐시 워밍 — 콜드패스 방지용으로 스케줄러가 만료 전 미리 캐시를 덮어쓴다. */
     public void refresh() {
-        cache.set("market:overview", fetchOverview(), ttl());
+        MarketOverviewResponse data = fetchOverview();
+        // 불완전(지수 빈) 결과로 last-good 캐시를 덮어쓰지 않음
+        if (data.indices() != null && !data.indices().isEmpty()) {
+            cache.set("market:overview", data, ttl());
+        }
     }
 
     private Duration ttl() {

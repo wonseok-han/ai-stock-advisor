@@ -2,6 +2,7 @@ package com.nowini.market.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
  * 뉴스는 장외에도 발행되므로 장 시간대 게이트를 두지 않는다(24/7). cron 이라 배포와 무관하게 시각 고정.
  */
 @Component
+@Profile("!local & !test")   // 로컬·테스트에선 스케줄러 끔 (운영과 동시 실행 시 중복 호출 방지)
 public class MarketNewsBatchScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(MarketNewsBatchScheduler.class);
