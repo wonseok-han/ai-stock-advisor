@@ -22,7 +22,7 @@ const INDEX_TOOLTIPS: Record<string, string> = {
 };
 
 const MACRO_TOOLTIPS: Record<string, string> = {
-  'VIX': '향후 30일 S&P 500의 예상 변동성을 나타내는 "공포 지수". 20 이상이면 불안, 30 이상이면 극도의 공포를 의미합니다.',
+  'VIX': '향후 30일 S&P 500의 예상 변동성을 나타내는 "공포 지수". 15 미만이면 안정, 20 초과면 불안 심리를 의미합니다. 상승할수록 공포가 커지는 지표입니다.',
   'USD/KRW': '미국 달러 대비 한국 원화 환율. 상승 시 원화 약세(수입 비용 증가), 하락 시 원화 강세를 의미합니다.',
   'DXY': '주요 6개 통화 대비 미국 달러의 강약을 나타내는 달러 인덱스. 상승 시 달러 강세, 하락 시 달러 약세입니다.',
   '10Y Treasury': '미국 10년 만기 국채 금리. 경기 전망과 인플레이션 기대를 반영하며, 주식 시장의 밸류에이션에 큰 영향을 줍니다.',
@@ -319,18 +319,22 @@ function FuturesCard({ index }: { index: MarketIndex }) {
 }
 
 function MacroCard({ index }: { index: MarketIndex }) {
+  const isVix = index.name === 'VIX';
   const up = index.change > 0;
   const down = index.change < 0;
 
-  const changeBg = up
+  // VIX는 상승=공포 확대(악재)라 다른 지수와 색 의미가 반대 — 상승 시 경고색, 하락 시 안도색.
+  const good = isVix ? down : up;
+  const bad = isVix ? up : down;
+
+  const changeBg = good
     ? 'bg-emerald-500/10 text-success'
-    : down
+    : bad
       ? 'bg-red-500/10 text-danger'
       : 'bg-bg-muted text-fg-muted';
 
-  const changeColor = up ? 'text-success' : down ? 'text-danger' : 'text-fg-muted';
+  const changeColor = good ? 'text-success' : bad ? 'text-danger' : 'text-fg-muted';
 
-  const isVix = index.name === 'VIX';
   const isDxy = index.name === 'DXY';
   const isTreasury = index.symbol === '^TNX';
   const noPrefix = isVix || isDxy;
@@ -340,12 +344,9 @@ function MacroCard({ index }: { index: MarketIndex }) {
       ? `${index.price.toFixed(2)}%`
       : `$${index.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  // 국면 VIX(>20 불안)와 기준 통일 — 20 초과 시 강조(amber).
   const vixHighlight =
-    isVix && index.price >= 30
-      ? 'ring-1 ring-red-500/40 bg-red-500/5'
-      : isVix && index.price >= 20
-        ? 'ring-1 ring-amber-500/40 bg-amber-500/5'
-        : '';
+    isVix && index.price > 20 ? 'ring-1 ring-amber-500/40 bg-amber-500/5' : '';
 
   const tooltip = MACRO_TOOLTIPS[index.name];
 
