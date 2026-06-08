@@ -87,16 +87,28 @@ public class MarketRegimeService {
     }
 
     public MarketRegimeResponse getRegime() {
-        // 종합 점수가 없으면(핵심 지표 전부 실패) 불완전 → 짧은 TTL로만 캐시(자가복구)
+        // 4축이 모두 채워진 완전한 응답만 풀 TTL 캐시. 일부 지표(예: 버핏지수)가 FRED 일시
+        // 실패로 빠지면 짧은 TTL로만 캐시해 곧 자동 재시도(자가복구) — 하루 종일 고착 방지.
         return cache.getOrLoad("market:regime", TYPE, ttl(), this::fetch,
-                r -> r.composite() != null);
+                MarketRegimeService::isComplete);
+    }
+
+    /** 4축(밸류에이션·위험심리·매크로·추세) 모두 지표가 있고 종합점수도 있으면 완전한 응답. */
+    private static boolean isComplete(MarketRegimeResponse r) {
+        if (r.composite() == null || r.axes() == null) return false;
+        return notEmpty(r.axes().valuation()) && notEmpty(r.axes().riskSentiment())
+                && notEmpty(r.axes().macro()) && notEmpty(r.axes().trendBreadth());
+    }
+
+    private static boolean notEmpty(Axis axis) {
+        return axis != null && axis.indicators() != null && !axis.indicators().isEmpty();
     }
 
     /** 국면 지표 캐시 워밍 (콜드패스 방지). AI 해석은 비싼 LLM이라 워밍 제외. */
     public void refresh() {
         MarketRegimeResponse data = fetch();
-        // 불완전(종합 점수 없음) 결과로 last-good 캐시를 덮어쓰지 않음
-        if (data.composite() != null) {
+        // 불완전(일부 축 비어있음) 결과로 last-good 캐시를 덮어쓰지 않음
+        if (isComplete(data)) {
             cache.set("market:regime", data, ttl());
         }
     }
