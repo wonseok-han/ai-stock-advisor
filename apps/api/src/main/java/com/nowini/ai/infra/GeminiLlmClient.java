@@ -345,12 +345,15 @@ public class GeminiLlmClient implements LlmClient {
         if (c == null || c.content() == null || c.content().parts() == null || c.content().parts().isEmpty()) {
             return null;
         }
-        // Gemini 2.5: parts 배열에 thought part 가 섞일 수 있음. thought=true 는 스킵.
+        // Gemini 2.5: parts 배열에 thought part 가 섞일 수 있고(thought=true 스킵),
+        // 긴 응답은 본문이 여러 text part 로 쪼개져 온다. 첫 part 만 반환하면 JSON 이
+        // 중간에서 잘려 파싱 실패하므로(end-of-input), thought 가 아닌 text part 를 모두 이어붙인다.
+        StringBuilder sb = new StringBuilder();
         for (GeminiResponse.Part p : c.content().parts()) {
             if (Boolean.TRUE.equals(p.thought())) continue;
-            if (p.text() != null && !p.text().isBlank()) return p.text();
+            if (p.text() != null && !p.text().isEmpty()) sb.append(p.text());
         }
-        return null;
+        return sb.length() == 0 ? null : sb.toString();
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
