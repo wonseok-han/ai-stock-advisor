@@ -371,7 +371,7 @@ public class MarketRegimeService {
 
     private static String vixZone(double v) {
         if (v < 15) return "calm";
-        if (v <= 25) return "normal";
+        if (v <= 20) return "normal";   // VIX 20 = 평온↔변동성 확대 통상 경계선
         return "fear";
     }
 
