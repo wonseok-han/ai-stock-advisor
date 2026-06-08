@@ -116,6 +116,8 @@ app:
     api-key: ${RESEND_API_KEY:}
     contact-email: ${CONTACT_EMAIL:}
   cache:
+    # 캐시 키 접두사 — 로컬/운영이 같은 Redis를 공유할 때 환경별 분리용(운영은 비워둠, 로컬은 dev 등).
+    prefix: ${CACHE_PREFIX:}
     news-ttl-hours: ${NEWS_CACHE_TTL_HOURS:24}
     ai-signal-ttl-minutes: ${AI_SIGNAL_CACHE_TTL_MINUTES:120}
   ai:

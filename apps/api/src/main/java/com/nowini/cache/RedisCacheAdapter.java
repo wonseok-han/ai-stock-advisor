@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -25,10 +26,19 @@ public class RedisCacheAdapter {
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
+    /** 환경별 키 접두사("dev:" 등). 비어 있으면 접두사 없음(운영 기본). */
+    private final String prefix;
 
-    public RedisCacheAdapter(StringRedisTemplate redis, ObjectMapper objectMapper) {
+    public RedisCacheAdapter(StringRedisTemplate redis, ObjectMapper objectMapper,
+                             @Value("${app.cache.prefix:}") String prefix) {
         this.redis = redis;
         this.objectMapper = objectMapper;
+        this.prefix = (prefix == null || prefix.isBlank()) ? "" : prefix + ":";
+    }
+
+    /** 모든 키에 환경 접두사 적용 — 로컬/운영이 같은 Redis를 공유해도 키가 섞이지 않게. */
+    private String k(String key) {
+        return prefix + key;
     }
 
     /** Cache-or-load. Redis 장애 시 supplier 결과 그대로 반환 (fail-open). */
@@ -64,7 +74,7 @@ public class RedisCacheAdapter {
 
     public <T> T get(String key, TypeReference<T> type) {
         try {
-            String raw = redis.opsForValue().get(key);
+            String raw = redis.opsForValue().get(k(key));
             if (raw == null) {
                 return null;
             }
@@ -77,7 +87,7 @@ public class RedisCacheAdapter {
 
     public void set(String key, Object value, Duration ttl) {
         try {
-            redis.opsForValue().set(key, objectMapper.writeValueAsString(value), ttl);
+            redis.opsForValue().set(k(key), objectMapper.writeValueAsString(value), ttl);
         } catch (Exception ex) {
             log.warn("redis set failed key={} reason={}", key, ex.getMessage());
         }
@@ -85,7 +95,7 @@ public class RedisCacheAdapter {
 
     public void evict(String key) {
         try {
-            redis.delete(key);
+            redis.delete(k(key));
         } catch (Exception ex) {
             log.warn("redis del failed key={} reason={}", key, ex.getMessage());
         }
