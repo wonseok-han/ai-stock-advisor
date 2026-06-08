@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
  * <p>Gemini 2.5 호환: {@code thinkingConfig.thinkingBudget=0} 으로 thinking mode 비활성화.
  * 활성 상태에서는 thinking 토큰이 {@code maxOutputTokens} 예산을 소진해 실제 응답 JSON 이
  * 중간 절단되는 현상 방지 ({@code finishReason=MAX_TOKENS}). extractText 는 방어적으로
- * {@code thought=true} part 를 스킵하고 첫 유효 text 를 반환.
+ * {@code thought=true} part 를 스킵하고, 본문이 여러 text part 로 쪼개져 와도 모두 이어붙여 반환.
  *
  * <p>Phase 2.2 — transient retry 1회 (총 최대 {@value #MAX_ATTEMPTS} 시도, 고정 backoff
  * {@value #RETRY_BACKOFF_MS}ms). 분류 매트릭스: 5xx / 429 / timeout / io = retryable,
