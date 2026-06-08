@@ -20,7 +20,7 @@ const COMPOSITE_TOOLTIP =
 
 const REGIME_TOOLTIPS: Record<string, string> = {
   buffett:
-    '전체 주식 시가총액을 GDP로 나눈 값입니다. 높을수록 경제 규모 대비 고평가됐음을 뜻합니다. 기준: 100% 미만 저평가 · 150% 초과 고평가 · 200% 초과 역사적 과열.',
+    '전체 주식 시가총액을 GDP로 나눈 값입니다. 높을수록 경제 규모 대비 고평가됐음을 뜻합니다. 기준: 100% 미만 저평가 · 100~140% 정상 · 140~180% 고평가 · 180% 초과 과열.',
   fearGreed:
     '투자 심리를 0(극도 공포)~100(극도 탐욕)으로 나타낸 CNN 지수입니다. 기준: 25 이하 극단적 공포 · 55~75 탐욕 · 75 이상 극단적 탐욕.',
   creditSpread:
@@ -43,6 +43,7 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   buffett: [
     { zone: 'cheap', label: '저평가' },
     { zone: 'normal', label: '정상' },
+    { zone: 'caution', label: '고평가' },
     { zone: 'overheated', label: '과열' },
   ],
   fearGreed: [
@@ -94,10 +95,13 @@ const ZONE_KO: Record<string, string> = {
   downtrend: '하락추세',
   low: '낮음',
   elevated: '높음',
+  caution: '다소 고평가',
 };
 
 function zoneTextColor(zone: string): string {
   switch (zone) {
+    case 'caution':
+      return 'text-amber-500';
     case 'overheated':
     case 'greed':
     case 'elevated':
@@ -119,6 +123,8 @@ function zoneTextColor(zone: string): string {
 
 function zoneBg(zone: string): string {
   switch (zone) {
+    case 'caution':
+      return 'bg-amber-500';
     case 'overheated':
     case 'greed':
     case 'elevated':
