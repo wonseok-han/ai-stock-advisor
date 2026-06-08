@@ -13,9 +13,12 @@ import com.nowini.market.domain.MarketRegimeResponse.Indicator;
 import com.nowini.market.domain.SectorMomentum;
 import com.nowini.market.infra.CnnFearGreedClient;
 import com.nowini.market.infra.CnnFearGreedClient.FearGreedSnapshot;
+import com.nowini.market.infra.FmpClient;
 import com.nowini.market.infra.FredClient;
 import com.nowini.market.infra.FredClient.FredObservation;
 import com.nowini.stock.domain.MarketStatusResolver;
+import com.nowini.stock.domain.Quote;
+import com.nowini.stock.infra.client.YahooFinanceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,9 +33,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
- * 시장 국면 종합 — FRED + CNN 무료 소스 9개 지표를 4축으로 수집·정규화.
+ * 시장 국면 종합 — FRED + CNN + 실시간 시세 소스 9개 지표를 4축으로 수집·정규화.
+ * VIX는 대시보드와 값을 맞추기 위해 실시간 시세(FMP→Yahoo) 우선, 실패 시 FRED VIXCLS(전일 종가) 폴백.
  * <p>
  * 밸류에이션(버핏지수) / 위험심리(Fear&Greed, 신용스프레드, VIX) /
  * 매크로(금리차 10Y-2Y·10Y-3M, 실업률, 순유동성) / 추세폭(S&P 200일선).
@@ -55,16 +60,21 @@ public class MarketRegimeService {
 
     private final FredClient fred;
     private final CnnFearGreedClient cnn;
+    private final FmpClient fmpClient;
+    private final YahooFinanceClient yahooFinanceClient;
     private final LlmClient llm;
     private final PromptLoader promptLoader;
     private final RedisCacheAdapter cache;
     private final SectorPerformanceService sectorService;
 
-    public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn, LlmClient llm,
-                               PromptLoader promptLoader, RedisCacheAdapter cache,
+    public MarketRegimeService(FredClient fred, CnnFearGreedClient cnn,
+                               FmpClient fmpClient, YahooFinanceClient yahooFinanceClient,
+                               LlmClient llm, PromptLoader promptLoader, RedisCacheAdapter cache,
                                SectorPerformanceService sectorService) {
         this.fred = fred;
         this.cnn = cnn;
+        this.fmpClient = fmpClient;
+        this.yahooFinanceClient = yahooFinanceClient;
         this.llm = llm;
         this.promptLoader = promptLoader;
         this.cache = cache;
@@ -77,16 +87,28 @@ public class MarketRegimeService {
     }
 
     public MarketRegimeResponse getRegime() {
-        // 종합 점수가 없으면(핵심 지표 전부 실패) 불완전 → 짧은 TTL로만 캐시(자가복구)
+        // 4축이 모두 채워진 완전한 응답만 풀 TTL 캐시. 일부 지표(예: 버핏지수)가 FRED 일시
+        // 실패로 빠지면 짧은 TTL로만 캐시해 곧 자동 재시도(자가복구) — 하루 종일 고착 방지.
         return cache.getOrLoad("market:regime", TYPE, ttl(), this::fetch,
-                r -> r.composite() != null);
+                MarketRegimeService::isComplete);
+    }
+
+    /** 4축(밸류에이션·위험심리·매크로·추세) 모두 지표가 있고 종합점수도 있으면 완전한 응답. */
+    private static boolean isComplete(MarketRegimeResponse r) {
+        if (r.composite() == null || r.axes() == null) return false;
+        return notEmpty(r.axes().valuation()) && notEmpty(r.axes().riskSentiment())
+                && notEmpty(r.axes().macro()) && notEmpty(r.axes().trendBreadth());
+    }
+
+    private static boolean notEmpty(Axis axis) {
+        return axis != null && axis.indicators() != null && !axis.indicators().isEmpty();
     }
 
     /** 국면 지표 캐시 워밍 (콜드패스 방지). AI 해석은 비싼 LLM이라 워밍 제외. */
     public void refresh() {
         MarketRegimeResponse data = fetch();
-        // 불완전(종합 점수 없음) 결과로 last-good 캐시를 덮어쓰지 않음
-        if (data.composite() != null) {
+        // 불완전(일부 축 비어있음) 결과로 last-good 캐시를 덮어쓰지 않음
+        if (isComplete(data)) {
             cache.set("market:regime", data, ttl());
         }
     }
@@ -109,7 +131,12 @@ public class MarketRegimeService {
         // ── 위험·심리 ──
         FearGreedSnapshot fg = cnn.fetch();
         FredObservation credit = fred.latestValue("BAMLH0A0HYM2");
-        FredObservation vix = fred.latestValue("VIXCLS");
+        // VIX: 대시보드와 값을 맞추기 위해 실시간 시세 우선. 실패 시 FRED VIXCLS(전일 종가)로 폴백.
+        Double vix = liveVix();
+        if (vix == null) {
+            FredObservation vixClose = fred.latestValue("VIXCLS");
+            if (vixClose != null) vix = vixClose.value();
+        }
 
         // ── 매크로 ──
         FredObservation yc2 = fred.latestValue("T10Y2Y");
@@ -138,8 +165,8 @@ public class MarketRegimeService {
                     creditZone(credit.value()), null, clamp(credit.value() / 8 * 100)));
         }
         if (vix != null) {
-            risk.add(Indicator.of("vix", "VIX", round(vix.value()), null,
-                    vixZone(vix.value()), "변동성 지수 (단일 지표 해석은 주의)", clamp(vix.value() / 50 * 100)));
+            risk.add(Indicator.of("vix", "VIX", round(vix), null,
+                    vixZone(vix), "변동성 지수 (단일 지표 해석은 주의)", vixPosition(vix)));
         }
 
         List<Indicator> macro = new ArrayList<>();
@@ -199,6 +226,24 @@ public class MarketRegimeService {
                 themes,
                 DISCLAIMER
         );
+    }
+
+    /** 실시간 VIX 현재가(대시보드와 동일 소스: FMP ^VIX → Yahoo). 둘 다 실패 시 null(호출부가 FRED로 폴백). */
+    private Double liveVix() {
+        Quote q = tryQuote(() -> fmpClient.quote("^VIX"));
+        if (q == null) q = tryQuote(() -> yahooFinanceClient.quote("^VIX"));
+        return (q != null && q.price() != null) ? q.price().doubleValue() : null;
+    }
+
+    /** 시세 조회 래퍼: 유효한 가격(양수)만 반환, 실패/예외 시 null. */
+    private Quote tryQuote(Supplier<Quote> supplier) {
+        try {
+            Quote q = supplier.get();
+            if (q != null && q.price() != null && q.price().signum() > 0) return q;
+        } catch (Exception ex) {
+            log.debug("vix quote fallback: {}", ex.getMessage());
+        }
+        return null;
     }
 
     /** 순유동성(조$) = WALCL[백만$] - WTREGEN[백만$] - RRPONTSYD[십억$ → 백만 ×1000]. */
@@ -313,13 +358,14 @@ public class MarketRegimeService {
 
     private static String buffettZone(double v) {
         if (v < 100) return "cheap";
-        if (v <= 150) return "normal";
+        if (v <= 140) return "normal";
+        if (v <= 180) return "caution";   // 다소 고평가 (현대 구조적 고평가 구간 등급화)
         return "overheated";
     }
 
     private static String buffettNote(double v) {
-        if (v > 200) return "역사적 평균 대비 크게 높은 고평가 구간";
-        if (v > 150) return "역사적 평균 대비 고평가 구간";
+        if (v > 180) return "역사적 평균 대비 크게 높은 과열 구간";
+        if (v > 140) return "역사적 평균 대비 다소 높은 고평가 구간";
         if (v < 100) return "역사적 평균 대비 저평가 구간";
         return "역사적 평균 부근";
     }
@@ -338,8 +384,16 @@ public class MarketRegimeService {
 
     private static String vixZone(double v) {
         if (v < 15) return "calm";
-        if (v <= 25) return "normal";
-        return "fear";
+        if (v <= 20) return "normal";   // VIX 20 = 평온↔변동성 확대 통상 경계선
+        return "alarm";                 // >20 불안 — 한 방향 경고(red)
+    }
+
+    /** VIX 마커를 3개 zone 칸(균등 1/3)에 정렬: &lt;15 안정 / 15~20 정상 / &gt;20 불안(40 상한). */
+    private static double vixPosition(double v) {
+        double third = 100.0 / 3;
+        if (v < 15) return clamp(v / 15 * third);
+        if (v <= 20) return third + (v - 15) / 5 * third;
+        return clamp(2 * third + (v - 20) / 20 * third);
     }
 
     private static String yieldZone(double v) {
@@ -354,7 +408,9 @@ public class MarketRegimeService {
     }
 
     private static String sp200Zone(double dev) {
-        return dev >= 0 ? "uptrend" : "downtrend";
+        if (dev > 2) return "uptrend";      // 200일선 +2% 초과 = 상승추세
+        if (dev < -2) return "downtrend";   // -2% 미만 = 하락추세
+        return "neutral";                   // ±2% 이내 = 횡보(추세 불명확) — 경계 깜빡임 방지
     }
 
     private static String unemploymentZone(double v) {

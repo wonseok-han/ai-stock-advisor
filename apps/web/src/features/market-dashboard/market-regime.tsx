@@ -20,12 +20,12 @@ const COMPOSITE_TOOLTIP =
 
 const REGIME_TOOLTIPS: Record<string, string> = {
   buffett:
-    '전체 주식 시가총액을 GDP로 나눈 값입니다. 높을수록 경제 규모 대비 고평가됐음을 뜻합니다. 기준: 100% 미만 저평가 · 150% 초과 고평가 · 200% 초과 역사적 과열.',
+    '전체 주식 시가총액을 GDP로 나눈 값입니다. 높을수록 경제 규모 대비 고평가됐음을 뜻합니다. 기준: 100% 미만 저평가 · 100~140% 정상 · 140~180% 고평가 · 180% 초과 과열.',
   fearGreed:
     '투자 심리를 0(극도 공포)~100(극도 탐욕)으로 나타낸 CNN 지수입니다. 기준: 25 이하 극단적 공포 · 55~75 탐욕 · 75 이상 극단적 탐욕.',
   creditSpread:
     '투기등급(HY) 회사채와 국채의 금리 차이입니다. 벌어질수록 위험 회피가 강함을 뜻합니다. 기준: 3% 미만 안정 · 5% 초과 신용 스트레스.',
-  vix: "S&P500 옵션 기반 변동성 지수('공포 지수')입니다. 기준: 15 미만 안정 · 25 초과 불안 심리. 단일 지표 해석은 주의가 필요합니다.",
+  vix: "S&P500 옵션 기반 변동성 지수('공포 지수')입니다. 기준: 15 미만 안정 · 20 초과 불안 심리. 단일 지표 해석은 주의가 필요합니다.",
   yieldCurve2y:
     '10년물−2년물 국채 금리차입니다. 기준: 0 미만(역전)은 과거 경기 침체에 선행한 사례가 있음 · 0.5%p 초과 정상.',
   yieldCurve3m:
@@ -35,7 +35,7 @@ const REGIME_TOOLTIPS: Record<string, string> = {
   netLiquidity:
     'Fed 자산에서 재무부 계정·역레포를 뺀 시중 유동성입니다. 클수록 완화적이며, 게이지는 최근 2년 범위(저점~고점) 중 현재 위치를 나타냅니다.',
   sp500vs200ma:
-    'S&P500이 200일 이동평균 대비 얼마나 위/아래인지입니다. 기준: 0 이상 장기 상승추세 · 0 미만 하락추세.',
+    'S&P500이 200일 이동평균 대비 얼마나 위/아래인지입니다. 기준: +2% 초과 상승추세 · ±2% 이내 횡보 · -2% 미만 하락추세.',
 };
 
 /** 지표별 zone 단계 (반원 게이지 구간 색). 정의가 없으면 단색 게이지. */
@@ -43,6 +43,7 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   buffett: [
     { zone: 'cheap', label: '저평가' },
     { zone: 'normal', label: '정상' },
+    { zone: 'caution', label: '고평가' },
     { zone: 'overheated', label: '과열' },
   ],
   fearGreed: [
@@ -54,11 +55,6 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
     { zone: 'calm', label: '안정' },
     { zone: 'normal', label: '정상' },
     { zone: 'fear', label: '위험' },
-  ],
-  vix: [
-    { zone: 'calm', label: '안정' },
-    { zone: 'normal', label: '정상' },
-    { zone: 'fear', label: '불안' },
   ],
   yieldCurve2y: [
     { zone: 'inverted', label: '역전' },
@@ -77,8 +73,20 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   ],
   sp500vs200ma: [
     { zone: 'downtrend', label: '하락' },
+    { zone: 'neutral', label: '횡보' },
     { zone: 'uptrend', label: '상승' },
   ],
+};
+
+/**
+ * 연속 히트 그라디언트로 표현할 단방향 지표(칸 분할 대신). 마커가 값 위치를 가리킴.
+ * VIX는 높을수록 나쁨 → 녹(안정)→주황→적(불안).
+ */
+const REGIME_GRADIENTS: Record<string, { className: string; ends: [string, string] }> = {
+  vix: {
+    className: 'bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500',
+    ends: ['안정', '불안'],
+  },
 };
 
 const ZONE_KO: Record<string, string> = {
@@ -94,13 +102,18 @@ const ZONE_KO: Record<string, string> = {
   downtrend: '하락추세',
   low: '낮음',
   elevated: '높음',
+  caution: '다소 고평가',
+  alarm: '불안',
 };
 
 function zoneTextColor(zone: string): string {
   switch (zone) {
+    case 'caution':
+      return 'text-amber-500';
     case 'overheated':
     case 'greed':
     case 'elevated':
+    case 'alarm':
       return 'text-danger';
     case 'fear':
     case 'inverted':
@@ -119,9 +132,12 @@ function zoneTextColor(zone: string): string {
 
 function zoneBg(zone: string): string {
   switch (zone) {
+    case 'caution':
+      return 'bg-amber-500';
     case 'overheated':
     case 'greed':
     case 'elevated':
+    case 'alarm':
       return 'bg-red-500';
     case 'fear':
     case 'inverted':
@@ -220,6 +236,7 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
   const { key, name, value, unit, zone, note, position } = indicator;
   const tooltip = REGIME_TOOLTIPS[key];
   const segments = REGIME_SEGMENTS[key];
+  const gradient = REGIME_GRADIENTS[key];
   const isRange = key === 'netLiquidity';
 
   return (
@@ -236,7 +253,14 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
         <span className={`text-[11px] font-semibold ${zoneTextColor(zone)}`}>{ZONE_KO[zone] ?? zone}</span>
       </div>
       {position !== null && (
-        <RegimeBar position={position} segments={isRange ? undefined : segments} current={zone} range={isRange} />
+        <RegimeBar
+          position={position}
+          segments={isRange ? undefined : segments}
+          gradient={gradient?.className}
+          gradientEnds={gradient?.ends}
+          current={zone}
+          range={isRange}
+        />
       )}
 
       {note && <div className="mt-1.5 text-[11px] leading-snug text-fg-secondary">{note}</div>}
@@ -251,22 +275,28 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
 function RegimeBar({
   position,
   segments,
+  gradient,
+  gradientEnds,
   current,
   range,
 }: {
   position: number;
   segments?: { zone: string; label: string }[];
+  gradient?: string;
+  gradientEnds?: [string, string];
   current: string;
   range?: boolean;
 }) {
   const pos = Math.max(0, Math.min(100, position));
-  const segs = !range && segments && segments.length > 0 ? segments : null;
+  const segs = !range && !gradient && segments && segments.length > 0 ? segments : null;
   // 바 양 끝 방향 범례 — 좌(낮은 쪽) / 우(높은 쪽). 라벨이 방향을 안내해 오해 방지.
   const endLabels: [string, string] | null = range
     ? ['2년 저점', '고점']
-    : segs
-      ? [segs[0].label, segs[segs.length - 1].label]
-      : null;
+    : gradient && gradientEnds
+      ? gradientEnds
+      : segs
+        ? [segs[0].label, segs[segs.length - 1].label]
+        : null;
 
   return (
     <div className="mt-2">
@@ -280,6 +310,8 @@ function RegimeBar({
               />
             ))}
           </div>
+        ) : gradient ? (
+          <div className={`absolute inset-0 rounded-full ${gradient}`} />
         ) : (
           <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/30 via-bg-skeleton to-emerald-500/40" />
         )}
