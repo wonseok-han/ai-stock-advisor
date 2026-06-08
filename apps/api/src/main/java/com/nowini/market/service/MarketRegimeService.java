@@ -346,13 +346,14 @@ public class MarketRegimeService {
 
     private static String buffettZone(double v) {
         if (v < 100) return "cheap";
-        if (v <= 150) return "normal";
+        if (v <= 140) return "normal";
+        if (v <= 180) return "caution";   // 다소 고평가 (현대 구조적 고평가 구간 등급화)
         return "overheated";
     }
 
     private static String buffettNote(double v) {
-        if (v > 200) return "역사적 평균 대비 크게 높은 고평가 구간";
-        if (v > 150) return "역사적 평균 대비 고평가 구간";
+        if (v > 180) return "역사적 평균 대비 크게 높은 과열 구간";
+        if (v > 140) return "역사적 평균 대비 다소 높은 고평가 구간";
         if (v < 100) return "역사적 평균 대비 저평가 구간";
         return "역사적 평균 부근";
     }
