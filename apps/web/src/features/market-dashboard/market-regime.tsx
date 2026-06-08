@@ -59,7 +59,7 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   vix: [
     { zone: 'calm', label: '안정' },
     { zone: 'normal', label: '정상' },
-    { zone: 'fear', label: '불안' },
+    { zone: 'alarm', label: '불안' },
   ],
   yieldCurve2y: [
     { zone: 'inverted', label: '역전' },
@@ -97,6 +97,7 @@ const ZONE_KO: Record<string, string> = {
   low: '낮음',
   elevated: '높음',
   caution: '다소 고평가',
+  alarm: '불안',
 };
 
 function zoneTextColor(zone: string): string {
@@ -106,6 +107,7 @@ function zoneTextColor(zone: string): string {
     case 'overheated':
     case 'greed':
     case 'elevated':
+    case 'alarm':
       return 'text-danger';
     case 'fear':
     case 'inverted':
@@ -129,6 +131,7 @@ function zoneBg(zone: string): string {
     case 'overheated':
     case 'greed':
     case 'elevated':
+    case 'alarm':
       return 'bg-red-500';
     case 'fear':
     case 'inverted':
