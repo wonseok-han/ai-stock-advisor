@@ -77,6 +77,7 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
   ],
   sp500vs200ma: [
     { zone: 'downtrend', label: '하락' },
+    { zone: 'neutral', label: '횡보' },
     { zone: 'uptrend', label: '상승' },
   ],
 };

@@ -354,7 +354,9 @@ public class MarketRegimeService {
     }
 
     private static String sp200Zone(double dev) {
-        return dev >= 0 ? "uptrend" : "downtrend";
+        if (dev > 2) return "uptrend";      // 200일선 +2% 초과 = 상승추세
+        if (dev < -2) return "downtrend";   // -2% 미만 = 하락추세
+        return "neutral";                   // ±2% 이내 = 횡보(추세 불명확) — 경계 깜빡임 방지
     }
 
     private static String unemploymentZone(double v) {
