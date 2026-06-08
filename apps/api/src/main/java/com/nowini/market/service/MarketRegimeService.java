@@ -154,7 +154,7 @@ public class MarketRegimeService {
         }
         if (vix != null) {
             risk.add(Indicator.of("vix", "VIX", round(vix), null,
-                    vixZone(vix), "변동성 지수 (단일 지표 해석은 주의)", clamp(vix / 50 * 100)));
+                    vixZone(vix), "변동성 지수 (단일 지표 해석은 주의)", vixPosition(vix)));
         }
 
         List<Indicator> macro = new ArrayList<>();
@@ -373,7 +373,15 @@ public class MarketRegimeService {
     private static String vixZone(double v) {
         if (v < 15) return "calm";
         if (v <= 20) return "normal";   // VIX 20 = 평온↔변동성 확대 통상 경계선
-        return "fear";
+        return "alarm";                 // >20 불안 — 한 방향 경고(red)
+    }
+
+    /** VIX 마커를 3개 zone 칸(균등 1/3)에 정렬: &lt;15 안정 / 15~20 정상 / &gt;20 불안(40 상한). */
+    private static double vixPosition(double v) {
+        double third = 100.0 / 3;
+        if (v < 15) return clamp(v / 15 * third);
+        if (v <= 20) return third + (v - 15) / 5 * third;
+        return clamp(2 * third + (v - 20) / 20 * third);
     }
 
     private static String yieldZone(double v) {
