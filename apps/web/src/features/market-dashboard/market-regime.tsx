@@ -56,11 +56,6 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
     { zone: 'normal', label: '정상' },
     { zone: 'fear', label: '위험' },
   ],
-  vix: [
-    { zone: 'calm', label: '안정' },
-    { zone: 'normal', label: '정상' },
-    { zone: 'alarm', label: '불안' },
-  ],
   yieldCurve2y: [
     { zone: 'inverted', label: '역전' },
     { zone: 'neutral', label: '평탄' },
@@ -81,6 +76,17 @@ const REGIME_SEGMENTS: Record<string, { zone: string; label: string }[]> = {
     { zone: 'neutral', label: '횡보' },
     { zone: 'uptrend', label: '상승' },
   ],
+};
+
+/**
+ * 연속 히트 그라디언트로 표현할 단방향 지표(칸 분할 대신). 마커가 값 위치를 가리킴.
+ * VIX는 높을수록 나쁨 → 녹(안정)→주황→적(불안).
+ */
+const REGIME_GRADIENTS: Record<string, { className: string; ends: [string, string] }> = {
+  vix: {
+    className: 'bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500',
+    ends: ['안정', '불안'],
+  },
 };
 
 const ZONE_KO: Record<string, string> = {
@@ -230,6 +236,7 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
   const { key, name, value, unit, zone, note, position } = indicator;
   const tooltip = REGIME_TOOLTIPS[key];
   const segments = REGIME_SEGMENTS[key];
+  const gradient = REGIME_GRADIENTS[key];
   const isRange = key === 'netLiquidity';
 
   return (
@@ -246,7 +253,14 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
         <span className={`text-[11px] font-semibold ${zoneTextColor(zone)}`}>{ZONE_KO[zone] ?? zone}</span>
       </div>
       {position !== null && (
-        <RegimeBar position={position} segments={isRange ? undefined : segments} current={zone} range={isRange} />
+        <RegimeBar
+          position={position}
+          segments={isRange ? undefined : segments}
+          gradient={gradient?.className}
+          gradientEnds={gradient?.ends}
+          current={zone}
+          range={isRange}
+        />
       )}
 
       {note && <div className="mt-1.5 text-[11px] leading-snug text-fg-secondary">{note}</div>}
@@ -261,22 +275,28 @@ function IndicatorCard({ indicator }: { indicator: RegimeIndicator }) {
 function RegimeBar({
   position,
   segments,
+  gradient,
+  gradientEnds,
   current,
   range,
 }: {
   position: number;
   segments?: { zone: string; label: string }[];
+  gradient?: string;
+  gradientEnds?: [string, string];
   current: string;
   range?: boolean;
 }) {
   const pos = Math.max(0, Math.min(100, position));
-  const segs = !range && segments && segments.length > 0 ? segments : null;
+  const segs = !range && !gradient && segments && segments.length > 0 ? segments : null;
   // 바 양 끝 방향 범례 — 좌(낮은 쪽) / 우(높은 쪽). 라벨이 방향을 안내해 오해 방지.
   const endLabels: [string, string] | null = range
     ? ['2년 저점', '고점']
-    : segs
-      ? [segs[0].label, segs[segs.length - 1].label]
-      : null;
+    : gradient && gradientEnds
+      ? gradientEnds
+      : segs
+        ? [segs[0].label, segs[segs.length - 1].label]
+        : null;
 
   return (
     <div className="mt-2">
@@ -290,6 +310,8 @@ function RegimeBar({
               />
             ))}
           </div>
+        ) : gradient ? (
+          <div className={`absolute inset-0 rounded-full ${gradient}`} />
         ) : (
           <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/30 via-bg-skeleton to-emerald-500/40" />
         )}
