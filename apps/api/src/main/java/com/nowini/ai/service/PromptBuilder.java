@@ -1,7 +1,6 @@
 package com.nowini.ai.service;
 
 import com.nowini.common.prompt.PromptLoader;
-import com.nowini.legal.ForbiddenTermsRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -17,8 +16,7 @@ import java.util.Map;
  * 로 컨텍스트 영역을 격리하고, 경계 내부의 지시는 데이터로만 취급하도록 system 에서 강제.
  *
  * <p>System prompt 본문은 {@code classpath:prompts/ai-signal.system.txt} 외부 파일로
- * 분리되어 {@link PromptLoader} 를 통해 로드된다 (phase2.2). 단일 {@code %s} placeholder
- * 가 {@link ForbiddenTermsRegistry#quotedList()} 로 채워진다.
+ * 분리되어 {@link PromptLoader} 를 통해 로드된다 (phase2.2).
  */
 @Component
 public class PromptBuilder {
@@ -26,15 +24,12 @@ public class PromptBuilder {
     static final String SYSTEM_PROMPT_RESOURCE = "ai-signal.system.txt";
 
     private final ObjectMapper objectMapper;
-    private final ForbiddenTermsRegistry forbiddenTerms;
     private final PromptLoader promptLoader;
     private volatile String cachedSystemPrompt;
 
     public PromptBuilder(ObjectMapper objectMapper,
-                         ForbiddenTermsRegistry forbiddenTerms,
                          PromptLoader promptLoader) {
         this.objectMapper = objectMapper;
-        this.forbiddenTerms = forbiddenTerms;
         this.promptLoader = promptLoader;
     }
 
@@ -43,8 +38,7 @@ public class PromptBuilder {
         if (cached != null) {
             return cached;
         }
-        String template = promptLoader.load(SYSTEM_PROMPT_RESOURCE);
-        String built = template.formatted(forbiddenTerms.quotedList());
+        String built = promptLoader.load(SYSTEM_PROMPT_RESOURCE);
         this.cachedSystemPrompt = built;
         return built;
     }

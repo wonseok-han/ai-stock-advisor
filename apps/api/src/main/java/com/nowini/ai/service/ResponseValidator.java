@@ -8,7 +8,6 @@ import com.nowini.ai.domain.SignalPerspective;
 import com.nowini.ai.domain.TimingFactor;
 import com.nowini.ai.domain.TimingVerdict;
 import com.nowini.common.metrics.LlmMetrics;
-import com.nowini.legal.ForbiddenTermsRegistry;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -27,14 +26,11 @@ public class ResponseValidator {
     private static final Logger log = LoggerFactory.getLogger(ResponseValidator.class);
 
     private final ObjectMapper objectMapper;
-    private final ForbiddenTermsRegistry forbidden;
     private final MeterRegistry meterRegistry;
 
     public ResponseValidator(ObjectMapper objectMapper,
-                             ForbiddenTermsRegistry forbidden,
                              MeterRegistry meterRegistry) {
         this.objectMapper = objectMapper;
-        this.forbidden = forbidden;
         this.meterRegistry = meterRegistry;
     }
 
@@ -75,20 +71,6 @@ public class ResponseValidator {
         }
 
         TimingVerdict timing = validateTiming(parsed.timing);
-
-        StringBuilder scan = new StringBuilder();
-        appendPerspectiveText(scan, shortTerm);
-        appendPerspectiveText(scan, longTerm);
-        if (timing != null) {
-            scan.append(timing.summaryKo()).append(' ');
-            for (TimingFactor f : timing.factorsMet()) scan.append(f.detail()).append(' ');
-            for (TimingFactor f : timing.factorsUnmet()) scan.append(f.detail()).append(' ');
-        }
-        List<String> hits = forbidden.detect(scan.toString());
-        if (!hits.isEmpty()) {
-            recordForbiddenHit(feature, hits.size());
-            return Result.invalid("forbidden-terms-detected", hits, rawMap);
-        }
 
         return Result.valid(shortTerm, longTerm, timing, rawMap);
     }
@@ -157,40 +139,10 @@ public class ResponseValidator {
         return out;
     }
 
-    private void appendPerspectiveText(StringBuilder scan, SignalPerspective p) {
-        scan.append(p.summaryKo()).append(' ');
-        for (String r : p.rationale()) scan.append(r).append(' ');
-        for (String r : p.risks()) scan.append(r).append(' ');
-        if (p.beginnerExplanation() != null) scan.append(p.beginnerExplanation()).append(' ');
-        if (p.indicatorInterpretation() != null) {
-            for (IndicatorInterpretation ii : p.indicatorInterpretation()) scan.append(ii.meaningKo()).append(' ');
-        }
-        if (p.newsImpact() != null) {
-            for (NewsImpact ni : p.newsImpact()) {
-                if (ni.titleKo() != null) scan.append(ni.titleKo()).append(' ');
-                if (ni.reasonKo() != null) scan.append(ni.reasonKo()).append(' ');
-            }
-        }
-        if (p.whatToWatch() != null) {
-            for (String w : p.whatToWatch()) scan.append(w).append(' ');
-        }
-    }
-
     private void recordValidationFailure(String feature) {
         meterRegistry.counter(LlmMetrics.FAILURE_COUNT,
                 LlmMetrics.TAG_FEATURE, feature,
                 LlmMetrics.TAG_REASON, LlmMetrics.REASON_VALIDATION
-        ).increment();
-    }
-
-    private void recordForbiddenHit(String feature, int count) {
-        meterRegistry.counter(LlmMetrics.FORBIDDEN_HIT,
-                LlmMetrics.TAG_LAYER, LlmMetrics.LAYER_VALIDATOR,
-                LlmMetrics.TAG_FEATURE, feature
-        ).increment(count);
-        meterRegistry.counter(LlmMetrics.FAILURE_COUNT,
-                LlmMetrics.TAG_FEATURE, feature,
-                LlmMetrics.TAG_REASON, LlmMetrics.REASON_FORBIDDEN
         ).increment();
     }
 
