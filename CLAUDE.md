@@ -23,7 +23,9 @@ PDCA 방법론은 자동 적용됩니다. `/pdca plan|design|do|analyze|report` 
 
 ### 4. 면책 원칙 (서비스 핵심)
 
-이 서비스는 **투자 자문이 아님**. 모든 UI/API/문구에 "참고용", "투자 판단과 책임은 사용자 본인" 원칙이 일관되게 반영되어야 함. 자세한 내용은 `docs/planning/07-legal-compliance.md`.
+이 서비스는 **투자 자문이 아님**. 모든 UI/문구에 "참고용", "투자 판단과 책임은 사용자 본인" 원칙이 일관되게 반영되어야 함.
+
+> **면책 집행 방식 (v0.8.x~)**: 실질 방어선은 **화면에 항상 노출되는 면책 고지**(`disclaimer-footer` + AI 카드 내 disclaimer 필드)이며, LLM에는 **프롬프트 수준 가이드**("매수/매도 자문·권유 금지")로 유도한다. 과거의 금칙어 substring 필터(`LegalGuardFilter`/`forbidden-terms.json`/CI Level 4 grep)는 정상 응답을 통째로 차단하는 오탐과 프롬프트 프라이밍 부작용이 커서 **제거**되었다. 자세한 내용은 `docs/planning/07-legal-compliance.md`.
 
 ---
 

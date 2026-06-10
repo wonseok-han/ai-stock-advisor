@@ -93,8 +93,6 @@ app:
   supabase:
     url: ${SUPABASE_URL:}
     service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
-  legal:
-    forbidden-terms-path: ${FORBIDDEN_TERMS_PATH:classpath:legal/forbidden-terms.json}
   push:
     vapid:
       public-key: ${VAPID_PUBLIC_KEY:}
